@@ -1,0 +1,35 @@
+{
+  "name": "gravit-ai-toolkit",
+  "version": "1.0.0",
+  "description": "Kuratierte Sammlung von SEO-, Obsidian- und Produktivitäts-Skills für Claude Code, bereitgestellt von Gravit Cloud.",
+  "license": "MIT",
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gravit-cloud/gravit-ai-toolkit.git"
+  },
+  "homepage": "https://github.com/gravit-cloud/gravit-ai-toolkit",
+  "keywords": [
+    "agent-skills",
+    "skills",
+    "gravit",
+    "seo",
+    "obsidian",
+    "content",
+    "productivity",
+    "claude-code"
+  ],
+  "agents": {
+    "skills": []
+  },
+  "scripts": {
+    "build": "bash build.sh",
+    "codex:sync": "bash codex/sync.sh",
+    "release": "commit-and-tag-version && bash build.sh"
+  },
+  "devDependencies": {
+    "commit-and-tag-version": "12.7.1"
+  }
+}

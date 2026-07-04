@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update linked Claude plugin refs in marketplace.json",
+      "managerFilePatterns": [
+        "/^\\.claude-plugin/marketplace\\.json$/"
+      ],
+      "matchStrings": [
+        "\"source\"\\s*:\\s*\\{\\s*\"source\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>[^\"]+)\"\\s*\\}"
+      ],
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver-coerced"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchDatasources": [
+        "github-tags"
+      ],
+      "groupName": "linked Claude plugin refs"
+    }
+  ]
+}

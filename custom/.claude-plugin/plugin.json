@@ -1,0 +1,21 @@
+{
+  "name": "gravit-custom",
+  "description": "Lokal gepflegte, kuratierte Skills der Gravit Cloud (Skills unter custom/skills/).",
+  "version": "1.0.0",
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "homepage": "https://github.com/gravit-cloud/gravit-ai-toolkit",
+  "repository": "https://github.com/gravit-cloud/gravit-ai-toolkit",
+  "license": "MIT",
+  "keywords": [
+    "gravit",
+    "seo",
+    "obsidian",
+    "content",
+    "productivity",
+    "skills",
+    "claude-code"
+  ],
+  "skills": []
+}

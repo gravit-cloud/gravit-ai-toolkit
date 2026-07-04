@@ -1,0 +1,58 @@
+{
+  "name": "gravit-cloud",
+  "owner": {
+    "name": "Gravit Cloud"
+  },
+  "plugins": [
+    {
+      "name": "claude-seo",
+      "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
+      "source": {
+        "source": "github",
+        "repo": "AgricIDaniel/claude-seo",
+        "ref": "v2.2.0"
+      },
+      "category": "seo",
+      "homepage": "https://github.com/AgricIDaniel/claude-seo"
+    },
+    {
+      "name": "obsidian",
+      "description": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle.",
+      "source": {
+        "source": "github",
+        "repo": "kepano/obsidian-skills",
+        "sha": "a1dc48e68138490d522c04cbf5822214c6eb1202"
+      },
+      "category": "productivity",
+      "homepage": "https://github.com/kepano/obsidian-skills"
+    },
+    {
+      "name": "mattpocock-skills",
+      "description": "Produktivitäts-Skills von Matt Pocock (u.a. grill-me — intensives Interview zur Plan-Schärfung).",
+      "source": {
+        "source": "github",
+        "repo": "mattpocock/skills",
+        "ref": "v1.0.1"
+      },
+      "category": "productivity",
+      "homepage": "https://github.com/mattpocock/skills"
+    },
+    {
+      "name": "azure",
+      "description": "Microsoft Azure: 28 Skills + Azure-MCP-Server für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
+      "source": {
+        "source": "github",
+        "repo": "microsoft/azure-skills",
+        "ref": "v1.1.79"
+      },
+      "category": "cloud",
+      "homepage": "https://github.com/microsoft/azure-skills"
+    },
+    {
+      "name": "gravit-custom",
+      "description": "Lokal gepflegte, kuratierte Skills der Gravit Cloud (custom/skills/).",
+      "source": "./custom",
+      "category": "development"
+    }
+  ]
+}
