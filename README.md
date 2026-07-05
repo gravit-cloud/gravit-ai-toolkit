@@ -32,7 +32,7 @@ Für Codex und andere AGENTS.md-basierte Tools stellt dieses Repo unter [`codex/
 ```bash
 # Einmalig: diesen Marketplace registrieren
 /plugin marketplace add gravit-cloud gravit-cloud/gravit-ai-toolkit
-
+ 
 # Gewünschte Plugins installieren
 /plugin install claude-seo@gravit-cloud
 /plugin install obsidian@gravit-cloud
