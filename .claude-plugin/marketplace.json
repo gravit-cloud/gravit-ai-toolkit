@@ -32,7 +32,7 @@
       "source": {
         "source": "github",
         "repo": "mattpocock/skills",
-        "ref": "v1.0.1"
+        "ref": "v1.1.0"
       },
       "category": "productivity",
       "homepage": "https://github.com/mattpocock/skills"
@@ -43,7 +43,7 @@
       "source": {
         "source": "github",
         "repo": "microsoft/azure-skills",
-        "ref": "v1.1.79"
+        "ref": "v1.1.91"
       },
       "category": "cloud",
       "homepage": "https://github.com/microsoft/azure-skills"
