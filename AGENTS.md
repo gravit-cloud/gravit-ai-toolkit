@@ -3,11 +3,11 @@
 **gravit-ai-toolkit** ist ein kuratierter **Plugin-Marketplace** der Gravit Cloud Organisation für Claude Code. Der Katalog (`.claude-plugin/marketplace.json`) vereint zwei Arten von Plugins:
 
 - **verlinkt** — bereits veröffentlichte Fremd-Plugins, die per `github`-Source direkt aus ihrem Original-Repo bezogen und auf eine getestete Version gepinnt werden. Die Skills werden **nicht** in dieses Repo kopiert.
-- **lokal** — das Plugin `gravit-custom` (`source: "./custom"`), dessen Skills unter `custom/skills/` liegen und selbst gepflegt werden.
+- **lokal** — das kuratierte Plugin `gravit-custom` (`source: "./custom"`) mit lokalen und übernommenen Skills unter `custom/skills/`.
 
-Unterstützte Tools: primär Claude Code. Das lokale `custom/`-Plugin lässt sich zusätzlich über [skills.sh](https://www.skills.sh/) / `npx skills add` cross-tool (Cursor, Copilot, Warp) beziehen.
+Unterstützte Tools: primär Claude Code. Für Codex und andere AGENTS.md-basierte Tools dient das generierte Bundle unter `codex/` als Cross-tool-Distribution.
 
-**Claude Code vs. Codex:** Der Marketplace (`marketplace.json`, `/plugin install`, namespaced Aufrufe) funktioniert nur in Claude Code. Codex kennt keine Plugins und arbeitet mit `AGENTS.md` + reinen Dateien. Für Codex liegt unter `codex/` ein **generiertes Bundle** aller referenzierten Skills als `codex/skills/<name>/SKILL.md`, beziehbar mit einem `npx giget`-Befehl (siehe `codex/README.md` und den Abschnitt „Codex / cross-tool" unten).
+**Claude Code vs. Codex:** Der Marketplace (`marketplace.json`, `/plugin install`, namespaced Aufrufe) funktioniert nur in Claude Code. Codex kennt keine Plugins und arbeitet mit `AGENTS.md` + reinen Dateien. Für Codex liegt unter `codex/` ein **generiertes, quellengetreues Bundle** aller referenzierten Skills unter `codex/sources/`, beziehbar mit einem `npx giget`-Befehl (siehe `codex/README.md` und den Abschnitt „Codex / cross-tool" unten).
 
 ---
 
@@ -15,14 +15,15 @@ Unterstützte Tools: primär Claude Code. Das lokale `custom/`-Plugin lässt sic
 
 ```
 .claude-plugin/
-  marketplace.json         # Katalog: 4 verlinkte Plugins + gravit-custom
+  marketplace.json         # Katalog: 5 verlinkte Plugins + gravit-custom
 custom/                    # lokales Plugin "gravit-custom"
   .claude-plugin/
     plugin.json            # Plugin-Manifest (name: gravit-custom)
-  skills/<name>/SKILL.md   # eigene Skills (YAML-Frontmatter + Body)
-  skills-lock.json         # Lockfile für extern via npx bezogene Skills
+  skills/<name>/SKILL.md   # lokale und übernommene Skills (YAML-Frontmatter + Body)
+  skills-lock.json         # Provenienz übernommener Skills
+  THIRD_PARTY_NOTICES.md   # Lizenz- und Herkunftshinweise
 codex/                     # cross-tool Bundle für Codex (generiert, committed)
-  skills/<name>/SKILL.md   # alle referenzierten Skills als reine Dateien
+  sources/<plugin>/…       # quellengetreue Snapshots aller Skill-Dateien
   AGENTS.md                # generierter Skill-Index (von Codex geladen)
   skills-manifest.json     # Provenienz + Anzahl je Skill (generiert)
   sync.sh                  # baut Bundle aus marketplace.json-Pins (npm run codex:sync)
@@ -41,10 +42,11 @@ LICENSE
 
 | Plugin | Typ | Quelle | Pin |
 |---|---|---|---|
-| `claude-seo` | verlinkt | `AgricIDaniel/claude-seo` | `v2.2.0` |
-| `obsidian` | verlinkt | `kepano/obsidian-skills` | SHA (kein Tag verfügbar) |
-| `mattpocock-skills` | verlinkt | `mattpocock/skills` | `v1.0.1` |
-| `azure` | verlinkt | `microsoft/azure-skills` | `v1.1.79` |
+| `claude-seo` | verlinkt | `AgricIDaniel/claude-seo` | `v2.2.0` + SHA |
+| `obsidian` | verlinkt | `kepano/obsidian-skills` | `main` + SHA |
+| `mattpocock-skills` | verlinkt | `mattpocock/skills` | `v1.1.0` + SHA |
+| `azure` | verlinkt | `microsoft/azure-skills` | `v1.1.91` + SHA |
+| `superpowers` | verlinkt | `obra/superpowers` | `v6.1.1` + SHA |
 | `gravit-custom` | lokal | `./custom` | `v1.0.0` |
 
 ### Verlinktes Plugin hinzufügen / Version ändern
@@ -55,12 +57,12 @@ Neuer Eintrag im `plugins`-Array von `.claude-plugin/marketplace.json`:
 {
   "name": "mein-plugin",
   "description": "Kurzbeschreibung",
-  "source": { "source": "github", "repo": "owner/repo", "ref": "v1.0.0" }
+  "source": { "source": "github", "repo": "owner/repo", "ref": "v1.0.0", "sha": "<40-stelliger-commit>" }
 }
 ```
 
-- `ref` = Branch/Tag (`"main"` für Auto-Updates, Tag für feste Version).
-- `sha` = exakter Commit (nötig bei Repos ohne Tags).
+- `ref` = lesbarer Branch/Tag für Review und Renovate.
+- `sha` = verpflichtender, exakter 40-stelliger Commit-Pin für Installation und Sync.
 - Monorepo: `{ "source": "git-subdir", "url": "…", "path": "pfad/zum/plugin" }`.
 - Voraussetzung: Ziel-Repo ist ein Claude-Code-Plugin (`.claude-plugin/plugin.json` und/oder `skills/` im Repo-Root).
 
@@ -83,15 +85,12 @@ metadata:
 ## Anleitung
 ```
 
-2. Optional Version in `custom/.claude-plugin/plugin.json` hochzählen.
-3. `bash build.sh` (erkennt Skills automatisch aus `custom/skills/*/SKILL.md`), committen, pushen.
+2. Für Releases `npm run version:set -- <version>` verwenden; das aktualisiert Paket- und Pluginversion gemeinsam.
+3. `bash build.sh` (erkennt Skills automatisch aus `custom/skills/*/SKILL.md`), dann die versionierten Archive über den GitHub-Release-Workflow veröffentlichen.
 
-Externen Skill in `custom/skills/` ziehen:
-
-```bash
-cd custom && npx skills add <org/repo>   # aktualisiert custom/skills/ + custom/skills-lock.json
-cd custom && npx skills add              # stellt alle Lockfile-Einträge nach einem Clone wieder her
-```
+Übernommene Skills benötigen eine dokumentierte Quelle, Lizenz und Provenienz in
+`custom/skills-lock.json` sowie `custom/THIRD_PARTY_NOTICES.md`. Ein bloßes
+`npx skills add` ist kein Lockfile-Restore und wird nicht als Installationsweg verwendet.
 
 ---
 
@@ -99,11 +98,12 @@ cd custom && npx skills add              # stellt alle Lockfile-Einträge nach e
 
 ```bash
 # Einmalig: Marketplace registrieren
-/plugin marketplace add gravit-cloud gravit-cloud/gravit-ai-toolkit
+/plugin marketplace add gravit-cloud/gravit-ai-toolkit
 
 # Gewünschte Plugins installieren (jedes einzeln)
 /plugin install claude-seo@gravit-cloud
 /plugin install azure@gravit-cloud
+/plugin install superpowers@gravit-cloud
 /plugin install gravit-custom@gravit-cloud
 # …
 
@@ -125,7 +125,7 @@ Codex nutzt keinen Marketplace. Das Verzeichnis `codex/` sammelt alle referenzie
 # Komplettes Bundle (Skills + AGENTS.md-Index) ins Projekt ziehen
 npx giget@latest gh:gravit-cloud/gravit-ai-toolkit/codex ./.gravit-skills --force
 # oder nur die reinen Skills
-npx giget@latest gh:gravit-cloud/gravit-ai-toolkit/codex/skills ./skills --force
+npx giget@latest gh:gravit-cloud/gravit-ai-toolkit/codex/sources ./skills --force
 ```
 
 Danach in der Projekt-`AGENTS.md` auf `.gravit-skills/AGENTS.md` verweisen; Codex liest bei passender Aufgabe das jeweilige `SKILL.md`.
@@ -136,7 +136,7 @@ Danach in der Projekt-`AGENTS.md` auf `.gravit-skills/AGENTS.md` verweisen; Code
 npm run codex:sync    # = bash codex/sync.sh
 ```
 
-`sync.sh` liest die Pins aus `marketplace.json` (einzige Quelle der Wahrheit), holt jede `skills/`-Struktur per `npx giget` auf den gepinnten Stand, flacht sie zu `codex/skills/<name>/` ab, ergänzt `gravit-custom`-eigene Skills und regeneriert `codex/AGENTS.md` + `codex/skills-manifest.json`. Danach `codex/` committen.
+`sync.sh` liest die Pins aus `marketplace.json` (einzige Quelle der Wahrheit), holt jede vollständige Quelle per `npx giget` auf den SHA-gepinnten Stand, bewahrt deren Struktur unter `codex/sources/`, ergänzt `gravit-custom` und regeneriert `codex/AGENTS.md` + `codex/skills-manifest.json`. Danach `codex/` committen.
 
 Caveat: MCP-gestützte Skills (v.a. `azure`) liefern nur ihren Anleitungstext — referenzierte MCP-Tool-Aufrufe funktionieren in Codex nur mit konfiguriertem MCP-Server. Skill-Dateien behalten Lizenz und Autorenschaft (Provenienz in `codex/skills-manifest.json`).
 
@@ -194,7 +194,11 @@ Inhalte der verlinkten Plugins (zur Orientierung — bezogen aus dem jeweiligen 
 
 ### Azure (`azure` ← `microsoft/azure-skills`)
 
-28 Skills für Azure-Ressourcenverwaltung, Deployments, Diagnostics, Kostenanalyse, AKS, Foundry u.a. — inkl. mitgeliefertem Azure-MCP-Server.
+Azure-Skills für Ressourcenverwaltung, Deployments, Diagnostics, Kostenanalyse, AKS, Foundry u.a. — inkl. mitgeliefertem Azure-MCP-Server.
+
+### Superpowers (`superpowers` ← `obra/superpowers`)
+
+Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, parallele Ausführung, Code-Reviews und den Abschluss eines Entwicklungs-Branches.
 
 ---
 
@@ -244,12 +248,13 @@ Verlinkte Plugins werden aus ihren Original-Repos bezogen und behalten Lizenz un
 
 | Quelle | Inhalt | Autor |
 |---|---|---|
-| [`AgricIDaniel/claude-seo`](https://github.com/AgricIDaniel/claude-seo) | 25 SEO-Skills | AgricIDaniel |
+| [`AgricIDaniel/claude-seo`](https://github.com/AgricIDaniel/claude-seo) | SEO-Skills | AgricIDaniel |
 | [`kepano/obsidian-skills`](https://github.com/kepano/obsidian-skills) | Obsidian-Skills | kepano |
 | [`mattpocock/skills`](https://github.com/mattpocock/skills) | `grill-me` u.a. | mattpocock |
 | [`microsoft/azure-skills`](https://github.com/microsoft/azure-skills) | Azure-Skills + MCP | Microsoft |
+| [`obra/superpowers`](https://github.com/obra/superpowers) | Entwicklungs-Workflows und Skills | Jesse Vincent |
 
-Die `MIT`-Lizenz dieses Repos bezieht sich auf die Kuratierung (Katalog, Doku, Build-Skripte) sowie eigene Skills unter `custom/skills/`. Verlinkte Plugins unterliegen ihren jeweils eigenen Lizenzen.
+Die `MIT`-Lizenz dieses Repos bezieht sich auf die Kuratierung (Katalog, Doku, Build-Skripte) sowie lokal gepflegte Skills unter `custom/skills/`. Übernommene Skills und verlinkte Plugins unterliegen ihren jeweiligen Bedingungen; Details enthält `custom/THIRD_PARTY_NOTICES.md`.
 
 ---
 

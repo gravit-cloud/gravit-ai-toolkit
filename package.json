@@ -27,9 +27,12 @@
   "scripts": {
     "build": "bash build.sh",
     "codex:sync": "bash codex/sync.sh",
-    "release": "commit-and-tag-version && bash build.sh"
+    "validate": "node scripts/validate.mjs",
+    "version:set": "node scripts/set-version.mjs",
+    "release:prepare": "npm run validate && npm run build"
   },
   "devDependencies": {
-    "commit-and-tag-version": "12.7.1"
+    "@anthropic-ai/claude-code": "2.1.207",
+    "giget": "3.3.0"
   }
 }

@@ -1,0 +1,27 @@
+name: Validate marketplace
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned tooling
+        run: npm ci
+      - name: Validate repository metadata and generated index
+        run: npm run validate
+      - name: Validate Claude marketplace schema
+        run: npx --no-install @anthropic-ai/claude-code plugin validate .
+      - name: Rebuild Codex bundle and verify it is committed
+        run: |
+          npm run codex:sync
+          git diff --exit-code -- codex
+      - name: Build release archives
+        run: npm run build

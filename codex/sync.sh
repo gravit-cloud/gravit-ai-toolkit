@@ -1,99 +1,82 @@
 #!/usr/bin/env bash
 # Codex/cross-tool bundle builder.
 #
-# Claude Code consumes .claude-plugin/marketplace.json and pulls the four linked
-# plugins itself. Codex (and other AGENTS.md-based tools) can't do that — they have
-# no marketplace/plugin mechanism. This script materialises every referenced skill
-# as plain files under codex/skills/ so the whole set can be shipped from THIS repo
-# with a single `npx giget` command (see codex/README.md).
-#
-# What it does:
-#   1. Reads the pinned refs/SHAs straight from .claude-plugin/marketplace.json
-#      (single source of truth — no second list to keep in sync).
-#   2. Fetches each linked repo's skills/ tree via `npx giget` at that exact pin.
-#   3. Flattens every <dir>/SKILL.md into codex/skills/<skill-name>/.
-#   4. Adds any gravit-custom-authored skills from custom/skills/ that aren't
-#      already provided by a linked repo.
-#   5. Regenerates codex/AGENTS.md (the index Codex loads) + codex/skills-manifest.json.
-#
-# Run:  bash codex/sync.sh   (or: npm run codex:sync)
+# The marketplace installs linked plugins directly in Claude Code. Codex instead
+# consumes this generated, source-preserving skill snapshot. Keeping each
+# upstream skills/ hierarchy intact prevents relative Markdown links inside
+# complex skills from breaking without vendoring whole repositories.
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CODEX_DIR="$REPO_ROOT/codex"
-SKILLS_OUT="$CODEX_DIR/skills"
+SOURCES_OUT="$CODEX_DIR/sources"
+LEGACY_SKILLS="$CODEX_DIR/skills"
 MARKETPLACE="$REPO_ROOT/.claude-plugin/marketplace.json"
+PROVENANCE="$CODEX_DIR/.provenance.tsv"
 
-command -v node >/dev/null || { echo "node is required (for npx giget + JSON parsing)"; exit 1; }
+command -v node >/dev/null || { echo "node is required"; exit 1; }
+command -v curl >/dev/null || { echo "curl is required"; exit 1; }
 
-_CLEANUP_DIRS=()
-cleanup() { for d in "${_CLEANUP_DIRS[@]:-}"; do rm -rf "$d" 2>/dev/null || true; done; }
+cleanup() { rm -f "$PROVENANCE"; }
 trap cleanup EXIT
 
-echo "Building Codex bundle from marketplace pins..."
+echo "Building source-preserving Codex bundle from marketplace pins..."
 echo ""
 
-rm -rf "$SKILLS_OUT"
-mkdir -p "$SKILLS_OUT"
+rm -rf "$SOURCES_OUT"
+rm -rf "$LEGACY_SKILLS"
+mkdir -p "$SOURCES_OUT"
+: > "$PROVENANCE"
 
-# --- 1. Emit "name<TAB>repo<TAB>ref" for every linked (github) plugin ----------
+# Emit plugin name, GitHub repo, immutable SHA, and readable ref. The SHA is
+# deliberately preferred for downloads; the ref exists for human review/Renovate.
 LINKED=$(node -e '
-  const m = require(process.argv[1]);
-  for (const p of m.plugins) {
-    const s = p.source;
-    if (!s || typeof s === "string") continue;          // skip local "./custom"
-    if (s.source !== "github") continue;                // only plain github repos
-    const ref = s.ref || s.sha;                         // tag/branch or commit
-    if (!ref) continue;
-    process.stdout.write(`${p.name}\t${s.repo}\t${ref}\n`);
+  const marketplace = require(process.argv[1]);
+  for (const plugin of marketplace.plugins) {
+    const source = plugin.source;
+    if (!source || typeof source === "string" || source.source !== "github") continue;
+    if (!source.repo || !source.sha) {
+      throw new Error(`${plugin.name}: github sources must provide repo and immutable sha`);
+    }
+    process.stdout.write(`${plugin.name}\t${source.repo}\t${source.sha}\t${source.ref || source.sha}\n`);
   }
 ' "$MARKETPLACE")
 
-# --- 2 + 3. Fetch each repo's skills/ and flatten SKILL.md dirs ----------------
-copy_skill_dirs() {  # $1 = search root, $2 = provenance label
-  local root="$1" origin="$2" found=0
+record_skills() { # $1 = skills root, $2 = origin
+  local source_root="$1" origin="$2" found=0 skillmd relative
   while IFS= read -r skillmd; do
-    local dir name
-    dir="$(dirname "$skillmd")"
-    name="$(basename "$dir")"
-    if [ -e "$SKILLS_OUT/$name" ]; then
-      echo "    · skip $name (already provided)"
-      continue
-    fi
-    cp -r "$dir" "$SKILLS_OUT/$name"
-    printf '%s\t%s\n' "$name" "$origin" >> "$CODEX_DIR/.provenance.tsv"
+    relative="${skillmd#$CODEX_DIR/}"
+    printf '%s\t%s\n' "$relative" "$origin" >> "$PROVENANCE"
     found=$((found + 1))
-  done < <(find "$root" -type f -name SKILL.md | sort)
-  echo "    → $found skill(s) from $origin"
+  done < <(find "$source_root" -type f -name SKILL.md | sort)
+  echo "    → $found indexed skill(s) from $origin"
 }
 
-: > "$CODEX_DIR/.provenance.tsv"
-_CLEANUP_DIRS+=("$CODEX_DIR/.provenance.tsv")
-
-while IFS=$'\t' read -r name repo ref; do
+while IFS=$'\t' read -r name repo sha ref; do
   [ -z "$name" ] && continue
-  echo "  ↓ $name  ($repo @ $ref)"
-  TMP=$(mktemp -d "${TMPDIR:-/tmp}/codex-sync.XXXXXX")
-  _CLEANUP_DIRS+=("$TMP")
-  # giget: gh:<owner/repo>/<subdir>#<ref> — pull only the skills/ tree
-  if ! npx --yes giget@latest "gh:${repo}/skills#${ref}" "$TMP" --force >/dev/null 2>&1; then
-    echo "    ! could not fetch ${repo}/skills#${ref} — trying repo root"
-    npx --yes giget@latest "gh:${repo}#${ref}" "$TMP" --force >/dev/null 2>&1 || {
-      echo "    ! FAILED to fetch $repo — skipping"; continue; }
+  destination="$SOURCES_OUT/$name"
+  echo "  ↓ $name  ($repo @ $sha; $ref)"
+  mkdir -p "$destination"
+  # Preserve only the upstream skills hierarchy. This keeps sibling workflow
+  # references valid while avoiding unrelated source, CI and release files.
+  npx --no-install giget "gh:${repo}/skills#${sha}" "$destination/skills" --force >/dev/null
+  curl -fsSL "https://raw.githubusercontent.com/${repo}/${sha}/LICENSE" -o "$destination/LICENSE"
+  # seo-flow references a framework image outside skills/.
+  if [ "$name" = "claude-seo" ]; then
+    npx --no-install giget "gh:${repo}/assets#${sha}" "$destination/assets" --force >/dev/null
   fi
-  copy_skill_dirs "$TMP" "$repo@$ref"
+  record_skills "$destination/skills" "$repo@$sha"
 done <<< "$LINKED"
 
-# --- 4. Add gravit-custom-authored skills not already covered ------------------
-echo "  ↓ gravit-custom (./custom/skills)"
-copy_skill_dirs "$REPO_ROOT/custom/skills" "gravit-custom (local)"
+echo "  ↓ gravit-custom (./custom)"
+cp -R "$REPO_ROOT/custom" "$SOURCES_OUT/gravit-custom"
+record_skills "$SOURCES_OUT/gravit-custom/skills" "gravit-custom (local)"
 
-# --- 5. Regenerate index + manifest -------------------------------------------
 echo ""
 echo "Generating codex/AGENTS.md + codex/skills-manifest.json..."
-node "$CODEX_DIR/gen-index.mjs" "$SKILLS_OUT" "$CODEX_DIR" "$CODEX_DIR/.provenance.tsv"
+node "$CODEX_DIR/gen-index.mjs" "$CODEX_DIR" "$PROVENANCE"
 
-COUNT=$(find "$SKILLS_OUT" -type f -name SKILL.md | wc -l | tr -d ' ')
+COUNT=$(wc -l < "$PROVENANCE" | tr -d ' ')
 echo ""
-echo "Done. $COUNT skill(s) collected in codex/skills/."
-echo "Commit codex/ so end users can pull it with a single npx command (see codex/README.md)."
+echo "Done. $COUNT indexed skill(s) collected in codex/sources/."
+echo "Commit codex/ so end users can pull the bundle with a single npx command."

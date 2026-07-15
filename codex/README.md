@@ -1,70 +1,60 @@
 # Codex / cross-tool bundle
 
-Claude Code installs the plugins in this repo via its marketplace mechanism
-(`/plugin marketplace add …`). **Codex has no such mechanism** — it works from
-`AGENTS.md` and plain files. This directory bridges that gap: it collects every
-referenced skill as plain `skills/<name>/SKILL.md` files that Codex can read, and
-lets you pull the whole set from this repo with a single `npx` command.
+Claude Code installs the marketplace plugins directly. **Codex has no plugin
+marketplace**; it reads `AGENTS.md` and plain files. This directory therefore
+contains a generated snapshot of every marketplace source.
 
-## For end users (Codex) — one command
+Each source retains its `skills/` hierarchy below `sources/<plugin>/`. Complex
+upstream skills often link to sibling workflows or examples, and flattening them
+breaks those references. Only the skill hierarchy, required shared assets and
+license text are included; unrelated repository files are excluded.
 
-Pull the entire collected bundle into your project:
+## For end users
+
+Pull the complete bundle into a project:
 
 ```bash
 npx giget@latest gh:gravit-cloud/gravit-ai-toolkit/codex ./.gravit-skills --force
 ```
 
-You now have `./.gravit-skills/skills/<name>/SKILL.md` plus `./.gravit-skills/AGENTS.md`
-(an index of every skill). Point Codex at it by referencing the skills from your
-project's `AGENTS.md`, e.g.:
+Reference its generated index from the project's `AGENTS.md`:
 
 ```markdown
-# AGENTS.md
 See `.gravit-skills/AGENTS.md` for the available Gravit skills.
 When a task matches one, read that skill's `SKILL.md` and follow it.
 ```
 
-Want just the raw skills (no index/README)?
+To pull only the source-preserving snapshots:
 
 ```bash
-npx giget@latest gh:gravit-cloud/gravit-ai-toolkit/codex/skills ./skills --force
+npx giget@latest gh:gravit-cloud/gravit-ai-toolkit/codex/sources ./skills --force
 ```
 
-### Alternative: skills.sh (per-tool install)
+## For maintainers
 
-The local `gravit-custom` plugin is also installable cross-tool (Cursor, Copilot,
-Warp, …) via [skills.sh](https://www.skills.sh/):
+`sources/`, `AGENTS.md`, and `skills-manifest.json` are generated. Rebuild them
+after any marketplace pin or local-skill change:
 
 ```bash
-npx skills add gravit-cloud/gravit-ai-toolkit
+npm run codex:sync
 ```
 
-## For maintainers — rebuild the bundle
-
-`codex/skills/` is **generated**, not hand-edited. It mirrors the pins in
-`.claude-plugin/marketplace.json`, so bump a version there and re-run:
+The sync downloads every linked `skills/` hierarchy at its immutable SHA, adds
+required shared assets and licenses, copies `custom/`, and regenerates the index
+and manifest. Commit the resulting `codex/` changes. Run the full local checks with:
 
 ```bash
-npm run codex:sync      # = bash codex/sync.sh
+npm run validate
+npm run release:prepare
 ```
 
-The script:
-
-1. reads the pinned `ref`/`sha` for each linked plugin from `marketplace.json`
-   (single source of truth),
-2. fetches each repo's `skills/` tree at that exact pin via `npx giget`,
-3. flattens every `SKILL.md` dir into `codex/skills/<name>/`,
-4. adds any `gravit-custom`-authored skills from `custom/skills/`,
-5. regenerates `codex/AGENTS.md` and `codex/skills-manifest.json`.
-
-Then commit the updated `codex/` so the one-command `giget` pull above serves the
-new versions.
+The repository's Renovate runner uses `scripts/renovate-codex-sync.sh` to install
+the pinned tooling and regenerate this directory after Marketplace pin updates.
 
 ## Caveats
 
-- **MCP-backed skills** (notably `azure`) ship their instruction text, but any MCP
-  tool calls they reference only work where that MCP server is configured. Codex
-  won't get Azure's bundled MCP server this way.
-- Skill files retain their **original licenses and authorship** (see the repo's
-  `AGENTS.md` → Attribution and `skills-manifest.json` → `source`). This bundle is a
-  redistribution for convenience; upstream repos remain the source of truth.
+- MCP-backed skills, notably Azure, only provide instructions unless the matching
+  MCP server is configured in the consuming environment.
+- Skill files preserve their upstream source path. Attribution and provenance for
+  the local curated bundle are in `custom/THIRD_PARTY_NOTICES.md` and
+  `custom/skills-lock.json`.

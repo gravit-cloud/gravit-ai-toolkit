@@ -3,18 +3,36 @@
   "extends": [
     "config:recommended"
   ],
+  "schedule": [
+    "before 06:00 on Monday"
+  ],
+  "prConcurrentLimit": 3,
+  "labels": [
+    "dependencies"
+  ],
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Update linked Claude plugin refs in marketplace.json",
+      "description": "Update linked Claude plugin tags and immutable commit pins in marketplace.json",
       "managerFilePatterns": [
         "/^\\.claude-plugin/marketplace\\.json$/"
       ],
       "matchStrings": [
-        "\"source\"\\s*:\\s*\\{\\s*\"source\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>[^\"]+)\"\\s*\\}"
+        "\"source\"\\s*:\\s*\\{\\s*\"source\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\"\\s*\\}"
       ],
       "datasourceTemplate": "github-tags",
       "versioningTemplate": "semver-coerced"
+    },
+    {
+      "customType": "regex",
+      "description": "Update immutable commit pins for linked Claude plugins following a branch",
+      "managerFilePatterns": [
+        "/^\\.claude-plugin/marketplace\\.json$/"
+      ],
+      "matchStrings": [
+        "\"source\"\\s*:\\s*\\{\\s*\"source\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>main|master)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\"\\s*\\}"
+      ],
+      "datasourceTemplate": "github-digest"
     }
   ],
   "packageRules": [
@@ -22,10 +40,32 @@
       "matchManagers": [
         "custom.regex"
       ],
-      "matchDatasources": [
-        "github-tags"
+      "matchFileNames": [
+        ".claude-plugin/marketplace.json"
       ],
-      "groupName": "linked Claude plugin refs"
+      "addLabels": [
+        "marketplace"
+      ],
+      "commitMessageTopic": "linked Claude plugin {{depName}}"
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions",
+      "addLabels": [
+        "ci"
+      ]
     }
-  ]
+  ],
+  "postUpgradeTasks": {
+    "commands": [
+      "npm run codex:sync"
+    ],
+    "fileFilters": [
+      ".claude-plugin/marketplace.json",
+      "codex/**"
+    ],
+    "executionMode": "branch"
+  }
 }

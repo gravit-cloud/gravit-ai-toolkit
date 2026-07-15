@@ -3,6 +3,7 @@
   "owner": {
     "name": "Gravit Cloud"
   },
+  "description": "Kuratierter Gravit-Cloud-Marketplace für Claude Code mit SEO-, Obsidian-, Azure- und Entwicklungs-Skills.",
   "plugins": [
     {
       "name": "claude-seo",
@@ -10,7 +11,8 @@
       "source": {
         "source": "github",
         "repo": "AgricIDaniel/claude-seo",
-        "ref": "v2.2.0"
+        "ref": "v2.2.0",
+        "sha": "47df91ed587f731c11c5c1ff515bdc6c26f48761"
       },
       "category": "seo",
       "homepage": "https://github.com/AgricIDaniel/claude-seo"
@@ -21,6 +23,7 @@
       "source": {
         "source": "github",
         "repo": "kepano/obsidian-skills",
+        "ref": "main",
         "sha": "a1dc48e68138490d522c04cbf5822214c6eb1202"
       },
       "category": "productivity",
@@ -32,7 +35,8 @@
       "source": {
         "source": "github",
         "repo": "mattpocock/skills",
-        "ref": "v1.1.0"
+        "ref": "v1.1.0",
+        "sha": "d574778f94cf620fcc8ce741584093bc650a61d3"
       },
       "category": "productivity",
       "homepage": "https://github.com/mattpocock/skills"
@@ -43,10 +47,23 @@
       "source": {
         "source": "github",
         "repo": "microsoft/azure-skills",
-        "ref": "v1.1.91"
+        "ref": "v1.1.91",
+        "sha": "d21cf3dbe2e0857a92c493b7c799b9265646e227"
       },
       "category": "cloud",
       "homepage": "https://github.com/microsoft/azure-skills"
+    },
+    {
+      "name": "superpowers",
+      "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers",
+        "ref": "v6.1.1",
+        "sha": "d884ae04edebef577e82ff7c4e143debd0bbec99"
+      },
+      "category": "development",
+      "homepage": "https://github.com/obra/superpowers"
     },
     {
       "name": "gravit-custom",

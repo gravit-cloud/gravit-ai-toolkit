@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
 # Build distribution packages for the LOCAL "gravit-custom" plugin (custom/).
-# The four linked plugins (claude-seo, obsidian, mattpocock-skills, azure) are NOT
+# Linked marketplace plugins are NOT
 # built here — they are fetched from their own repos via .claude-plugin/marketplace.json.
 #
 # Creates zip files for Claude Desktop/Claude.ai (individual skills) and a plugin bundle.
 #
-# Artifact strategy:
-#   dist/<name>.zip          — stable aliases, committed to main for raw downloads
-#   dist/<name>-v<ver>.zip   — versioned, gitignored, attached to GitHub Releases
-#
-# After building, publish versioned artifacts to a release:
-#   gh release create v${VERSION} dist/*-v${VERSION}.zip
+# Artifact strategy: only versioned archives are produced. They are gitignored and
+# attached to GitHub Releases by .github/workflows/release.yml.
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -44,8 +40,10 @@ for skill in "${SKILLS[@]}"; do
     TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/gravit-custom.XXXXXX")
     _CLEANUP_DIRS+=("$TMPDIR")
     cp -r "$CUSTOM_DIR/skills/$skill" "$TMPDIR/$skill"
-    (cd "$TMPDIR" && zip -rq "$DIST_DIR/${skill}-v${VERSION}.zip" "$skill/" -x "*.DS_Store")
-    cp "$DIST_DIR/${skill}-v${VERSION}.zip" "$DIST_DIR/${skill}.zip"
+    cp "$REPO_ROOT/LICENSE" "$TMPDIR/LICENSE"
+    cp "$CUSTOM_DIR/THIRD_PARTY_NOTICES.md" "$TMPDIR/THIRD_PARTY_NOTICES.md"
+    cp -r "$CUSTOM_DIR/licenses" "$TMPDIR/licenses"
+    (cd "$TMPDIR" && zip -rq "$DIST_DIR/${skill}-v${VERSION}.zip" "$skill/" LICENSE THIRD_PARTY_NOTICES.md licenses/ -x "*.DS_Store")
 done
 
 # Complete plugin bundle (Claude Code plugin install)
@@ -57,8 +55,10 @@ mkdir -p "$BUNDLE"
 cp -r "$CUSTOM_DIR/.claude-plugin" "$BUNDLE/.claude-plugin"
 cp -r "$CUSTOM_DIR/skills"         "$BUNDLE/skills"
 cp    "$REPO_ROOT/LICENSE"         "$BUNDLE/LICENSE"
+cp    "$CUSTOM_DIR/THIRD_PARTY_NOTICES.md" "$BUNDLE/THIRD_PARTY_NOTICES.md"
+cp    "$CUSTOM_DIR/skills-lock.json" "$BUNDLE/skills-lock.json"
+cp -r "$CUSTOM_DIR/licenses" "$BUNDLE/licenses"
 (cd "$TMPDIR" && zip -rq "$DIST_DIR/gravit-custom-v${VERSION}.zip" "gravit-custom/" -x "*.DS_Store")
-cp "$DIST_DIR/gravit-custom-v${VERSION}.zip" "$DIST_DIR/gravit-custom.zip"
 
 echo ""
 echo "Build complete! Files in dist/:"
@@ -67,10 +67,8 @@ echo "Individual skills (Claude Desktop / Claude.ai):"
 for skill in "${SKILLS[@]}"; do
     SIZE=$(du -h "$DIST_DIR/${skill}-v${VERSION}.zip" | cut -f1)
     echo "  ${skill}-v${VERSION}.zip  (${SIZE})"
-    echo "  ${skill}.zip  (stable alias)"
 done
 echo ""
 echo "Plugin bundle (Claude Code):"
 SIZE=$(du -h "$DIST_DIR/gravit-custom-v${VERSION}.zip" | cut -f1)
 echo "  gravit-custom-v${VERSION}.zip  (${SIZE})"
-echo "  gravit-custom.zip  (stable alias)"
