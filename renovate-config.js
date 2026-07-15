@@ -6,5 +6,5 @@ module.exports = {
   platform: "github",
   repositories: ["gravit-cloud/gravit-ai-toolkit"],
   branchPrefix: "renovate-gravit-",
-  allowedCommands: ["^bash scripts/renovate-codex-sync\\.sh$"]
+  allowedCommands: ["^bash scripts/renovate-plugin-sync\\.sh$"]
 };

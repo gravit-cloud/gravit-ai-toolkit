@@ -1,0 +1,22 @@
+{
+  "name": "gravit-custom",
+  "description": "Sieben lokal gepflegte Skills der Gravit Cloud für Claude Code und Codex.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "homepage": "https://github.com/gravit-cloud/gravit-ai-toolkit",
+  "repository": "https://github.com/gravit-cloud/gravit-ai-toolkit",
+  "license": "MIT",
+  "keywords": [
+    "gravit",
+    "github",
+    "review",
+    "documentation",
+    "productivity",
+    "skills",
+    "claude-code",
+    "codex"
+  ],
+  "skills": "./skills/"
+}

@@ -1,0 +1,19 @@
+{
+  "name": "obsidian",
+  "version": "1.0.1",
+  "description": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle.",
+  "author": {
+    "name": "Steph Ango"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Obsidian",
+    "shortDescription": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle.",
+    "longDescription": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle.",
+    "developerName": "Steph Ango",
+    "category": "Productivity",
+    "capabilities": [],
+    "websiteURL": "https://github.com/kepano/obsidian-skills",
+    "defaultPrompt": "Use Obsidian to help with this task."
+  }
+}

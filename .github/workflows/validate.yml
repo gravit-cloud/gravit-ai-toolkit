@@ -15,13 +15,13 @@ jobs:
           node-version: 22
       - name: Install pinned tooling
         run: npm ci
-      - name: Validate repository metadata and generated index
+      - name: Validate repository metadata and native plugin manifests
         run: npm run validate
       - name: Validate Claude marketplace schema
         run: npx --no-install @anthropic-ai/claude-code plugin validate .
-      - name: Rebuild Codex bundle and verify it is committed
+      - name: Rebuild native Codex plugins and verify they are committed
         run: |
-          npm run codex:sync
-          git diff --exit-code -- codex
+          npm run plugins:sync
+          git diff --exit-code -- .agents plugins
       - name: Build release archives
         run: npm run build

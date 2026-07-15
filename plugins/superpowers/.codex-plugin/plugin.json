@@ -1,0 +1,19 @@
+{
+  "name": "superpowers",
+  "version": "6.1.1",
+  "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
+  "author": {
+    "name": "Jesse Vincent"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Superpowers",
+    "shortDescription": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschlu…",
+    "longDescription": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
+    "developerName": "Jesse Vincent",
+    "category": "Development",
+    "capabilities": [],
+    "websiteURL": "https://github.com/obra/superpowers",
+    "defaultPrompt": "Use Superpowers to help with this task."
+  }
+}

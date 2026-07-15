@@ -1,13 +1,13 @@
 # AGENTS.md
 
-**gravit-ai-toolkit** ist ein kuratierter **Plugin-Marketplace** der Gravit Cloud Organisation für Claude Code. Der Katalog (`.claude-plugin/marketplace.json`) vereint zwei Arten von Plugins:
+**gravit-ai-toolkit** ist ein kuratierter Plugin-Marketplace der Gravit Cloud Organisation für Claude Code und Codex.
 
-- **verlinkt** — bereits veröffentlichte Fremd-Plugins, die per `github`-Source direkt aus ihrem Original-Repo bezogen und auf eine getestete Version gepinnt werden. Die Skills werden **nicht** in dieses Repo kopiert.
-- **lokal** — das kuratierte Plugin `gravit-custom` (`source: "./custom"`) mit lokalen und übernommenen Skills unter `custom/skills/`.
+- `.claude-plugin/marketplace.json` ist die einzige manuell gepflegte Quelle der Wahrheit für Plugin-Auswahl, Versionen und SHA-Pins.
+- `.agents/plugins/marketplace.json` ist der daraus generierte native Codex-Marketplace.
+- Verlinkte Codex-Plugins unter `plugins/<name>/` werden aus den Claude-Pins generiert.
+- `plugins/gravit-custom/` ist ein gemeinsam gepflegtes Dual-Plugin mit Claude- und Codex-Manifest und sieben Gravit-eigenen Skills.
 
-Unterstützte Tools: primär Claude Code. Für Codex und andere AGENTS.md-basierte Tools dient das generierte Bundle unter `codex/` als Cross-tool-Distribution.
-
-**Claude Code vs. Codex:** Der Marketplace (`marketplace.json`, `/plugin install`, namespaced Aufrufe) funktioniert nur in Claude Code. Codex kennt keine Plugins und arbeitet mit `AGENTS.md` + reinen Dateien. Für Codex liegt unter `codex/` ein **generiertes, quellengetreues Bundle** aller referenzierten Skills unter `codex/sources/`, beziehbar mit einem `npx giget`-Befehl (siehe `codex/README.md` und den Abschnitt „Codex / cross-tool" unten).
+Nach Änderungen am Claude-Katalog oder an `gravit-custom` immer `npm run plugins:sync` ausführen und `.agents/` sowie `plugins/` gemeinsam committen. Generierte verlinkte Plugin-Verzeichnisse nicht von Hand bearbeiten.
 
 ---
 
@@ -15,19 +15,20 @@ Unterstützte Tools: primär Claude Code. Für Codex und andere AGENTS.md-basier
 
 ```
 .claude-plugin/
-  marketplace.json         # Katalog: 5 verlinkte Plugins + gravit-custom
-custom/                    # lokales Plugin "gravit-custom"
-  .claude-plugin/
-    plugin.json            # Plugin-Manifest (name: gravit-custom)
-  skills/<name>/SKILL.md   # lokale und übernommene Skills (YAML-Frontmatter + Body)
-  skills-lock.json         # Provenienz übernommener Skills
-  THIRD_PARTY_NOTICES.md   # Lizenz- und Herkunftshinweise
-codex/                     # cross-tool Bundle für Codex (generiert, committed)
-  sources/<plugin>/…       # quellengetreue Snapshots aller Skill-Dateien
-  AGENTS.md                # generierter Skill-Index (von Codex geladen)
-  skills-manifest.json     # Provenienz + Anzahl je Skill (generiert)
-  sync.sh                  # baut Bundle aus marketplace.json-Pins (npm run codex:sync)
-  gen-index.mjs            # erzeugt AGENTS.md + manifest aus den SKILL.md-Frontmattern
+  marketplace.json         # Quelle der Wahrheit: 5 verlinkte Plugins + gravit-custom
+.agents/plugins/
+  marketplace.json         # nativer Codex-Katalog (generiert)
+plugins/
+  <linked-plugin>/         # native Codex-Plugins (generiert)
+    .codex-plugin/plugin.json
+    skills/<name>/SKILL.md
+  gravit-custom/           # lokales Dual-Plugin
+    .claude-plugin/plugin.json
+    .codex-plugin/plugin.json
+    skills/<name>/SKILL.md # sieben Gravit-eigene Skills
+scripts/
+  sync-plugins.mjs         # Claude-Katalog → Codex-Katalog und Plugins
+  validate.mjs             # gemeinsame Struktur- und Metadatenprüfung
 build.sh                   # baut dist/*.zip für gravit-custom (Claude Desktop + Releases)
 package.json               # Build-/Release-Tooling für gravit-custom
 AGENTS.md                  # Diese Datei
@@ -47,7 +48,7 @@ LICENSE
 | `mattpocock-skills` | verlinkt | `mattpocock/skills` | `v1.1.0` + SHA |
 | `azure` | verlinkt | `microsoft/azure-skills` | `v1.1.91` + SHA |
 | `superpowers` | verlinkt | `obra/superpowers` | `v6.1.1` + SHA |
-| `gravit-custom` | lokal | `./custom` | `v1.0.0` |
+| `gravit-custom` | lokal | `./plugins/gravit-custom` | `v1.0.0` |
 
 ### Verlinktes Plugin hinzufügen / Version ändern
 
@@ -68,7 +69,7 @@ Neuer Eintrag im `plugins`-Array von `.claude-plugin/marketplace.json`:
 
 ### Skill zu `gravit-custom` hinzufügen
 
-1. `custom/skills/<name>/SKILL.md` anlegen:
+1. `plugins/gravit-custom/skills/<name>/SKILL.md` anlegen:
 
 ```yaml
 ---
@@ -86,15 +87,14 @@ metadata:
 ```
 
 2. Für Releases `npm run version:set -- <version>` verwenden; das aktualisiert Paket- und Pluginversion gemeinsam.
-3. `bash build.sh` (erkennt Skills automatisch aus `custom/skills/*/SKILL.md`), dann die versionierten Archive über den GitHub-Release-Workflow veröffentlichen.
-
-Übernommene Skills benötigen eine dokumentierte Quelle, Lizenz und Provenienz in
-`custom/skills-lock.json` sowie `custom/THIRD_PARTY_NOTICES.md`. Ein bloßes
-`npx skills add` ist kein Lockfile-Restore und wird nicht als Installationsweg verwendet.
+3. `npm run plugins:sync` ausführen, damit das Codex-Manifest konsistent bleibt.
+4. `bash build.sh` erkennt Skills automatisch und baut die versionierten Archive.
 
 ---
 
 ## Installation (Endnutzer)
+
+### Claude Code
 
 ```bash
 # Einmalig: Marketplace registrieren
@@ -113,32 +113,28 @@ metadata:
 
 Skills werden namespaced aufgerufen: `/claude-seo:seo-audit`, `/azure:azure-cost`, `/gravit-custom:<skill>`.
 
----
-
-## Codex / cross-tool
-
-Codex nutzt keinen Marketplace. Das Verzeichnis `codex/` sammelt alle referenzierten Skills als reine Dateien und macht sie mit **einem** Befehl aus diesem Repo beziehbar.
-
-**Endnutzer (Codex):**
+### Codex
 
 ```bash
-# Komplettes Bundle (Skills + AGENTS.md-Index) ins Projekt ziehen
-npx giget@latest gh:gravit-cloud/gravit-ai-toolkit/codex ./.gravit-skills --force
-# oder nur die reinen Skills
-npx giget@latest gh:gravit-cloud/gravit-ai-toolkit/codex/sources ./skills --force
+codex plugin marketplace add gravit-cloud/gravit-ai-toolkit
+codex plugin add claude-seo@gravit-cloud
+codex plugin add gravit-custom@gravit-cloud
+
+# Marketplace aktualisieren
+codex plugin marketplace upgrade gravit-cloud
 ```
 
-Danach in der Projekt-`AGENTS.md` auf `.gravit-skills/AGENTS.md` verweisen; Codex liest bei passender Aufgabe das jeweilige `SKILL.md`.
+Alternativ Plugins in der Codex-App über `/plugins` auswählen.
 
-**Maintainer — Bundle regenerieren** (nach Pin-Änderung in `marketplace.json`):
+### Gemeinsamer Sync (Maintainer)
 
 ```bash
-npm run codex:sync    # = bash codex/sync.sh
+npm ci
+npm run plugins:sync
+npm run validate
 ```
 
-`sync.sh` liest die Pins aus `marketplace.json` (einzige Quelle der Wahrheit), holt jede vollständige Quelle per `npx giget` auf den SHA-gepinnten Stand, bewahrt deren Struktur unter `codex/sources/`, ergänzt `gravit-custom` und regeneriert `codex/AGENTS.md` + `codex/skills-manifest.json`. Danach `codex/` committen.
-
-Caveat: MCP-gestützte Skills (v.a. `azure`) liefern nur ihren Anleitungstext — referenzierte MCP-Tool-Aufrufe funktionieren in Codex nur mit konfiguriertem MCP-Server. Skill-Dateien behalten Lizenz und Autorenschaft (Provenienz in `codex/skills-manifest.json`).
+Der Sync verarbeitet nur aktive, vom Upstream-Plugin deklarierte Skills, normalisiert sie auf `skills/<name>/SKILL.md` und erzeugt Codex-Manifeste. Claude-spezifische `disable-model-invocation: true`-Flags werden nur in generierten Codex-Kopien entfernt. MCP-gestützte Skills funktionieren in Codex nur vollständig, wenn der passende MCP-Server konfiguriert ist.
 
 ---
 
@@ -244,7 +240,7 @@ In `.mcp.json` eintragen:
 
 ## Attribution
 
-Verlinkte Plugins werden aus ihren Original-Repos bezogen und behalten Lizenz und Autorenschaft. Für Skills, die in `custom/skills/` via `npx skills add` bezogen wurden, hält `custom/skills-lock.json` Provenienz und Hashes.
+Verlinkte Plugins werden aus ihren Original-Repos bezogen und behalten Lizenz und Autorenschaft. Die exakte Herkunft und Revision steht im Claude-Marketplace; die jeweilige Upstream-Lizenz wird in das generierte Codex-Plugin kopiert.
 
 | Quelle | Inhalt | Autor |
 |---|---|---|
@@ -254,7 +250,7 @@ Verlinkte Plugins werden aus ihren Original-Repos bezogen und behalten Lizenz un
 | [`microsoft/azure-skills`](https://github.com/microsoft/azure-skills) | Azure-Skills + MCP | Microsoft |
 | [`obra/superpowers`](https://github.com/obra/superpowers) | Entwicklungs-Workflows und Skills | Jesse Vincent |
 
-Die `MIT`-Lizenz dieses Repos bezieht sich auf die Kuratierung (Katalog, Doku, Build-Skripte) sowie lokal gepflegte Skills unter `custom/skills/`. Übernommene Skills und verlinkte Plugins unterliegen ihren jeweiligen Bedingungen; Details enthält `custom/THIRD_PARTY_NOTICES.md`.
+Die `MIT`-Lizenz dieses Repos bezieht sich auf die Kuratierung, Doku, Build-Skripte und lokal gepflegte Skills unter `plugins/gravit-custom/skills/`. Verlinkte Plugins unterliegen ihren jeweiligen Upstream-Lizenzen unter `plugins/<name>/LICENSE`.
 
 ---
 

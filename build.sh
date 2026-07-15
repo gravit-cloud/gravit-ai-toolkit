@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Build distribution packages for the LOCAL "gravit-custom" plugin (custom/).
+# Build distribution packages for the LOCAL "gravit-custom" plugin.
 # Linked marketplace plugins are NOT
 # built here — they are fetched from their own repos via .claude-plugin/marketplace.json.
 #
-# Creates zip files for Claude Desktop/Claude.ai (individual skills) and a plugin bundle.
+# Creates individual skill zips and a dual Claude Code/Codex plugin bundle.
 #
 # Artifact strategy: only versioned archives are produced. They are gitignored and
 # attached to GitHub Releases by .github/workflows/release.yml.
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-CUSTOM_DIR="$REPO_ROOT/custom"
+CUSTOM_DIR="$REPO_ROOT/plugins/gravit-custom"
 DIST_DIR="$REPO_ROOT/dist"
 VERSION=$(grep '"version"' "$CUSTOM_DIR/.claude-plugin/plugin.json" | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/')
 
@@ -20,7 +20,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Discover every skill (any custom/skills/<name>/ containing a SKILL.md) — no manual list to keep in sync.
+# Discover every skill (any plugins/gravit-custom/skills/<name>/ containing a
+# SKILL.md) — no manual list to keep in sync.
 SKILLS=()
 for dir in "$CUSTOM_DIR"/skills/*/; do
   [ -f "${dir}SKILL.md" ] || continue
@@ -41,9 +42,7 @@ for skill in "${SKILLS[@]}"; do
     _CLEANUP_DIRS+=("$TMPDIR")
     cp -r "$CUSTOM_DIR/skills/$skill" "$TMPDIR/$skill"
     cp "$REPO_ROOT/LICENSE" "$TMPDIR/LICENSE"
-    cp "$CUSTOM_DIR/THIRD_PARTY_NOTICES.md" "$TMPDIR/THIRD_PARTY_NOTICES.md"
-    cp -r "$CUSTOM_DIR/licenses" "$TMPDIR/licenses"
-    (cd "$TMPDIR" && zip -rq "$DIST_DIR/${skill}-v${VERSION}.zip" "$skill/" LICENSE THIRD_PARTY_NOTICES.md licenses/ -x "*.DS_Store")
+    (cd "$TMPDIR" && zip -rq "$DIST_DIR/${skill}-v${VERSION}.zip" "$skill/" LICENSE -x "*.DS_Store")
 done
 
 # Complete plugin bundle (Claude Code plugin install)
@@ -53,11 +52,9 @@ _CLEANUP_DIRS+=("$TMPDIR")
 BUNDLE="$TMPDIR/gravit-custom"
 mkdir -p "$BUNDLE"
 cp -r "$CUSTOM_DIR/.claude-plugin" "$BUNDLE/.claude-plugin"
+cp -r "$CUSTOM_DIR/.codex-plugin"  "$BUNDLE/.codex-plugin"
 cp -r "$CUSTOM_DIR/skills"         "$BUNDLE/skills"
 cp    "$REPO_ROOT/LICENSE"         "$BUNDLE/LICENSE"
-cp    "$CUSTOM_DIR/THIRD_PARTY_NOTICES.md" "$BUNDLE/THIRD_PARTY_NOTICES.md"
-cp    "$CUSTOM_DIR/skills-lock.json" "$BUNDLE/skills-lock.json"
-cp -r "$CUSTOM_DIR/licenses" "$BUNDLE/licenses"
 (cd "$TMPDIR" && zip -rq "$DIST_DIR/gravit-custom-v${VERSION}.zip" "gravit-custom/" -x "*.DS_Store")
 
 echo ""
@@ -69,6 +66,6 @@ for skill in "${SKILLS[@]}"; do
     echo "  ${skill}-v${VERSION}.zip  (${SIZE})"
 done
 echo ""
-echo "Plugin bundle (Claude Code):"
+echo "Plugin bundle (Claude Code + Codex):"
 SIZE=$(du -h "$DIST_DIR/gravit-custom-v${VERSION}.zip" | cut -f1)
 echo "  gravit-custom-v${VERSION}.zip  (${SIZE})"

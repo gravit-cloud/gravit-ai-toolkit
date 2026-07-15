@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,10 +10,15 @@ if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version || "")) {
 }
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const files = ["package.json", "custom/.claude-plugin/plugin.json"];
+const files = [
+  "package.json",
+  "plugins/gravit-custom/.claude-plugin/plugin.json",
+  "plugins/gravit-custom/.codex-plugin/plugin.json",
+];
 
 for (const file of files) {
   const path = resolve(root, file);
+  if (!existsSync(path)) continue;
   const json = JSON.parse(readFileSync(path, "utf8"));
   json.version = version;
   writeFileSync(path, JSON.stringify(json, null, 2) + "\n");

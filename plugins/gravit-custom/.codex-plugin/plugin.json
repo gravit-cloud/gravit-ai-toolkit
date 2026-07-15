@@ -1,0 +1,19 @@
+{
+  "name": "gravit-custom",
+  "version": "1.0.0",
+  "description": "Sieben lokal gepflegte Skills der Gravit Cloud (plugins/gravit-custom/skills/).",
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Gravit Custom",
+    "shortDescription": "Sieben lokal gepflegte Skills der Gravit Cloud (plugins/gravit-custom/skills/).",
+    "longDescription": "Sieben lokal gepflegte Skills der Gravit Cloud (plugins/gravit-custom/skills/).",
+    "developerName": "Gravit Cloud",
+    "category": "Development",
+    "capabilities": [],
+    "websiteURL": "https://github.com/gravit-cloud/gravit-ai-toolkit",
+    "defaultPrompt": "Use Gravit Custom to help with this task."
+  }
+}

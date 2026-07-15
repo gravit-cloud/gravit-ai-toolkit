@@ -1,0 +1,19 @@
+{
+  "name": "mattpocock-skills",
+  "version": "1.1.0",
+  "description": "Produktivitäts-Skills von Matt Pocock (u.a. grill-me — intensives Interview zur Plan-Schärfung).",
+  "author": {
+    "name": "mattpocock"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Matt Pocock Skills",
+    "shortDescription": "Produktivitäts-Skills von Matt Pocock (u.a. grill-me — intensives Interview zur Plan-Schärfung).",
+    "longDescription": "Produktivitäts-Skills von Matt Pocock (u.a. grill-me — intensives Interview zur Plan-Schärfung).",
+    "developerName": "mattpocock",
+    "category": "Productivity",
+    "capabilities": [],
+    "websiteURL": "https://github.com/mattpocock/skills",
+    "defaultPrompt": "Use Matt Pocock Skills to help with this task."
+  }
+}

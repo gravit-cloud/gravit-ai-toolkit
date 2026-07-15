@@ -60,11 +60,12 @@
   ],
   "postUpgradeTasks": {
     "commands": [
-      "npm run codex:sync"
+      "bash scripts/renovate-plugin-sync.sh"
     ],
     "fileFilters": [
       ".claude-plugin/marketplace.json",
-      "codex/**"
+      ".agents/**",
+      "plugins/**"
     ],
     "executionMode": "branch"
   }

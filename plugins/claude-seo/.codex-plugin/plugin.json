@@ -1,0 +1,19 @@
+{
+  "name": "claude-seo",
+  "version": "2.2.0",
+  "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
+  "author": {
+    "name": "AgriciDaniel"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Claude SEO",
+    "shortDescription": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
+    "longDescription": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
+    "developerName": "AgriciDaniel",
+    "category": "Productivity",
+    "capabilities": [],
+    "websiteURL": "https://github.com/AgricIDaniel/claude-seo",
+    "defaultPrompt": "Use Claude SEO to help with this task."
+  }
+}

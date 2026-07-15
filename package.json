@@ -1,7 +1,7 @@
 {
   "name": "gravit-ai-toolkit",
   "version": "1.0.0",
-  "description": "Kuratierte Sammlung von SEO-, Obsidian- und Produktivitäts-Skills für Claude Code, bereitgestellt von Gravit Cloud.",
+  "description": "Kuratierter Plugin-Marketplace für Claude Code und Codex, bereitgestellt von Gravit Cloud.",
   "license": "MIT",
   "author": {
     "name": "Gravit Cloud"
@@ -19,14 +19,13 @@
     "obsidian",
     "content",
     "productivity",
-    "claude-code"
+    "claude-code",
+    "codex",
+    "codex-plugins"
   ],
-  "agents": {
-    "skills": []
-  },
   "scripts": {
     "build": "bash build.sh",
-    "codex:sync": "bash codex/sync.sh",
+    "plugins:sync": "node scripts/sync-plugins.mjs",
     "validate": "node scripts/validate.mjs",
     "version:set": "node scripts/set-version.mjs",
     "release:prepare": "npm run validate && npm run build"
