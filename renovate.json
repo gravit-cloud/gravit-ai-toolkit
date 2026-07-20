@@ -3,12 +3,11 @@
   "extends": [
     "config:recommended"
   ],
-  "schedule": [
-    "before 06:00 on Monday"
-  ],
-  "prConcurrentLimit": 3,
   "labels": [
     "dependencies"
+  ],
+  "allowedCommands": [
+    "^bash scripts/renovate-plugin-sync\\.sh$"
   ],
   "customManagers": [
     {
