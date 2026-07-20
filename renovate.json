@@ -60,6 +60,9 @@
       ".agents/**",
       "plugins/**"
     ],
-    "executionMode": "branch"
+    "executionMode": "branch",
+    "installTools": {
+      "node": {}
+    }
   }
 }
