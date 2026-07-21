@@ -11,8 +11,8 @@
       "source": {
         "source": "github",
         "repo": "AgricIDaniel/claude-seo",
-        "ref": "v2.2.0",
-        "sha": "47df91ed587f731c11c5c1ff515bdc6c26f48761"
+        "ref": "v2.2.4",
+        "sha": "6b63c8bb7b2e8e4480060604555e3af629b54c2c"
       },
       "category": "seo",
       "homepage": "https://github.com/AgricIDaniel/claude-seo"
