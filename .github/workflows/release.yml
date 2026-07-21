@@ -16,6 +16,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -26,10 +28,10 @@ jobs:
       - name: Validate release metadata
         run: |
           npm run validate
-          test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
+          test "v$(node -p 'require("./package.json").version')" = "$RELEASE_TAG"
       - name: Build versioned archives
         run: npm run build
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*-v*.zip --generate-notes
+        run: gh release create "$RELEASE_TAG" dist/*-v*.zip --generate-notes
