@@ -31,7 +31,7 @@
     "release:prepare": "npm run validate && npm run build"
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "2.1.216",
+    "@anthropic-ai/claude-code": "2.1.218",
     "giget": "3.3.0"
   }
 }
