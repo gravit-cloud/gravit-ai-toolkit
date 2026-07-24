@@ -1,6 +1,6 @@
 {
   "name": "superpowers",
-  "version": "6.1.1",
+  "version": "6.2.0",
   "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
   "author": {
     "name": "Jesse Vincent"
