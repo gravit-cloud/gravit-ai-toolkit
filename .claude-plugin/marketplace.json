@@ -47,8 +47,8 @@
       "source": {
         "source": "github",
         "repo": "microsoft/azure-skills",
-        "ref": "v1.2.0",
-        "sha": "1b592c63641049ff33e4952c4021c63b4507f147"
+        "ref": "v1.2.5",
+        "sha": "013b97d8aab03ce8cd88944976e9988f8c829746"
       },
       "category": "cloud",
       "homepage": "https://github.com/microsoft/azure-skills"
