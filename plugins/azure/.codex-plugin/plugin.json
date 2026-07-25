@@ -1,6 +1,6 @@
 {
   "name": "azure",
-  "version": "1.2.0",
+  "version": "1.2.5",
   "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
   "author": {
     "name": "Microsoft"
