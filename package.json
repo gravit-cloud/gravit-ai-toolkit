@@ -32,6 +32,6 @@
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "2.1.218",
-    "giget": "3.3.0"
+    "giget": "3.3.1"
   }
 }
