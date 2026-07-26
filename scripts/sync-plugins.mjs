@@ -172,12 +172,19 @@ function skillCount(directory) {
     .length;
 }
 
-function findSkillDirectories(directory, result = []) {
+function findSkillDirectories(directory, result = [], insideSkill = false) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
     if (!entry.isDirectory()) continue;
-    if (existsSync(join(path, "SKILL.md"))) result.push(path);
-    findSkillDirectories(path, result);
+    const skillFile = join(path, "SKILL.md");
+    const isSkill = existsSync(skillFile);
+    const hasFrontmatter = isSkill && /^---\r?\n[\s\S]*?\r?\n---/.test(readFileSync(skillFile, "utf8"));
+
+    // Some upstream skills contain internal phase modules named SKILL.md.
+    // Keep those resources inside their parent, but only flatten nested files
+    // that declare skill frontmatter and are therefore standalone skills.
+    if (isSkill && (!insideSkill || hasFrontmatter)) result.push(path);
+    findSkillDirectories(path, result, insideSkill || isSkill);
   }
   return result;
 }
