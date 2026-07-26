@@ -258,3 +258,7 @@ Die `MIT`-Lizenz dieses Repos bezieht sich auf die Kuratierung, Doku, Build-Skri
 
 - `gravit-cloud-platform` — Self-hosted Docker Compose Stack (Typebot, n8n, Traefik, MinIO)
 - `gravit-agents` — Agenten-Implementierungen (Hermes, Flock, Ollama/Claude)
+
+## Shared Obsidian Memory
+
+When `../gravit-obsidian-brain` is available, use the installed Obsidian skills to consult it before architecture-level work and to record durable repository facts, decisions, learnings, or cross-repository runbooks after a task. Repository code and local documentation remain authoritative. Commit only the relevant vault files with a `docs(memory): ...` subject, never push automatically, and never store secrets or raw task logs.
