@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "fixture-marketplace",
+  "plugins": [
+    {
+      "name": "nested-skills",
+      "description": "Nested skill rendering fixture",
+      "category": "development",
+      "distributionVersion": "1.0.0-gravit.1",
+      "source": {
+        "type": "local",
+        "path": "test/fixtures/skill-only-source",
+        "root": "."
+      },
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    }
+  ]
+}
