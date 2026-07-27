@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -252,4 +253,28 @@ test("rendering parses rich inline links and skips code", (context) => {
     /\[multiline-link\]\(\n  \.\.\/child\/SKILL\.md\n  "Multiline title"\)/,
   );
   assert.match(rendered, /```md\n\[fenced\]\(\.\/child\/SKILL\.md\)\n```/);
+});
+
+test("rejects Windows-style skill names before creating a target tree", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const sourceDirectory = resolve(temporaryRoot, "source", "safe");
+  mkdirSync(sourceDirectory, { recursive: true });
+  writeFileSync(
+    resolve(sourceDirectory, "SKILL.md"),
+    "---\nname: safe\ndescription: Safe source\n---\n",
+  );
+
+  for (const name of [String.raw`..\..\escaped`, String.raw`C:\escaped`]) {
+    const destinationRoot = resolve(temporaryRoot, "target-" + name.length);
+    assert.throws(
+      () => renderSkills({
+        skills: [{ id: name, name, sourceDirectory }],
+        destinationRoot,
+        target: "codex",
+      }),
+      /skill name must match \^\[a-z0-9\]/,
+    );
+    assert.equal(existsSync(destinationRoot), false);
+  }
 });
