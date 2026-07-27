@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -116,4 +123,109 @@ test("rendering fails when an existing local link has no rendered owner", (conte
     }),
     /unmapped local skill link/,
   );
+});
+
+test("rendering rejects an existing link target that escapes through a symlink", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const sourceDirectory = resolve(temporaryRoot, "source", "parent");
+  const excludedFile = resolve(temporaryRoot, "source", "excluded.md");
+  mkdirSync(sourceDirectory, { recursive: true });
+  writeFileSync(excludedFile, "# Excluded resource\n");
+  symlinkSync(excludedFile, resolve(sourceDirectory, "resource.md"));
+  writeFileSync(
+    resolve(sourceDirectory, "SKILL.md"),
+    "---\nname: parent\ndescription: Parent\n---\n\nRead [the resource](./resource.md).\n",
+  );
+
+  assert.throws(
+    () => renderSkills({
+      skills: [{ id: "parent", name: "parent", sourceDirectory }],
+      destinationRoot: resolve(temporaryRoot, "codex"),
+      target: "codex",
+    }),
+    /unmapped local skill link/,
+  );
+});
+
+test("rendering leaves absolute and root-relative links unchanged", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const sourceDirectory = resolve(temporaryRoot, "source", "parent");
+  const markdown = [
+    "---",
+    "name: parent",
+    "description: Parent",
+    "---",
+    "",
+    "[root](/etc/passwd)",
+    "[network](//etc/passwd)",
+    String.raw`[windows-drive](C:\Windows\System32\drivers\etc\hosts)`,
+    String.raw`[windows-root](\Windows\System32\drivers\etc\hosts)`,
+    "",
+  ].join("\n");
+  mkdirSync(sourceDirectory, { recursive: true });
+  writeFileSync(resolve(sourceDirectory, "SKILL.md"), markdown);
+
+  const destinationRoot = resolve(temporaryRoot, "codex");
+  renderSkills({
+    skills: [{ id: "parent", name: "parent", sourceDirectory }],
+    destinationRoot,
+    target: "codex",
+  });
+
+  assert.equal(readFileSync(resolve(destinationRoot, "parent", "SKILL.md"), "utf8"), markdown);
+});
+
+test("rendering parses rich inline links and skips code", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const parentDirectory = resolve(temporaryRoot, "source", "parent");
+  const childDirectory = resolve(parentDirectory, "child");
+  mkdirSync(childDirectory, { recursive: true });
+  writeFileSync(
+    resolve(parentDirectory, "SKILL.md"),
+    [
+      "---",
+      "name: parent",
+      "description: Parent",
+      "---",
+      "",
+      '[angle](<./child/guide with spaces.md#section> "Angle title")',
+      '[nested](./child/nested(topic).md "Nested title")',
+      String.raw`[escaped](./child/escaped\(topic\).md 'Escaped title')`,
+      "`[inline](./child/SKILL.md)`",
+      "```md",
+      "[fenced](./child/SKILL.md)",
+      "```",
+      "",
+    ].join("\n"),
+  );
+  writeFileSync(
+    resolve(childDirectory, "SKILL.md"),
+    "---\nname: child\ndescription: Child\n---\n",
+  );
+  writeFileSync(resolve(childDirectory, "guide with spaces.md"), "# Guide\n");
+  writeFileSync(resolve(childDirectory, "nested(topic).md"), "# Nested\n");
+  writeFileSync(resolve(childDirectory, "escaped(topic).md"), "# Escaped\n");
+
+  const destinationRoot = resolve(temporaryRoot, "codex");
+  renderSkills({
+    skills: [
+      { id: "parent", name: "parent", sourceDirectory: parentDirectory },
+      { id: "child", name: "child", sourceDirectory: childDirectory },
+    ],
+    destinationRoot,
+    target: "codex",
+  });
+
+  const rendered = readFileSync(resolve(destinationRoot, "parent", "SKILL.md"), "utf8");
+  assert.match(rendered, /\[angle\]\(<\.\.\/child\/guide with spaces\.md#section> "Angle title"\)/);
+  assert.match(rendered, /\[nested\]\(\.\.\/child\/nested\(topic\)\.md "Nested title"\)/);
+  assert.match(
+    rendered,
+    /\[escaped\]\(\.\.\/child\/escaped\\\(topic\\\)\.md 'Escaped title'\)/,
+  );
+  assert.match(rendered, /`\[inline\]\(\.\/child\/SKILL\.md\)`/);
+  assert.match(rendered, /```md\n\[fenced\]\(\.\/child\/SKILL\.md\)\n```/);
 });
