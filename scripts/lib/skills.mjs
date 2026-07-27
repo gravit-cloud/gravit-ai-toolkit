@@ -136,6 +136,18 @@ function fenceMarker(line) {
   return { character: match[2][0], length: match[2].length, rest: match[3] };
 }
 
+function escapedAt(markdown, index) {
+  let backslashes = 0;
+  for (let cursor = index - 1; cursor >= 0 && markdown[cursor] === "\\"; cursor -= 1) {
+    backslashes += 1;
+  }
+  return backslashes % 2 === 1;
+}
+
+function markdownWhitespace(character) {
+  return character === " " || character === "\t" || character === "\n" || character === "\r";
+}
+
 function closingBracket(markdown, start) {
   let depth = 1;
   for (let index = start + 1; index < markdown.length; index += 1) {
@@ -164,7 +176,7 @@ function inlineLink(markdown, labelStart) {
   const labelEnd = closingBracket(markdown, labelStart);
   if (labelEnd === undefined || markdown[labelEnd + 1] !== "(") return undefined;
   let cursor = labelEnd + 2;
-  while (markdown[cursor] === " " || markdown[cursor] === "\t") cursor += 1;
+  while (markdownWhitespace(markdown[cursor])) cursor += 1;
 
   let replacementStart = cursor;
   let destinationStart = cursor;
@@ -174,7 +186,7 @@ function inlineLink(markdown, labelStart) {
     replacementStart = cursor;
     destinationStart = cursor + 1;
     cursor += 1;
-    while (cursor < markdown.length && markdown[cursor] !== "\n") {
+    while (cursor < markdown.length && markdown[cursor] !== "\n" && markdown[cursor] !== "\r") {
       if (markdown[cursor] === "\\") cursor += 2;
       else if (markdown[cursor] === ">") break;
       else cursor += 1;
@@ -185,7 +197,7 @@ function inlineLink(markdown, labelStart) {
     cursor += 1;
   } else {
     let depth = 0;
-    while (cursor < markdown.length && markdown[cursor] !== "\n") {
+    while (cursor < markdown.length) {
       if (markdown[cursor] === "\\") {
         cursor += 2;
       } else if (markdown[cursor] === "(") {
@@ -195,7 +207,7 @@ function inlineLink(markdown, labelStart) {
         if (depth === 0) break;
         depth -= 1;
         cursor += 1;
-      } else if ((markdown[cursor] === " " || markdown[cursor] === "\t") && depth === 0) {
+      } else if (markdownWhitespace(markdown[cursor]) && depth === 0) {
         break;
       } else {
         cursor += 1;
@@ -206,12 +218,12 @@ function inlineLink(markdown, labelStart) {
   }
   if (destinationStart === destinationEnd) return undefined;
 
-  while (markdown[cursor] === " " || markdown[cursor] === "\t") cursor += 1;
+  while (markdownWhitespace(markdown[cursor])) cursor += 1;
   if (markdown[cursor] !== ")") {
     if (!["\"", "'", "("].includes(markdown[cursor])) return undefined;
     cursor = closingTitle(markdown, cursor, markdown[cursor]);
     if (cursor === undefined) return undefined;
-    while (markdown[cursor] === " " || markdown[cursor] === "\t") cursor += 1;
+    while (markdownWhitespace(markdown[cursor])) cursor += 1;
     if (markdown[cursor] !== ")") return undefined;
   }
 
@@ -224,27 +236,101 @@ function inlineLink(markdown, labelStart) {
   };
 }
 
-function rewriteInlineLinks(markdown, rewriteDestination) {
+function fencedCodeRanges(markdown) {
+  const ranges = [];
+  let fence;
+  for (let start = 0; start < markdown.length;) {
+    const newline = markdown.indexOf("\n", start);
+    const end = newline === -1 ? markdown.length : newline + 1;
+    const line = markdown.slice(start, newline === -1 ? end : newline).replace(/\r$/, "");
+    const marker = fenceMarker(line);
+    if (fence) {
+      if (
+        marker &&
+        marker.character === fence.character &&
+        marker.length >= fence.length &&
+        marker.rest.trim() === ""
+      ) {
+        ranges.push({ start: fence.start, end });
+        fence = undefined;
+      }
+    } else if (marker) {
+      fence = { ...marker, start };
+    }
+    start = end;
+  }
+  if (fence) ranges.push({ start: fence.start, end: markdown.length });
+  return ranges;
+}
+
+function backtickRunEnd(markdown, start) {
+  let end = start + 1;
+  while (markdown[end] === "`") end += 1;
+  return end;
+}
+
+function markdownCodeRanges(markdown) {
+  const fenced = fencedCodeRanges(markdown);
+  const inline = [];
+  let fenceIndex = 0;
+  for (let index = 0; index < markdown.length;) {
+    while (fenced[fenceIndex] && fenced[fenceIndex].end <= index) fenceIndex += 1;
+    const nextFence = fenced[fenceIndex];
+    if (nextFence && nextFence.start <= index) {
+      index = nextFence.end;
+      continue;
+    }
+    if (markdown[index] !== "`" || escapedAt(markdown, index)) {
+      index += 1;
+      continue;
+    }
+
+    const openerEnd = backtickRunEnd(markdown, index);
+    const openerLength = openerEnd - index;
+    const searchEnd = nextFence ? nextFence.start : markdown.length;
+    let cursor = openerEnd;
+    let closingEnd;
+    while (cursor < searchEnd) {
+      const candidate = markdown.indexOf("`", cursor);
+      if (candidate === -1 || candidate >= searchEnd) break;
+      const candidateEnd = backtickRunEnd(markdown, candidate);
+      if (candidateEnd - candidate === openerLength) {
+        closingEnd = candidateEnd;
+        break;
+      }
+      cursor = candidateEnd;
+    }
+    if (closingEnd === undefined) {
+      index = openerEnd;
+    } else {
+      inline.push({ start: index, end: closingEnd });
+      index = closingEnd;
+    }
+  }
+  return [...fenced, ...inline].sort((left, right) => left.start - right.start);
+}
+
+function rewriteMarkdownLinks(markdown, rewriteDestination) {
+  const codeRanges = markdownCodeRanges(markdown);
+  let codeRangeIndex = 0;
   let result = "";
   let copiedThrough = 0;
   for (let index = 0; index < markdown.length;) {
-    if (markdown[index] === "`" && (index === 0 || markdown[index - 1] !== "\\")) {
-      let runEnd = index + 1;
-      while (markdown[runEnd] === "`") runEnd += 1;
-      const delimiter = markdown.slice(index, runEnd);
-      const closing = markdown.indexOf(delimiter, runEnd);
-      if (closing !== -1) {
-        index = closing + delimiter.length;
-        continue;
-      }
+    while (codeRanges[codeRangeIndex] && codeRanges[codeRangeIndex].end <= index) {
+      codeRangeIndex += 1;
     }
-    if (markdown[index] !== "[" || (index > 0 && markdown[index - 1] === "\\")) {
+    const codeRange = codeRanges[codeRangeIndex];
+    if (codeRange && codeRange.start <= index) {
+      index = codeRange.end;
+      continue;
+    }
+    if (markdown[index] !== "[" || escapedAt(markdown, index)) {
       index += 1;
       continue;
     }
 
     const link = inlineLink(markdown, index);
-    if (!link) {
+    if (!link || (codeRange && codeRange.start < link.end)) {
       index += 1;
       continue;
     }
@@ -256,35 +342,6 @@ function rewriteInlineLinks(markdown, rewriteDestination) {
     index = link.end;
   }
   return result + markdown.slice(copiedThrough);
-}
-
-function rewriteMarkdownLinks(markdown, rewriteDestination) {
-  let result = "";
-  let fence;
-  for (let start = 0; start < markdown.length;) {
-    const newline = markdown.indexOf("\n", start);
-    const end = newline === -1 ? markdown.length : newline + 1;
-    const line = markdown.slice(start, newline === -1 ? end : newline).replace(/\r$/, "");
-    const marker = fenceMarker(line);
-    if (fence) {
-      result += markdown.slice(start, end);
-      if (
-        marker &&
-        marker.character === fence.character &&
-        marker.length >= fence.length &&
-        marker.rest.trim() === ""
-      ) {
-        fence = undefined;
-      }
-    } else if (marker) {
-      fence = marker;
-      result += markdown.slice(start, end);
-    } else {
-      result += rewriteInlineLinks(markdown.slice(start, end), rewriteDestination);
-    }
-    start = end;
-  }
-  return result;
 }
 
 function unescapeMarkdownDestination(destination) {

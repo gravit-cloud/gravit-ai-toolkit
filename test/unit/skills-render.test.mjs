@@ -195,6 +195,13 @@ test("rendering parses rich inline links and skips code", (context) => {
       '[nested](./child/nested(topic).md "Nested title")',
       String.raw`[escaped](./child/escaped\(topic\).md 'Escaped title')`,
       "`[inline](./child/SKILL.md)`",
+      "`multiline code",
+      "[multiline-code](./child/SKILL.md)`",
+      "\\`[odd-backslash](./child/SKILL.md)\\`",
+      "\\\\`[even-backslashes](./child/SKILL.md)`",
+      "[multiline-link](",
+      "  ./child/SKILL.md",
+      '  "Multiline title")',
       "```md",
       "[fenced](./child/SKILL.md)",
       "```",
@@ -227,5 +234,15 @@ test("rendering parses rich inline links and skips code", (context) => {
     /\[escaped\]\(\.\.\/child\/escaped\\\(topic\\\)\.md 'Escaped title'\)/,
   );
   assert.match(rendered, /`\[inline\]\(\.\/child\/SKILL\.md\)`/);
+  assert.match(
+    rendered,
+    /`multiline code\n\[multiline-code\]\(\.\/child\/SKILL\.md\)`/,
+  );
+  assert.match(rendered, /\\`\[odd-backslash\]\(\.\.\/child\/SKILL\.md\)\\`/);
+  assert.match(rendered, /\\\\`\[even-backslashes\]\(\.\/child\/SKILL\.md\)`/);
+  assert.match(
+    rendered,
+    /\[multiline-link\]\(\n  \.\.\/child\/SKILL\.md\n  "Multiline title"\)/,
+  );
   assert.match(rendered, /```md\n\[fenced\]\(\.\/child\/SKILL\.md\)\n```/);
 });
