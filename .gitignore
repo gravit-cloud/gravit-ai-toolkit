@@ -16,6 +16,7 @@ coverage/
 .tmp/
 tmp/
 .renovate/
+.worktrees/
 
 # Logs and debug output
 *.log
