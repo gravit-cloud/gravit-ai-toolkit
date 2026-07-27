@@ -91,10 +91,6 @@ plugins/
   <plugin-name>/                # vollständig generiertes Universal-Bundle
     .agent-plugin/
       plugin.json               # neutrales Manifest und Inventar
-    .claude-plugin/
-      plugin.json               # Claude-Projektion
-    .codex-plugin/
-      plugin.json               # Codex-Projektion
     components/
       skills/
       commands/
@@ -112,16 +108,22 @@ plugins/
       assets/
     targets/
       claude/
-        ...                     # vollständige Claude-Projektion
+        .claude-plugin/
+          plugin.json
+        ...                     # eigenständig installierbare Claude-Projektion
       codex/
-        ...                     # vollständige Codex-Projektion
+        .codex-plugin/
+          plugin.json
+        ...                     # eigenständig installierbare Codex-Projektion
       openclaw/
-        ...                     # einzelnes Claude- oder Codex-Bundleformat
+        .codex-plugin/
+          plugin.json
+        ...                     # eigenständig installierbares Kompatibilitätsformat
     LICENSE
     NOTICE
 
-.claude-plugin/marketplace.json # generiert; zeigt auf lokale Bundles
-.agents/plugins/marketplace.json# generiert; zeigt auf lokale Bundles
+.claude-plugin/marketplace.json # generiert; zeigt auf targets/claude
+.agents/plugins/marketplace.json# generiert; zeigt auf targets/codex
 
 scripts/
   sync-plugins.mjs              # schlanker Orchestrator
@@ -147,6 +149,8 @@ test/
 Alle Verzeichnisse unter `plugins/` sind im Zielzustand generiert und dürfen nicht manuell editiert werden. Der heute manuell gepflegte Inhalt von `plugins/gravit-custom/` zieht nach `sources/gravit-custom/` um und durchläuft danach dieselbe Pipeline wie externe Quellen.
 
 Die neutralen Komponenten liegen bewusst außerhalb der von Claude oder Codex deklarierten Skill-Pfade. Dadurch werden sie nicht zusätzlich als Ziel-Skills entdeckt. Zielprojektionen dürfen Inhalte duplizieren, wenn Agenten unterschiedliche Frontmatter- oder Layoutanforderungen haben; diese Duplikation ist deterministischer Build-Output, keine zweite Quelle.
+
+Jede Zielprojektion ist für sich ein vollständiger Plugin-Root einschließlich ihres nativen Manifests. Das ist erforderlich, damit dieselbe Projektion sowohl direkt aus dem Marketplace installiert als auch unverändert durch die Consumer-CLI materialisiert werden kann. Die generierten Marketplaces zeigen deshalb nicht auf den Universal-Bundle-Root, sondern auf das jeweilige Verzeichnis unter `targets/`.
 
 ## 6. Katalogmodell
 
@@ -243,7 +247,7 @@ Der neue Sync arbeitet in einem temporären Staging-Verzeichnis und ersetzt sich
 5. Komponenten normalisieren und mit Hashes in `components/` schreiben.
 6. Für jedes konfigurierte Ziel einen Adapter ausführen.
 7. Komponentenbilanz, Schemas, Links, Versionen, Lizenzen und Sicherheitsregeln prüfen.
-8. Gesamtbundle und Marketplaces erzeugen.
+8. Eigenständig installierbare Ziel-Roots, Gesamtbundle und Marketplaces erzeugen.
 9. Deterministischen Hash bilden und Versionsregel gegen das bisherige Lockfile prüfen.
 10. Alle Bundles, Marketplaces und das Lockfile als eine logische Einheit atomar ersetzen.
 
@@ -333,7 +337,7 @@ node scripts/registry.mjs materialize --plugin azure --target openclaw --output 
 node scripts/registry.mjs verify --plugin azure
 ```
 
-`list` und `inspect` lesen ausschließlich Katalog, Lockfile und neutrale Manifeste. `materialize` kopiert die passende Zielprojektion atomar in einen explizit angegebenen Zielpfad und schreibt daneben eine kleine Receipt-Datei mit Plugin-ID, Distributionsversion, Registry-Commit und Bundle-Hash. Bestehende fremde Dateien werden nicht überschrieben, sofern kein exakt passender, zuvor von der CLI geschriebener Receipt ihre Eigentümerschaft belegt.
+`list` und `inspect` lesen ausschließlich Katalog, Lockfile und neutrale Manifeste. `materialize` kopiert die passende, bereits eigenständig installierbare Zielprojektion atomar in einen explizit angegebenen Zielpfad und schreibt darin eine kleine Receipt-Datei mit Plugin-ID, Distributionsversion, Registry-Commit, Gesamtbundle-Hash und Zielprojektions-Hash. Bestehende fremde Dateien werden nicht überschrieben, sofern kein exakt passender, zuvor von der CLI geschriebener Receipt ihre Eigentümerschaft und den unveränderten Payload-Hash belegt.
 
 Die CLI lädt keine Upstream-Quellen, startet keine MCP-Server und aktiviert keine Hooks. Bei Bedarf kann ein späterer Release-Job dieselben Universal-Bundles zusätzlich als signierte Archive veröffentlichen; deren Tree-Hash muss dem Lockfile entsprechen. Das ändert weder Katalog noch Bundleformat.
 
