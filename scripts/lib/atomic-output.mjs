@@ -5,36 +5,43 @@ function removeIfPresent(path) {
   if (existsSync(path)) rmSync(path, { recursive: true, force: true });
 }
 
-export function withAtomicOutput({ finalRoot, build }) {
+export function withAtomicOutput({ finalRoot, build }, fileSystem = {}) {
+  const makeTemporaryDirectory = fileSystem.mkdtempSync ?? mkdtempSync;
+  const rename = fileSystem.renameSync ?? renameSync;
   const outputRoot = resolve(finalRoot);
   const parent = dirname(outputRoot);
   const name = basename(outputRoot);
   mkdirSync(parent, { recursive: true });
 
-  const stage = mkdtempSync(resolve(parent, "." + name + ".stage-"));
-  const backupRoot = mkdtempSync(resolve(parent, "." + name + ".backup-"));
-  const backup = resolve(backupRoot, "previous");
+  const stage = makeTemporaryDirectory(resolve(parent, "." + name + ".stage-"));
+  let backupRoot;
+  let backup;
   let keepBackupRoot = false;
   let activeError;
 
   try {
+    backupRoot = makeTemporaryDirectory(resolve(parent, "." + name + ".backup-"));
+    backup = resolve(backupRoot, "previous");
     build(stage);
-    if (existsSync(outputRoot)) renameSync(outputRoot, backup);
+    if (existsSync(outputRoot)) rename(outputRoot, backup);
     try {
-      renameSync(stage, outputRoot);
+      rename(stage, outputRoot);
     } catch (promotionError) {
       if (existsSync(backup)) {
         if (existsSync(outputRoot)) {
           keepBackupRoot = true;
         } else {
           try {
-            renameSync(backup, outputRoot);
+            rename(backup, outputRoot);
           } catch (rollbackError) {
             keepBackupRoot = true;
-            throw new AggregateError(
+            const recoveryError = new AggregateError(
               [promotionError, rollbackError],
-              "could not promote atomic output or restore the previous output",
+              "could not promote atomic output or restore the previous output; "
+                + "previous output retained at " + backup,
             );
+            recoveryError.recoveryPath = backup;
+            throw recoveryError;
           }
         }
       }
@@ -49,7 +56,7 @@ export function withAtomicOutput({ finalRoot, build }) {
     } catch (cleanupError) {
       if (!activeError) throw cleanupError;
     }
-    if (!keepBackupRoot) {
+    if (backupRoot && !keepBackupRoot) {
       try {
         removeIfPresent(backupRoot);
       } catch (cleanupError) {

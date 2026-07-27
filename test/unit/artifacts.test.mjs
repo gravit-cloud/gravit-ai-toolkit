@@ -1,8 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { stableJson, writeJson } from "../../scripts/lib/json.mjs";
 import { sha256, treeHash } from "../../scripts/lib/hash.mjs";
 import { withAtomicOutput } from "../../scripts/lib/atomic-output.mjs";
@@ -111,4 +120,95 @@ test("withAtomicOutput never deletes a pre-existing sibling backup path", (conte
     },
   });
   assert.equal(readFileSync(resolve(foreignBackup, "owned-by-user.txt"), "utf8"), "keep\n");
+});
+
+test("withAtomicOutput removes its stage when backup allocation fails", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  mkdirSync(finalRoot);
+  writeFileSync(resolve(finalRoot, "state.txt"), "old\n");
+  let allocation = 0;
+  let stage;
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    build() {
+      assert.fail("build must not run when backup allocation fails");
+    },
+  }, {
+    mkdtempSync(prefix) {
+      allocation += 1;
+      if (allocation === 2) throw new Error("synthetic backup allocation failure");
+      stage = mkdtempSync(prefix);
+      return stage;
+    },
+  }), /synthetic backup allocation failure/);
+
+  assert.equal(existsSync(stage), false);
+  assert.equal(readFileSync(resolve(finalRoot, "state.txt"), "utf8"), "old\n");
+  assert.deepEqual(readdirSync(parent), ["output"]);
+});
+
+test("withAtomicOutput restores only the old tree when promotion fails", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  mkdirSync(finalRoot);
+  writeFileSync(resolve(finalRoot, "old-only.txt"), "old\n");
+  let rename = 0;
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    build(stage) {
+      writeFileSync(resolve(stage, "new-only.txt"), "new\n");
+    },
+  }, {
+    renameSync(source, destination) {
+      rename += 1;
+      if (rename === 2) throw new Error("synthetic promotion failure");
+      renameSync(source, destination);
+    },
+  }), /synthetic promotion failure/);
+
+  assert.equal(readFileSync(resolve(finalRoot, "old-only.txt"), "utf8"), "old\n");
+  assert.equal(existsSync(resolve(finalRoot, "new-only.txt")), false);
+  assert.deepEqual(readdirSync(parent), ["output"]);
+});
+
+test("withAtomicOutput retains and reports recovery data when rollback fails", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  mkdirSync(finalRoot);
+  writeFileSync(resolve(finalRoot, "old-only.txt"), "old\n");
+  let rename = 0;
+
+  let error;
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    build(stage) {
+      writeFileSync(resolve(stage, "new-only.txt"), "new\n");
+    },
+  }, {
+    renameSync(source, destination) {
+      rename += 1;
+      if (rename === 2) throw new Error("synthetic promotion failure");
+      if (rename === 3) throw new Error("synthetic rollback failure");
+      renameSync(source, destination);
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.match(error.message, /could not promote atomic output or restore the previous output/);
+  assert.equal(error.errors[0].message, "synthetic promotion failure");
+  assert.equal(error.errors[1].message, "synthetic rollback failure");
+  const recoveryRoot = dirname(error.recoveryPath);
+  assert.equal(dirname(recoveryRoot), parent);
+  assert.match(basename(recoveryRoot), /^\.output\.backup-/);
+  assert.equal(readFileSync(resolve(error.recoveryPath, "old-only.txt"), "utf8"), "old\n");
+  assert.equal(existsSync(finalRoot), false);
+  assert.deepEqual(readdirSync(parent), [basename(recoveryRoot)]);
 });
