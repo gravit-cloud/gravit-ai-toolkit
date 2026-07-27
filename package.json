@@ -30,7 +30,7 @@
     "validate": "node scripts/validate.mjs",
     "version:set": "node scripts/set-version.mjs",
     "release:prepare": "npm run validate && npm run build",
-    "test:unit": "node --test test/unit",
+    "test:unit": "node --test test/unit/*.test.mjs",
     "test:integration": "node --test test/integration"
   },
   "devDependencies": {
