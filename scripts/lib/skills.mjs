@@ -1,11 +1,18 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { parseFrontmatter } from "./frontmatter.mjs";
-import { assertInside } from "./path-safety.mjs";
+import { assertInside, assertRealInside } from "./path-safety.mjs";
+
+function rejectSymbolicLink(path) {
+  if (lstatSync(path).isSymbolicLink()) {
+    throw new Error("symbolic links are not allowed in staged components: " + path);
+  }
+}
 
 function standaloneSkill(directory) {
   const skillFile = resolve(directory, "SKILL.md");
   if (!existsSync(skillFile)) return undefined;
+  rejectSymbolicLink(skillFile);
   const markdown = readFileSync(skillFile, "utf8");
   if (!markdown.startsWith("---\n") && !markdown.startsWith("---\r\n")) return undefined;
   const { attributes } = parseFrontmatter(markdown);
@@ -24,8 +31,11 @@ function recurse(directory, result) {
   const skill = standaloneSkill(directory);
   if (skill) result.push(skill);
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
-    recurse(resolve(directory, entry.name), result);
+    const path = resolve(directory, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error("symbolic links are not allowed in staged components: " + path);
+    }
+    if (entry.isDirectory()) recurse(path, result);
   }
 }
 
@@ -56,13 +66,19 @@ export function discoverSkills({ sourceRoot, declaredSkills }) {
         resolve(absoluteRoot, configuredPath),
         "declared skill",
       );
-      const skill = standaloneSkill(directory);
+      const realDirectory = assertRealInside(absoluteRoot, directory, "declared skill");
+      rejectSymbolicLink(directory);
+      const skill = standaloneSkill(realDirectory);
       if (skill) result.push(skill);
-      else recurse(directory, result);
+      else recurse(realDirectory, result);
     }
   } else {
     const defaultRoot = resolve(absoluteRoot, "skills");
-    if (existsSync(defaultRoot)) recurse(defaultRoot, result);
+    if (existsSync(defaultRoot)) {
+      const realDefaultRoot = assertRealInside(absoluteRoot, defaultRoot, "default skill");
+      rejectSymbolicLink(defaultRoot);
+      recurse(realDefaultRoot, result);
+    }
   }
 
   const sourceDirectories = new Set();
