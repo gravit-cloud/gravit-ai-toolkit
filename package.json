@@ -26,12 +26,12 @@
   "scripts": {
     "build": "bash build.sh",
     "plugins:sync": "node scripts/sync-plugins.mjs",
-    "test": "node --test",
+    "registry:build:foundation": "node scripts/build-registry.mjs --catalog test/fixtures/skill-only-catalog.json --output .tmp/registry-foundation",
     "validate": "node scripts/validate.mjs",
     "version:set": "node scripts/set-version.mjs",
     "release:prepare": "npm run validate && npm run build",
     "test:unit": "node --test test/unit/*.test.mjs",
-    "test:integration": "node --test test/integration"
+    "test:integration": "node --test test/integration/*.test.mjs"
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "2.1.247",
