@@ -1,6 +1,17 @@
 import { readdirSync, realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 
+const REGISTRY_NAME = /^[a-z0-9][a-z0-9-]*$/;
+
+export function assertRegistryName(value, label = "registry name") {
+  if (typeof value !== "string" || !REGISTRY_NAME.test(value)) {
+    throw new Error(
+      label + " must match ^[a-z0-9][a-z0-9-]*$: " + String(value),
+    );
+  }
+  return value;
+}
+
 export function assertInside(root, candidate, label) {
   const absoluteRoot = resolve(root);
   const absoluteCandidate = resolve(candidate);

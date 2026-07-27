@@ -10,7 +10,11 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, relative, resolve, win32 } from "node:path";
 import { isTrueLike, parseFrontmatter } from "./frontmatter.mjs";
-import { assertInside, assertRealInside } from "./path-safety.mjs";
+import {
+  assertInside,
+  assertRealInside,
+  assertRegistryName,
+} from "./path-safety.mjs";
 
 function rejectSymbolicLink(path) {
   if (lstatSync(path).isSymbolicLink()) {
@@ -383,10 +387,18 @@ function rewriteLinks({ markdown, sourceSkillFile, destinationSkillFile, skills,
     }
     if (owner === source) return undefined;
 
-    const mappedTarget = resolve(
+    const ownerDestination = assertInside(
       destinationRoot,
-      owner.skill.name,
-      relative(owner.sourceDirectory, ownershipTarget),
+      resolve(destinationRoot, owner.skill.name),
+      "rendered skill destination",
+    );
+    const mappedTarget = assertInside(
+      ownerDestination,
+      resolve(
+        ownerDestination,
+        relative(owner.sourceDirectory, ownershipTarget),
+      ),
+      "rendered skill link target",
     );
     let rewritten = relative(dirname(destinationSkillFile), mappedTarget).replaceAll("\\", "/");
     if (!rewritten.startsWith(".")) rewritten = "./" + rewritten;
@@ -401,11 +413,17 @@ export function renderSkills({ skills, destinationRoot, target }) {
   if (!["claude", "codex"].includes(target)) {
     throw new Error("unsupported skill target: " + target);
   }
+  for (const skill of skills) assertRegistryName(skill.name, "skill name");
+
   mkdirSync(destinationRoot, { recursive: true });
   const rendered = [];
 
   for (const skill of skills) {
-    const destination = resolve(destinationRoot, skill.name);
+    const destination = assertInside(
+      destinationRoot,
+      resolve(destinationRoot, skill.name),
+      "rendered skill destination",
+    );
     const descendantRoots = skills
       .filter((candidate) => nestedWithin(skill.sourceDirectory, candidate.sourceDirectory))
       .map((candidate) => candidate.sourceDirectory);
