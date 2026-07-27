@@ -1,4 +1,13 @@
-import { cpSync, lstatSync, mkdirSync, rmSync, statSync } from "node:fs";
+import {
+  closeSync,
+  cpSync,
+  fstatSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  statSync,
+} from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { assertInside, assertRealInside } from "./path-safety.mjs";
@@ -15,9 +24,27 @@ function defaultFetchGitHub({ repo, sha, destination, repositoryRoot }) {
   }
 }
 
-function stageIdentity(path) {
+function claimStage(stage) {
+  let descriptor;
   try {
-    const stats = lstatSync(path);
+    descriptor = openSync(stage, "wx", 0o600);
+  } catch (error) {
+    if (error.code === "EEXIST") {
+      throw new Error("plugin staging destination already exists: " + stage);
+    }
+    throw error;
+  }
+  try {
+    const stats = fstatSync(descriptor);
+    return { device: stats.dev, inode: stats.ino };
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
+function stageIdentity(stage) {
+  try {
+    const stats = lstatSync(stage);
     return { device: stats.dev, inode: stats.ino };
   } catch (error) {
     if (error.code === "ENOENT") return undefined;
@@ -34,28 +61,15 @@ function sameStage(left, right) {
   );
 }
 
-function claimStage(stage) {
-  try {
-    mkdirSync(stage);
-  } catch (error) {
-    if (error.code === "EEXIST") {
-      throw new Error("plugin staging destination already exists: " + stage);
-    }
-    throw error;
+function withRecoveryPath(error, workspace) {
+  if (error && typeof error === "object") {
+    error.recoveryPath = workspace;
+    return error;
   }
-  return stageIdentity(stage);
-}
-
-function removeClaimedStage(stage, claim, stagingError) {
-  if (!sameStage(stageIdentity(stage), claim)) return;
-  try {
-    rmSync(stage, { recursive: true, force: true });
-  } catch (cleanupError) {
-    throw new AggregateError(
-      [stagingError, cleanupError],
-      "source staging failed and the partial stage could not be removed: " + stage,
-    );
-  }
+  const stagingError = new Error("source staging failed: " + String(error));
+  stagingError.cause = error;
+  stagingError.recoveryPath = workspace;
+  return stagingError;
 }
 
 function assertGitHubSource({ repo, sha }) {
@@ -92,27 +106,30 @@ export function stageSource({
   );
   let populateStage;
   switch (plugin.source.type) {
-    case "local":
-      populateStage = () => {
-        const localSource = assertInside(
-          repositoryRoot,
-          resolve(repositoryRoot, plugin.source.path),
-          "local plugin source",
-        );
-        const safeLocalSource = assertRealInside(
-          repositoryRoot,
-          localSource,
-          "local plugin source",
-        );
-        cpSync(safeLocalSource, stage, { recursive: true, dereference: false });
-      };
+    case "local": {
+      const localSource = assertInside(
+        repositoryRoot,
+        resolve(repositoryRoot, plugin.source.path),
+        "local plugin source",
+      );
+      const safeLocalSource = assertRealInside(
+        repositoryRoot,
+        localSource,
+        "local plugin source",
+      );
+      populateStage = (sourceStage) => cpSync(
+        safeLocalSource,
+        sourceStage,
+        { recursive: true, dereference: false },
+      );
       break;
+    }
     case "github":
       assertGitHubSource(plugin.source);
-      populateStage = () => fetchGitHub({
+      populateStage = (sourceStage) => fetchGitHub({
         repo: plugin.source.repo,
         sha: plugin.source.sha,
-        destination: stage,
+        destination: sourceStage,
         repositoryRoot,
       });
       break;
@@ -122,19 +139,21 @@ export function stageSource({
 
   mkdirSync(destinationRoot, { recursive: true });
   const claim = claimStage(stage);
+  const workspace = mkdtempSync(resolve(destinationRoot, "." + plugin.name + ".source-"));
+  const sourceStage = resolve(workspace, "repository");
   try {
-    populateStage();
-    const safeStage = assertRealInside(
-      destinationRoot,
-      stage,
-      "plugin staging destination",
-    );
+    populateStage(sourceStage);
     if (!sameStage(stageIdentity(stage), claim)) {
       throw new Error("plugin staging destination ownership changed: " + stage);
     }
+    const safeStage = assertRealInside(
+      workspace,
+      sourceStage,
+      "plugin staging destination",
+    );
     const configuredRoot = assertInside(
-      stage,
-      resolve(stage, plugin.source.root || "."),
+      sourceStage,
+      resolve(sourceStage, plugin.source.root || "."),
       "plugin source root",
     );
     const safeRoot = assertRealInside(
@@ -147,7 +166,6 @@ export function stageSource({
     }
     return safeRoot;
   } catch (error) {
-    removeClaimedStage(stage, claim, error);
-    throw error;
+    throw withRecoveryPath(error, workspace);
   }
 }
