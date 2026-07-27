@@ -1,6 +1,6 @@
-import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
-import { relative, resolve } from "node:path";
-import { parseFrontmatter } from "./frontmatter.mjs";
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
+import { isTrueLike, parseFrontmatter } from "./frontmatter.mjs";
 import { assertInside, assertRealInside } from "./path-safety.mjs";
 
 function rejectSymbolicLink(path) {
@@ -99,4 +99,50 @@ export function discoverSkills({ sourceRoot, declaredSkills }) {
       names.add(skill.name);
       return skill;
     });
+}
+
+function nestedWithin(parent, candidate) {
+  const nested = relative(parent, candidate);
+  return nested !== "" && !nested.startsWith("..") && !isAbsolute(nested);
+}
+
+function codexMarkdown(markdown) {
+  const { attributes } = parseFrontmatter(markdown);
+  if (!isTrueLike(attributes["disable-model-invocation"])) return markdown;
+  return markdown.replace(
+    /^disable-model-invocation:\s*(?:true|yes|on|1)\s*\r?\n/im,
+    "",
+  );
+}
+
+export function renderSkills({ skills, destinationRoot, target }) {
+  if (!["claude", "codex"].includes(target)) {
+    throw new Error("unsupported skill target: " + target);
+  }
+  mkdirSync(destinationRoot, { recursive: true });
+  const rendered = [];
+
+  for (const skill of skills) {
+    const destination = resolve(destinationRoot, skill.name);
+    const descendantRoots = skills
+      .filter((candidate) => nestedWithin(skill.sourceDirectory, candidate.sourceDirectory))
+      .map((candidate) => candidate.sourceDirectory);
+
+    cpSync(skill.sourceDirectory, destination, {
+      recursive: true,
+      filter(source) {
+        return !descendantRoots.some(
+          (descendant) => source === descendant || nestedWithin(descendant, source),
+        );
+      },
+    });
+
+    const skillFile = resolve(destination, "SKILL.md");
+    if (target === "codex") {
+      writeFileSync(skillFile, codexMarkdown(readFileSync(skillFile, "utf8")));
+    }
+    rendered.push({ id: skill.id, name: skill.name, directory: destination, skillFile });
+  }
+
+  return rendered;
 }
