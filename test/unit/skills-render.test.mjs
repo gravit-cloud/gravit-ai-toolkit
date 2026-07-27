@@ -199,6 +199,8 @@ test("rendering parses rich inline links and skips code", (context) => {
       "[multiline-code](./child/SKILL.md)`",
       "\\`[odd-backslash](./child/SKILL.md)\\`",
       "\\\\`[even-backslashes](./child/SKILL.md)`",
+      "``shorter ` and longer ``` [exact-run-code](./child/SKILL.md)``",
+      "[after-exact-run](./child/SKILL.md)",
       "[multiline-link](",
       "  ./child/SKILL.md",
       '  "Multiline title")',
@@ -240,6 +242,11 @@ test("rendering parses rich inline links and skips code", (context) => {
   );
   assert.match(rendered, /\\`\[odd-backslash\]\(\.\.\/child\/SKILL\.md\)\\`/);
   assert.match(rendered, /\\\\`\[even-backslashes\]\(\.\/child\/SKILL\.md\)`/);
+  assert.match(
+    rendered,
+    /``shorter ` and longer ``` \[exact-run-code\]\(\.\/child\/SKILL\.md\)``/,
+  );
+  assert.match(rendered, /\[after-exact-run\]\(\.\.\/child\/SKILL\.md\)/);
   assert.match(
     rendered,
     /\[multiline-link\]\(\n  \.\.\/child\/SKILL\.md\n  "Multiline title"\)/,
