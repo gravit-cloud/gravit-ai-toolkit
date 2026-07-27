@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gravit.cloud/schemas/agent-plugin-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "name", "distributionVersion", "components", "targets"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "name": { "type": "string" },
+    "distributionVersion": { "type": "string" },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "path", "digest"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "const": "skill" },
+          "path": { "type": "string" },
+          "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "targets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "path"],
+        "properties": {
+          "status": { "enum": ["preserved", "transformed"] },
+          "path": { "type": "string" }
+        }
+      }
+    }
+  }
+}

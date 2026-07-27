@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gravit.cloud/schemas/plugin-catalog-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "name", "plugins"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "plugins": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/plugin" }
+    }
+  },
+  "$defs": {
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "category",
+        "distributionVersion",
+        "source",
+        "targets",
+        "policies"
+      ],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "description": { "type": "string", "minLength": 1 },
+        "category": { "enum": ["cloud", "development", "productivity", "seo"] },
+        "distributionVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+        },
+        "source": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "path"],
+              "properties": {
+                "type": { "const": "local" },
+                "path": { "type": "string", "pattern": "^test/fixtures/" },
+                "root": { "type": "string", "default": "." }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "repo", "ref", "sha"],
+              "properties": {
+                "type": { "const": "github" },
+                "repo": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+                "ref": { "type": "string", "minLength": 1 },
+                "sha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+                "root": { "type": "string", "default": "." }
+              }
+            }
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["claude", "codex"] }
+        },
+        "policies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["default", "skills"],
+          "properties": {
+            "default": { "enum": ["transform-or-fail"] },
+            "skills": { "enum": ["preserve", "transform"] }
+          }
+        }
+      }
+    }
+  }
+}
