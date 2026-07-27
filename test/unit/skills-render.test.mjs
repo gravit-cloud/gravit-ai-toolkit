@@ -47,7 +47,24 @@ test("parent and child render exactly once per target", (context) => {
 test("Codex removes every true-like disable-model-invocation spelling", (context) => {
   const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
   context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
-  const values = ["true", "yes", "on", "1", '"true"', '"yes"', "'true'", "'yes'"];
+  const values = [
+    "true",
+    "yes",
+    "on",
+    "1",
+    '"true"',
+    '"yes"',
+    '"on"',
+    '"1"',
+    "'true'",
+    "'yes'",
+    "'on'",
+    "'1'",
+    "TrUe",
+    "  yes  ",
+    '"  on  "',
+    "' 1 '",
+  ];
 
   for (const [index, value] of values.entries()) {
     const name = "skill-" + index;
