@@ -42,6 +42,14 @@ test("parent and child render exactly once per target", (context) => {
     readFileSync(resolve(claudeRoot, "parent/phases/SKILL.md"), "utf8"),
     "# Internal phase\n\nThis file has no frontmatter and remains a parent resource.\n",
   );
+
+  const renderedParent = readFileSync(resolve(codexRoot, "parent/SKILL.md"), "utf8");
+  assert.match(renderedParent, /\[the child\]\(\.\.\/child\/SKILL\.md\)/);
+  assert.match(renderedParent, /\[the guide\]\(\.\/guide\.md\)/);
+  assert.match(
+    readFileSync(resolve(codexRoot, "child/SKILL.md"), "utf8"),
+    /\[the reference\]\(\.\/reference\.md\)/,
+  );
 });
 
 test("Codex removes every true-like disable-model-invocation spelling", (context) => {
@@ -87,4 +95,25 @@ test("Codex removes every true-like disable-model-invocation spelling", (context
     assert.match(rendered, /description: Test skill/);
     assert.match(rendered, /# Test/);
   }
+});
+
+test("rendering fails when an existing local link has no rendered owner", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const sourceDirectory = resolve(temporaryRoot, "source", "parent");
+  mkdirSync(sourceDirectory, { recursive: true });
+  writeFileSync(resolve(temporaryRoot, "source", "shared.md"), "# Excluded resource\n");
+  writeFileSync(
+    resolve(sourceDirectory, "SKILL.md"),
+    "---\nname: parent\ndescription: Parent\n---\n\nRead [the shared resource](../shared.md).\n",
+  );
+
+  assert.throws(
+    () => renderSkills({
+      skills: [{ id: "parent", name: "parent", sourceDirectory }],
+      destinationRoot: resolve(temporaryRoot, "codex"),
+      target: "codex",
+    }),
+    /unmapped local skill link/,
+  );
 });

@@ -1,5 +1,5 @@
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { isAbsolute, relative, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { isTrueLike, parseFrontmatter } from "./frontmatter.mjs";
 import { assertInside, assertRealInside } from "./path-safety.mjs";
 
@@ -112,6 +112,46 @@ function codexMarkdown(markdown) {
   return raw.replace(/^disable-model-invocation:.*\r?\n/im, "") + markdown.slice(raw.length);
 }
 
+function renderedOwner(skills, absoluteTarget) {
+  return skills
+    .filter((skill) => (
+      absoluteTarget === skill.sourceDirectory ||
+      nestedWithin(skill.sourceDirectory, absoluteTarget)
+    ))
+    .sort((left, right) => right.sourceDirectory.length - left.sourceDirectory.length)[0];
+}
+
+function rewriteLinks({ markdown, sourceSkillFile, destinationSkillFile, skills, destinationRoot }) {
+  const source = renderedOwner(skills, sourceSkillFile);
+  return markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (whole, label, rawTarget) => {
+    const target = rawTarget.trim().replace(/^<|>$/g, "");
+    if (!target || /^(?:[a-z][a-z\d+.-]*:|#)/i.test(target)) return whole;
+    const hashIndex = target.indexOf("#");
+    const targetPath = hashIndex === -1 ? target : target.slice(0, hashIndex);
+    const anchor = hashIndex === -1 ? "" : target.slice(hashIndex);
+    if (!targetPath || targetPath.includes(" ")) return whole;
+
+    const absoluteTarget = resolve(dirname(sourceSkillFile), targetPath);
+    const owner = renderedOwner(skills, absoluteTarget);
+    if (!owner) {
+      if (existsSync(absoluteTarget)) {
+        throw new Error("unmapped local skill link: " + targetPath);
+      }
+      return whole;
+    }
+    if (owner === source) return whole;
+
+    const mappedTarget = resolve(
+      destinationRoot,
+      owner.name,
+      relative(owner.sourceDirectory, absoluteTarget),
+    );
+    let rewritten = relative(dirname(destinationSkillFile), mappedTarget).replaceAll("\\", "/");
+    if (!rewritten.startsWith(".")) rewritten = "./" + rewritten;
+    return "[" + label + "](" + rewritten + anchor + ")";
+  });
+}
+
 export function renderSkills({ skills, destinationRoot, target }) {
   if (!["claude", "codex"].includes(target)) {
     throw new Error("unsupported skill target: " + target);
@@ -135,10 +175,21 @@ export function renderSkills({ skills, destinationRoot, target }) {
     });
 
     const skillFile = resolve(destination, "SKILL.md");
-    if (target === "codex") {
-      writeFileSync(skillFile, codexMarkdown(readFileSync(skillFile, "utf8")));
-    }
     rendered.push({ id: skill.id, name: skill.name, directory: destination, skillFile });
+  }
+
+  for (const output of rendered) {
+    const source = skills.find((skill) => skill.name === output.name);
+    let markdown = readFileSync(output.skillFile, "utf8");
+    markdown = rewriteLinks({
+      markdown,
+      sourceSkillFile: resolve(source.sourceDirectory, "SKILL.md"),
+      destinationSkillFile: output.skillFile,
+      skills,
+      destinationRoot,
+    });
+    if (target === "codex") markdown = codexMarkdown(markdown);
+    writeFileSync(output.skillFile, markdown);
   }
 
   return rendered;
