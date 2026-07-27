@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { discoverSkills } from "../../scripts/lib/skills.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -39,4 +41,40 @@ test("honors declared skill paths and rejects paths outside the source", () => {
     () => discoverSkills({ sourceRoot, declaredSkills: ["../outside"] }),
     /declared skill escapes source root/,
   );
+});
+
+test("rejects a declared symlink root that resolves outside the source", () => {
+  const root = mkdtempSync(join(tmpdir(), "skills-discovery-"));
+  const source = join(root, "source");
+  const outside = join(root, "outside");
+  mkdirSync(join(source, "skills"), { recursive: true });
+  mkdirSync(outside);
+  writeFileSync(join(outside, "SKILL.md"), "---\nname: outside\ndescription: Outside\n---\n");
+  symlinkSync(outside, join(source, "skills", "link"));
+
+  try {
+    assert.throws(
+      () => discoverSkills({ sourceRoot: source, declaredSkills: "skills/link" }),
+      /declared skill escapes source root/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects symlinks nested below discovery roots", () => {
+  const root = mkdtempSync(join(tmpdir(), "skills-discovery-"));
+  const skills = join(root, "skills");
+  mkdirSync(join(skills, "parent"), { recursive: true });
+  writeFileSync(join(skills, "parent", "SKILL.md"), "---\nname: parent\ndescription: Parent\n---\n");
+  symlinkSync(join(skills, "parent"), join(skills, "linked-parent"));
+
+  try {
+    assert.throws(
+      () => discoverSkills({ sourceRoot: root }),
+      /symbolic links are not allowed in staged components/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
