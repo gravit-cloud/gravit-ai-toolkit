@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -131,7 +132,6 @@ test("rejects and removes a configured root outside its staged source", (context
     repositoryRoot,
     destinationRoot,
     fetchGitHub({ destination }) {
-      mkdirSync(destination);
       writeFileSync(resolve(destination, "partial.txt"), "partial\n");
     },
   }), /plugin source root escapes source root/);
@@ -157,7 +157,6 @@ test("rejects and removes a staged root symlink that escapes", (context) => {
     repositoryRoot,
     destinationRoot,
     fetchGitHub({ destination }) {
-      mkdirSync(destination);
       symlinkSync(outside, resolve(destination, "plugin"), "dir");
     },
   }), /plugin source root escapes source root/);
@@ -181,7 +180,6 @@ test("removes a partial stage when GitHub fetching fails", (context) => {
     repositoryRoot,
     destinationRoot,
     fetchGitHub({ destination }) {
-      mkdirSync(destination);
       writeFileSync(resolve(destination, "partial.txt"), "partial\n");
       throw new Error("synthetic fetch failure");
     },
@@ -238,6 +236,7 @@ test("rejects a staged source symlink that escapes its destination", (context) =
   const outside = mkdtempSync(resolve(tmpdir(), "registry-outside-"));
   context.after(() => rmSync(destinationRoot, { recursive: true, force: true }));
   context.after(() => rmSync(outside, { recursive: true, force: true }));
+  writeFileSync(resolve(outside, "owned.txt"), "outside\n");
 
   assert.throws(() => stageSource({
     plugin: {
@@ -252,10 +251,12 @@ test("rejects a staged source symlink that escapes its destination", (context) =
     repositoryRoot,
     destinationRoot,
     fetchGitHub({ destination }) {
+      rmSync(destination, { recursive: true, force: true });
       symlinkSync(outside, destination, "dir");
     },
   }), /plugin staging destination escapes source root/);
-  assert.equal(existsSync(resolve(destinationRoot, "remote")), false);
+  assert.equal(lstatSync(resolve(destinationRoot, "remote")).isSymbolicLink(), true);
+  assert.equal(readFileSync(resolve(outside, "owned.txt"), "utf8"), "outside\n");
 });
 
 test("requires the configured source root to be a directory", (context) => {
@@ -275,7 +276,6 @@ test("requires the configured source root to be a directory", (context) => {
     repositoryRoot,
     destinationRoot,
     fetchGitHub({ destination }) {
-      mkdirSync(destination);
       writeFileSync(resolve(destination, "README.md"), "# Not a root directory\n");
     },
   }), /plugin source root must be a directory/);
@@ -305,4 +305,65 @@ test("rejects ambiguous GitHub repository syntax before fetching", (context) => 
   }), /GitHub source repository must be an owner\/repository pair/);
   assert.equal(fetched, false);
   assert.equal(existsSync(resolve(destinationRoot, "remote")), false);
+});
+
+test("rejects an unsupported source type before fetching", (context) => {
+  const destinationRoot = mkdtempSync(resolve(tmpdir(), "registry-source-"));
+  context.after(() => rmSync(destinationRoot, { recursive: true, force: true }));
+  let fetched = false;
+
+  assert.throws(() => stageSource({
+    plugin: {
+      name: "unsupported",
+      source: {
+        type: "gitlab",
+        repo: "owner/repository#main",
+        sha: "main",
+        root: ".",
+      },
+    },
+    repositoryRoot,
+    destinationRoot,
+    fetchGitHub({ destination }) {
+      fetched = true;
+      mkdirSync(destination);
+    },
+  }), /unsupported plugin source type: gitlab/);
+  assert.equal(fetched, false);
+  assert.equal(existsSync(resolve(destinationRoot, "unsupported")), false);
+});
+
+test("a concurrent second staging call cannot enter the first claim", (context) => {
+  const destinationRoot = mkdtempSync(resolve(tmpdir(), "registry-source-"));
+  context.after(() => rmSync(destinationRoot, { recursive: true, force: true }));
+  const plugin = {
+    name: "remote",
+    source: {
+      type: "github",
+      repo: "owner/repository",
+      sha: "0123456789abcdef0123456789abcdef01234567",
+      root: ".",
+    },
+  };
+  let secondFetched = false;
+
+  const sourceRoot = stageSource({
+    plugin,
+    repositoryRoot,
+    destinationRoot,
+    fetchGitHub({ destination }) {
+      assert.throws(() => stageSource({
+        plugin,
+        repositoryRoot,
+        destinationRoot,
+        fetchGitHub() {
+          secondFetched = true;
+        },
+      }), /plugin staging destination already exists/);
+      cpSync(fixture, destination, { recursive: true });
+    },
+  });
+
+  assert.equal(secondFetched, false);
+  assert.equal(existsSync(resolve(sourceRoot, "skills/parent/SKILL.md")), true);
 });

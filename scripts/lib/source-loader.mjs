@@ -15,18 +15,39 @@ function defaultFetchGitHub({ repo, sha, destination, repositoryRoot }) {
   }
 }
 
-function pathExists(path) {
+function stageIdentity(path) {
   try {
-    lstatSync(path);
-    return true;
+    const stats = lstatSync(path);
+    return { device: stats.dev, inode: stats.ino };
   } catch (error) {
-    if (error.code === "ENOENT") return false;
+    if (error.code === "ENOENT") return undefined;
     throw error;
   }
 }
 
-function removePartialStage(stage, stagingError) {
-  if (!pathExists(stage)) return;
+function sameStage(left, right) {
+  return Boolean(
+    left
+    && right
+    && left.device === right.device
+    && left.inode === right.inode,
+  );
+}
+
+function claimStage(stage) {
+  try {
+    mkdirSync(stage);
+  } catch (error) {
+    if (error.code === "EEXIST") {
+      throw new Error("plugin staging destination already exists: " + stage);
+    }
+    throw error;
+  }
+  return stageIdentity(stage);
+}
+
+function removeClaimedStage(stage, claim, stagingError) {
+  if (!sameStage(stageIdentity(stage), claim)) return;
   try {
     rmSync(stage, { recursive: true, force: true });
   } catch (cleanupError) {
@@ -69,38 +90,48 @@ export function stageSource({
     resolve(destinationRoot, plugin.name),
     "plugin staging destination",
   );
-  mkdirSync(destinationRoot, { recursive: true });
-  if (pathExists(stage)) {
-    throw new Error("plugin staging destination already exists: " + stage);
-  }
-  if (plugin.source.type === "github") assertGitHubSource(plugin.source);
-
-  try {
-    if (plugin.source.type === "local") {
-      const localSource = assertInside(
-        repositoryRoot,
-        resolve(repositoryRoot, plugin.source.path),
-        "local plugin source",
-      );
-      const safeLocalSource = assertRealInside(
-        repositoryRoot,
-        localSource,
-        "local plugin source",
-      );
-      cpSync(safeLocalSource, stage, { recursive: true, dereference: false });
-    } else {
-      fetchGitHub({
+  let populateStage;
+  switch (plugin.source.type) {
+    case "local":
+      populateStage = () => {
+        const localSource = assertInside(
+          repositoryRoot,
+          resolve(repositoryRoot, plugin.source.path),
+          "local plugin source",
+        );
+        const safeLocalSource = assertRealInside(
+          repositoryRoot,
+          localSource,
+          "local plugin source",
+        );
+        cpSync(safeLocalSource, stage, { recursive: true, dereference: false });
+      };
+      break;
+    case "github":
+      assertGitHubSource(plugin.source);
+      populateStage = () => fetchGitHub({
         repo: plugin.source.repo,
         sha: plugin.source.sha,
         destination: stage,
         repositoryRoot,
       });
-    }
+      break;
+    default:
+      throw new Error("unsupported plugin source type: " + plugin.source.type);
+  }
+
+  mkdirSync(destinationRoot, { recursive: true });
+  const claim = claimStage(stage);
+  try {
+    populateStage();
     const safeStage = assertRealInside(
       destinationRoot,
       stage,
       "plugin staging destination",
     );
+    if (!sameStage(stageIdentity(stage), claim)) {
+      throw new Error("plugin staging destination ownership changed: " + stage);
+    }
     const configuredRoot = assertInside(
       stage,
       resolve(stage, plugin.source.root || "."),
@@ -116,7 +147,7 @@ export function stageSource({
     }
     return safeRoot;
   } catch (error) {
-    removePartialStage(stage, error);
+    removeClaimedStage(stage, claim, error);
     throw error;
   }
 }
