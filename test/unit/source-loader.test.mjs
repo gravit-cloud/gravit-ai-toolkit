@@ -13,7 +13,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stageSource } from "../../scripts/lib/source-loader.mjs";
 
@@ -39,7 +39,8 @@ test("stages a complete local source", (context) => {
   });
 
   assert.equal(existsSync(resolve(sourceRoot, "skills/parent/SKILL.md")), true);
-  assert.equal(existsSync(resolve(destinationRoot, "local/README.md")), true);
+  assert.equal(existsSync(resolve(sourceRoot, "../README.md")), true);
+  assert.equal(lstatSync(resolve(destinationRoot, "local")).isFile(), true);
 });
 
 test("GitHub staging fetches the repository root at the SHA", (context) => {
@@ -71,8 +72,11 @@ test("GitHub staging fetches the repository root at the SHA", (context) => {
     repo: "owner/repository",
     sha: "0123456789abcdef0123456789abcdef01234567",
   }]);
-  assert.equal(calls[0].destination, resolve(destinationRoot, "remote"));
-  assert.equal(sourceRoot, realpathSync(resolve(destinationRoot, "remote")));
+  const publicStage = resolve(destinationRoot, "remote");
+  assert.notEqual(calls[0].destination, publicStage);
+  assert.match(basename(dirname(calls[0].destination)), /^\.remote\.source-/);
+  assert.equal(lstatSync(publicStage).isFile(), true);
+  assert.equal(sourceRoot, realpathSync(calls[0].destination));
   assert.equal(existsSync(resolve(sourceRoot, "README.md")), true);
   assert.equal(existsSync(resolve(sourceRoot, "skills/parent/guide.md")), true);
 });
@@ -115,9 +119,10 @@ test("rejects a local source path that lexically escapes the repository", (conte
   assert.equal(existsSync(resolve(destinationRoot, "escaped")), false);
 });
 
-test("rejects and removes a configured root outside its staged source", (context) => {
+test("rejects an escaping configured root and reports retained recovery data", (context) => {
   const destinationRoot = mkdtempSync(resolve(tmpdir(), "registry-source-"));
   context.after(() => rmSync(destinationRoot, { recursive: true, force: true }));
+  let error;
 
   assert.throws(() => stageSource({
     plugin: {
@@ -132,17 +137,26 @@ test("rejects and removes a configured root outside its staged source", (context
     repositoryRoot,
     destinationRoot,
     fetchGitHub({ destination }) {
+      mkdirSync(destination);
       writeFileSync(resolve(destination, "partial.txt"), "partial\n");
     },
-  }), /plugin source root escapes source root/);
-  assert.equal(existsSync(resolve(destinationRoot, "remote")), false);
+  }), (caught) => {
+    error = caught;
+    return /plugin source root escapes source root/.test(caught.message);
+  });
+  assert.equal(lstatSync(resolve(destinationRoot, "remote")).isFile(), true);
+  assert.equal(
+    readFileSync(resolve(error.recoveryPath, "repository/partial.txt"), "utf8"),
+    "partial\n",
+  );
 });
 
-test("rejects and removes a staged root symlink that escapes", (context) => {
+test("rejects a selected-root symlink escape without deleting its workspace", (context) => {
   const destinationRoot = mkdtempSync(resolve(tmpdir(), "registry-source-"));
   const outside = mkdtempSync(resolve(tmpdir(), "registry-outside-"));
   context.after(() => rmSync(destinationRoot, { recursive: true, force: true }));
   context.after(() => rmSync(outside, { recursive: true, force: true }));
+  let error;
 
   assert.throws(() => stageSource({
     plugin: {
@@ -157,15 +171,21 @@ test("rejects and removes a staged root symlink that escapes", (context) => {
     repositoryRoot,
     destinationRoot,
     fetchGitHub({ destination }) {
+      mkdirSync(destination);
       symlinkSync(outside, resolve(destination, "plugin"), "dir");
     },
-  }), /plugin source root escapes source root/);
-  assert.equal(existsSync(resolve(destinationRoot, "remote")), false);
+  }), (caught) => {
+    error = caught;
+    return /plugin source root escapes source root/.test(caught.message);
+  });
+  assert.equal(lstatSync(resolve(destinationRoot, "remote")).isFile(), true);
+  assert.equal(existsSync(resolve(error.recoveryPath, "repository/plugin")), true);
 });
 
-test("removes a partial stage when GitHub fetching fails", (context) => {
+test("retains an owned recovery workspace when GitHub fetching fails", (context) => {
   const destinationRoot = mkdtempSync(resolve(tmpdir(), "registry-source-"));
   context.after(() => rmSync(destinationRoot, { recursive: true, force: true }));
+  let error;
 
   assert.throws(() => stageSource({
     plugin: {
@@ -180,11 +200,19 @@ test("removes a partial stage when GitHub fetching fails", (context) => {
     repositoryRoot,
     destinationRoot,
     fetchGitHub({ destination }) {
+      mkdirSync(destination);
       writeFileSync(resolve(destination, "partial.txt"), "partial\n");
       throw new Error("synthetic fetch failure");
     },
-  }), /synthetic fetch failure/);
-  assert.equal(existsSync(resolve(destinationRoot, "remote")), false);
+  }), (caught) => {
+    error = caught;
+    return /synthetic fetch failure/.test(caught.message);
+  });
+  assert.equal(lstatSync(resolve(destinationRoot, "remote")).isFile(), true);
+  assert.equal(
+    readFileSync(resolve(error.recoveryPath, "repository/partial.txt"), "utf8"),
+    "partial\n",
+  );
 });
 
 test("does not merge a source into an existing stage", (context) => {
@@ -255,7 +283,7 @@ test("rejects a staged source symlink that escapes its destination", (context) =
       symlinkSync(outside, destination, "dir");
     },
   }), /plugin staging destination escapes source root/);
-  assert.equal(lstatSync(resolve(destinationRoot, "remote")).isSymbolicLink(), true);
+  assert.equal(lstatSync(resolve(destinationRoot, "remote")).isFile(), true);
   assert.equal(readFileSync(resolve(outside, "owned.txt"), "utf8"), "outside\n");
 });
 
@@ -276,10 +304,11 @@ test("requires the configured source root to be a directory", (context) => {
     repositoryRoot,
     destinationRoot,
     fetchGitHub({ destination }) {
+      mkdirSync(destination);
       writeFileSync(resolve(destination, "README.md"), "# Not a root directory\n");
     },
   }), /plugin source root must be a directory/);
-  assert.equal(existsSync(resolve(destinationRoot, "remote")), false);
+  assert.equal(lstatSync(resolve(destinationRoot, "remote")).isFile(), true);
 });
 
 test("rejects ambiguous GitHub repository syntax before fetching", (context) => {
@@ -366,4 +395,42 @@ test("a concurrent second staging call cannot enter the first claim", (context) 
 
   assert.equal(secondFetched, false);
   assert.equal(existsSync(resolve(sourceRoot, "skills/parent/SKILL.md")), true);
+});
+
+test("never writes fetched content into a replacement stage", (context) => {
+  const destinationRoot = mkdtempSync(resolve(tmpdir(), "registry-source-"));
+  const publicStage = resolve(destinationRoot, "remote");
+  context.after(() => rmSync(destinationRoot, { recursive: true, force: true }));
+  let error;
+
+  assert.throws(() => stageSource({
+    plugin: {
+      name: "remote",
+      source: {
+        type: "github",
+        repo: "owner/repository",
+        sha: "0123456789abcdef0123456789abcdef01234567",
+        root: ".",
+      },
+    },
+    repositoryRoot,
+    destinationRoot,
+    fetchGitHub({ destination }) {
+      rmSync(publicStage, { recursive: true, force: true });
+      mkdirSync(publicStage);
+      writeFileSync(resolve(publicStage, "foreign.txt"), "foreign\n");
+      mkdirSync(destination);
+      writeFileSync(resolve(destination, "fetched.txt"), "fetched\n");
+    },
+  }), (caught) => {
+    error = caught;
+    return /plugin staging destination ownership changed/.test(caught.message);
+  });
+
+  assert.equal(readFileSync(resolve(publicStage, "foreign.txt"), "utf8"), "foreign\n");
+  assert.equal(existsSync(resolve(publicStage, "fetched.txt")), false);
+  assert.equal(
+    readFileSync(resolve(error.recoveryPath, "repository/fetched.txt"), "utf8"),
+    "fetched\n",
+  );
 });
