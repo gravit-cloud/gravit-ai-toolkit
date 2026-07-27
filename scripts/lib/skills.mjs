@@ -107,12 +107,9 @@ function nestedWithin(parent, candidate) {
 }
 
 function codexMarkdown(markdown) {
-  const { attributes } = parseFrontmatter(markdown);
+  const { attributes, raw } = parseFrontmatter(markdown);
   if (!isTrueLike(attributes["disable-model-invocation"])) return markdown;
-  return markdown.replace(
-    /^disable-model-invocation:\s*(?:true|yes|on|1)\s*\r?\n/im,
-    "",
-  );
+  return raw.replace(/^disable-model-invocation:.*\r?\n/im, "") + markdown.slice(raw.length);
 }
 
 export function renderSkills({ skills, destinationRoot, target }) {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,4 +42,32 @@ test("parent and child render exactly once per target", (context) => {
     readFileSync(resolve(claudeRoot, "parent/phases/SKILL.md"), "utf8"),
     "# Internal phase\n\nThis file has no frontmatter and remains a parent resource.\n",
   );
+});
+
+test("Codex removes every true-like disable-model-invocation spelling", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const values = ["true", "yes", "on", "1", '"true"', '"yes"', "'true'", "'yes'"];
+
+  for (const [index, value] of values.entries()) {
+    const name = "skill-" + index;
+    const sourceDirectory = resolve(temporaryRoot, "source", name);
+    mkdirSync(sourceDirectory, { recursive: true });
+    writeFileSync(
+      resolve(sourceDirectory, "SKILL.md"),
+      `---\nname: ${name}\ndescription: Test skill\ndisable-model-invocation: ${value}\n---\n\n# Test\n`,
+    );
+
+    const destinationRoot = resolve(temporaryRoot, "codex");
+    renderSkills({
+      skills: [{ id: name, name, sourceDirectory }],
+      destinationRoot,
+      target: "codex",
+    });
+
+    const rendered = readFileSync(resolve(destinationRoot, name, "SKILL.md"), "utf8");
+    assert.doesNotMatch(rendered, /disable-model-invocation/);
+    assert.match(rendered, /description: Test skill/);
+    assert.match(rendered, /# Test/);
+  }
 });
