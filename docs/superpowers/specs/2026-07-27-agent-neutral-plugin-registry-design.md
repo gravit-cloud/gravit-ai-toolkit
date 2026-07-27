@@ -26,8 +26,8 @@ Ein isolierter Re-Sync des aktuellen Azure-Pins hat gezeigt, dass die eingecheck
 
 Ein Bundle trennt dabei drei Ebenen:
 
-1. **Komponenteninventar:** normalisierte, agent-neutrale Skills, MCP-Server, Hooks, Apps, Assets und Metadaten.
-2. **Target-Projektionen:** aus dem Inventar erzeugte Claude-, Codex- und spätere OpenClaw-/Cloud-Darstellungen.
+1. **Komponenteninventar:** normalisierte, agent-neutrale Skills, Commands, Subagents, MCP- und LSP-Server, Hooks, Apps sowie weitere ausführbare oder darstellende Komponenten.
+2. **Target-Projektionen:** aus dem Inventar erzeugte Claude-, Codex-, OpenClaw- und spätere Cloud-Darstellungen.
 3. **Provenienz:** unveränderliche Herkunft, Transformationsentscheidungen, Inhalts-Hashes und Laufzeitabhängigkeiten.
 
 Die Registry ist die kuratierte Quelle. Claude ist ein Zielsystem wie Codex und nicht mehr das übergeordnete Datenmodell.
@@ -41,7 +41,7 @@ Die Registry ist die kuratierte Quelle. Claude ist ein Zielsystem wie Codex und 
 - Generierte Bundles sind eingecheckt und nach einem Checkout ohne erneuten Upstream-Download nutzbar.
 - Jede erkannte Komponente wird pro Ziel explizit bewahrt, transformiert, abgelehnt oder durch eine dokumentierte Ausnahme deaktiviert. Es gibt kein stilles Weglassen.
 - Claude und Codex werden im ersten Meilenstein als vollwertige Adapter unterstützt.
-- OpenClaw, Pipeline- und Cloud-Agenten können das neutrale Manifest auswerten; native Zieladapter lassen sich ohne Änderung des Katalogmodells ergänzen.
+- OpenClaw kann eine explizite Kompatibilitätsprojektion installieren; Pipeline- und Cloud-Agenten können zusätzlich das neutrale Manifest auswerten. Native oder weitere Zieladapter lassen sich ohne Änderung des Katalogmodells ergänzen.
 - Git-Tags beziehungsweise Releases bilden zunächst die zentrale, gemeinsam lesbare Distribution; Verbraucher können einen Repository-Stand unveränderlich pinnen.
 - Der Build ist deterministisch, atomar und offline verifizierbar.
 - Rekursiv auffindbare Skill-Namen sind innerhalb einer Zielprojektion eindeutig.
@@ -51,8 +51,8 @@ Die Registry ist die kuratierte Quelle. Claude ist ein Zielsystem wie Codex und 
 
 - Kein automatisches Aktivieren vertrauenswürdiger Hooks oder MCP-Server auf einem Zielsystem.
 - Keine Speicherung von Credentials, Tokens, Kundendaten oder zielsystemspezifischen Secrets.
-- Kein Vendoring beliebiger externer Laufzeitprogramme. Nicht eingebettete Laufzeitabhängigkeiten werden jedoch exakt gepinnt und im Bundle deklariert.
-- Noch kein nativer OpenClaw-Installer. Die neutrale Bundle-Schnittstelle und der Adaptervertrag werden jetzt geschaffen; ein OpenClaw-Adapter ist eine nachfolgende, abgegrenzte Erweiterung.
+- Kein pauschales Vendoring beliebiger externer Laufzeitprogramme. Gezielt eingebettete Programme benötigen Lizenz- und Sicherheitsfreigabe; nicht eingebettete Laufzeitabhängigkeiten werden exakt gepinnt und im Bundle deklariert.
+- Kein nativer, im OpenClaw-Prozess laufender Plugin-Code. Der erste OpenClaw-Adapter erzeugt stattdessen ein Bundle in genau einem von OpenClaw unterstützten Kompatibilitätsformat und bleibt dadurch innerhalb der engeren Bundle-Trust-Grenze.
 - Noch kein separater Registry-Dienst oder Objekt-Storage. Die Ablage im Git-Repository ist die erste belastbare Registry-Implementierung; spätere Backends verwenden dieselben Bundles und Hashes.
 - Keine Veröffentlichung in einem externen öffentlichen Marketplace als Teil dieses Umbaus.
 
@@ -97,19 +97,26 @@ plugins/
       plugin.json               # Codex-Projektion
     components/
       skills/
+      commands/
+      agents/
       mcp/
+      lsp/
       hooks/
       apps/
+      output-styles/
+      monitors/
+      themes/
+      channels/
+      executables/
+      settings/
       assets/
     targets/
       claude/
-        skills/
-        mcp.json
-        hooks/
+        ...                     # vollständige Claude-Projektion
       codex/
-        skills/
-        mcp.json
-        hooks/
+        ...                     # vollständige Codex-Projektion
+      openclaw/
+        ...                     # einzelnes Claude- oder Codex-Bundleformat
     LICENSE
     NOTICE
 
@@ -159,25 +166,32 @@ Die neutralen Komponenten liegen bewusst außerhalb der von Claude oder Codex de
         "type": "github",
         "repo": "microsoft/azure-skills",
         "ref": "v1.2.5",
-        "sha": "013b97d8aab03ce8cd88944976e9988f8c829746"
+        "sha": "013b97d8aab03ce8cd88944976e9988f8c829746",
+        "root": "."
       },
-      "targets": ["claude", "codex"],
+      "targets": ["claude", "codex", "openclaw"],
       "policies": {
+        "default": "transform-or-fail",
         "skills": "transform",
         "mcp": "transform",
         "hooks": "transform-or-fail",
         "apps": "transform-or-fail"
+      },
+      "adapterOptions": {
+        "openclaw": {
+          "bundleFormat": "codex"
+        }
       }
     }
   ]
 }
 ```
 
-Lokale Quellen verwenden `source.type: "local"` plus einen Pfad unter `sources/`. Pfade außerhalb des Repositorys und aufgelöste Pfade außerhalb des konfigurierten Source-Roots werden abgelehnt.
+`source.root` bezeichnet den Plugin-Root innerhalb des gepinnten Repositorys und ist standardmäßig `.`. Lokale Quellen verwenden `source.type: "local"` plus einen Pfad unter `sources/`. Pfade außerhalb des Repositorys und aufgelöste Pfade außerhalb des konfigurierten Source-Roots werden abgelehnt.
 
 `distributionVersion` ist von der Upstream-Version getrennt. Sie muss erhöht werden, sobald sich der erzeugte Bundle-Hash ändert. Der Sync schlägt fehl, wenn bei gleicher Distributionsversion ein anderer Inhalt als im bisherigen Lockfile entstünde. Damit erhalten auch reine Transformationsänderungen eine neue Cache-Identität.
 
-Zielspezifische Ausnahmen sind im Katalog erlaubt, aber nur mit Ziel, Komponenten-ID, Begründung, verantwortlicher Person und Ablaufdatum. Eine abgelaufene Ausnahme lässt Build und CI fehlschlagen.
+Zielspezifische Policies dürfen eine Komponente bewusst als `unsupported` behandeln, wenn Ziel, Komponenten-ID und dauerhafte technische Begründung angegeben sind. Ausnahmen von einer eigentlich verpflichtenden Policy sind nur mit verantwortlicher Person und Ablaufdatum erlaubt. Eine abgelaufene Ausnahme lässt Build und CI fehlschlagen.
 
 ## 7. Neutrales Bundle-Manifest
 
@@ -185,7 +199,7 @@ Zielspezifische Ausnahmen sind im Katalog erlaubt, aber nur mit Ziel, Komponente
 
 - Schema-Version, Plugin-ID, Distributionsversion und Beschreibung.
 - Upstream-Version, Repository, Ref und vollständigen SHA.
-- Eine typisierte Komponentenliste mit stabilen IDs und relativen Pfaden.
+- Eine typisierte Komponentenliste mit stabilen IDs und relativen Pfaden. Die initialen Typen umfassen mindestens Skills, Commands, Agents, MCP, LSP, Hooks, App-Bindings, Output Styles, Monitors, Themes, Channels, Executables, Settings und Assets.
 - Unterstützte Ziele und den Status jeder Komponente pro Ziel.
 - Exakte Laufzeitabhängigkeiten und benötigte, aber wertfreie Umgebungsvariablen.
 - Inhalts-Hashes der Komponenten und Zielprojektionen.
@@ -195,7 +209,7 @@ Zulässige Target-Status sind:
 
 - `preserved`: unverändert in die Projektion übernommen.
 - `transformed`: deterministisch für das Ziel übersetzt.
-- `unsupported`: im neutralen Bundle vorhanden, für das Ziel nicht installierbar; nur mit Ausnahme zulässig.
+- `unsupported`: im neutralen Bundle vorhanden, für das Ziel nicht installierbar oder nicht ausführbar; nur mit expliziter Target-Policy und maschinenlesbarer Begründung zulässig.
 - `rejected`: aus Sicherheits-, Lizenz- oder Schemagründen bewusst nicht paketiert; der Sync schlägt ohne explizite Katalogentscheidung fehl.
 
 Neue Komponentenarten werden nicht automatisch als Assets behandelt. Solange Schema, Inventarisierung und mindestens eine Policy fehlen, schlägt der Sync geschlossen fehl.
@@ -275,13 +289,17 @@ Ungepinntes `latest`, Floating Tags oder nicht auflösbare Paketversionen sind u
 
 Secrets werden nie aus der Build-Umgebung übernommen. Das Bundle darf nur Variablennamen und Setup-Hinweise enthalten.
 
-## 12. Hooks und Apps
+## 12. Hooks, Apps und weitere Komponenten
 
 Hooks bestehen aus Eventbindung, ausführbarer Aktion, benötigten Assets und einer Trust-Einstufung. Der neutrale Bestand bewahrt Upstream-Skripte, sofern Lizenz und Sicherheitsregeln dies erlauben. Ein Zieladapter darf einen Hook nur als unterstützt markieren, wenn Eventmodell, Variablen und Ausführungssemantik vollständig übersetzt sind.
 
 Hooks werden beim Installieren nicht automatisch aktiviert. Der jeweilige Host beziehungsweise die Pipeline entscheidet anhand der Trust-Metadaten, ob eine Freigabe nötig ist.
 
-Apps werden als eigene Komponentenart modelliert und nicht als gewöhnliches MCP oder Asset verschluckt. Dazu gehören Server-Anteil, UI-Ressourcen, MIME-Metadaten und CSP-/Domain-Anforderungen. Im ersten Meilenstein müssen Apps vollständig inventarisiert werden; solange kein Zieladapter ihre Semantik beherrscht, ist das Ziel für diese Komponente `unsupported` und benötigt eine explizite Ausnahme. Dadurch kann eine neue Upstream-App nicht unbemerkt aus einem Bundle verschwinden.
+Apps werden als eigene Komponentenart modelliert und nicht als gewöhnliches MCP oder Asset verschluckt. Im Codex-Format ist `.app.json` eine Kompatibilitätsbindung zu einer registrierten MCP-Verbindung, nicht ein zweiter Servertyp. Das neutrale Modell hält daher App-Binding, referenzierten MCP-Server sowie gegebenenfalls dessen UI-Ressourcen, MIME-Metadaten und CSP-/Domain-Anforderungen getrennt, aber verknüpft. Solange ein Zieladapter diese Semantik nicht beherrscht, ist das Ziel für die Komponente `unsupported` und benötigt eine explizite Target-Policy. Dadurch kann eine neue Upstream-App nicht unbemerkt aus einem Bundle verschwinden.
+
+Commands beziehungsweise ältere Slash-Command-Dateien werden als eigener Quelltyp erfasst, auch wenn ein Ziel sie später als Skills rendert. Dasselbe gilt für Subagent-Definitionen. So bleibt erkennbar, ob ein Ziel einen Agent wirklich ausführen kann oder seinen Inhalt lediglich als Promptmaterial bewahrt.
+
+LSP-Server, Output Styles, Monitors, Themes, Channels, Executables und Default Settings sind ebenfalls erstklassige Komponenten. Ausführbare Dateien und Hintergrundkomponenten folgen denselben Pinning-, Trust- und Freigaberegeln wie Hooks und MCP-Server. Einstellungen werden als strukturierte Defaults behandelt, niemals als ungeprüfter Patch auf die Host-Konfiguration. Zielmetadaten wie Icons, Screenshots und Starter-Prompts bleiben von ausführbaren Komponenten getrennt.
 
 ## 13. Adaptervertrag
 
@@ -293,7 +311,11 @@ Jeder Zieladapter implementiert dieselben Operationen:
 4. `marketplace(catalog)`: optionaler Marketplace-Eintrag.
 5. `validate(output)`: Schema- und Semantikprüfung der Projektion.
 
-Adapter erhalten nur das neutrale Inventar und Katalog-Policies, niemals ungeprüfte freie Pfade. So lassen sich OpenClaw oder ein eigener Cloud-Loader ergänzen, ohne erneut GitHub-Quellen parsen zu müssen.
+Adapter erhalten nur das neutrale Inventar und Katalog-Policies, niemals ungeprüfte freie Pfade. So lassen sich weitere Hosts oder ein eigener Cloud-Loader ergänzen, ohne erneut GitHub-Quellen parsen zu müssen.
+
+Der OpenClaw-Adapter erzeugt kein `openclaw.plugin.json`, weil dies das Bundle zu einem nativen, im Prozess laufenden Plugin machen würde. Er rendert pro Plugin genau ein von OpenClaw unterstütztes Claude- oder Codex-Bundleformat. Das Format wird im Katalog festgelegt: `codex` eignet sich für Skills, MCP, Apps und übersetzte OpenClaw-Hook-Packs; `claude` zusätzlich für Commands, Settings und LSP. Komponenten, die OpenClaw nur diagnostiziert, aber nicht ausführt, werden nicht fälschlich als unterstützt markiert.
+
+Da OpenClaw für fremde Kompatibilitätsbundles keine automatische `npm install`-Reparatur ausführt, gilt eine Laufzeitkomponente dort nur dann als ausführbar, wenn ihr Binary im Bundle liegt oder ein deklarierter Host-Prerequisite-Check die exakt gepinnte Abhängigkeit bestätigt. Andernfalls bleibt die Komponente im neutralen Inventar, erhält für OpenClaw aber den Status `unsupported`.
 
 Der generische Pipeline-/Cloud-Loader verwendet direkt `.agent-plugin/plugin.json`, wählt benötigte Komponenten nach Typ und Zielstatus und materialisiert sie in ein explizit konfiguriertes Arbeitsverzeichnis. Er darf keine Hooks ausführen oder MCP-Server starten, ohne dass die aufrufende Umgebung dies freigibt.
 
@@ -307,6 +329,7 @@ Eine Registry-lesende CLI stellt eine agent-neutrale Consumer-Schnittstelle bere
 node scripts/registry.mjs list
 node scripts/registry.mjs inspect --plugin azure
 node scripts/registry.mjs materialize --plugin azure --target codex --output <path>
+node scripts/registry.mjs materialize --plugin azure --target openclaw --output <path>
 node scripts/registry.mjs verify --plugin azure
 ```
 
@@ -317,7 +340,7 @@ Die CLI lädt keine Upstream-Quellen, startet keine MCP-Server und aktiviert kei
 Für typische Verbraucher ergibt sich damit:
 
 - lokale Entwicklung: Repository klonen oder als Submodul pinnen und ein Target in ein lokales Agentenverzeichnis materialisieren;
-- OpenClaw: zunächst neutrales Manifest und Komponenten über die Consumer-Schnittstelle lesen, später eine native Projektion materialisieren;
+- OpenClaw: die schmale Kompatibilitätsprojektion materialisieren und mit `openclaw plugins install` als Bundle installieren; für nicht ausführbare Komponenten bleibt das neutrale Inventar die vollständige Bilanz;
 - CI/CD: Repository-Commit pinnen, `verify` ausführen und nur die benötigten Komponenten ins Build-Artefakt übernehmen;
 - Cloud-Agenten: Bundle oder signiertes Archiv in ein Image beziehungsweise einen kontrollierten Shared Volume legen und anhand des Receipts verifizieren.
 
@@ -332,6 +355,7 @@ Für typische Verbraucher ergibt sich damit:
 - rekursive Skill-Eindeutigkeit, Frontmatter und relative Links.
 - Existenz und Hash aller referenzierten Komponenten und Assets.
 - zielsystemspezifische Manifest- und Konfigurationsschemas.
+- Vollständigkeit aller bekannten Claude-, Codex- und OpenClaw-Komponentenpfade einschließlich Commands, Agents, LSP, Monitors, Settings und Executables.
 - keine Floating Runtime Dependencies.
 - keine bekannten Secret-Werte oder unzulässigen absoluten Pfade.
 - Lizenzdateien für weiterverteilte externe Inhalte.
@@ -351,6 +375,7 @@ Zusätzlich erhält `npm run plugins:verify` einen Determinismus-Check: Es baut 
 5. Der Validator muss ein manuell eingebrachtes verschachteltes Skill-Duplikat finden.
 6. Ein veränderter Source-SHA oder Adapter-Output bei gleicher `distributionVersion` muss fehlschlagen.
 7. Die Consumer-CLI darf nur eine passende Zielprojektion materialisieren und keine fremden Dateien überschreiben.
+8. Ein Fixture mit Commands, Agent, LSP oder Monitor muss diese Komponenten inventarisieren und pro Ziel wahrheitsgemäß als ausführbar, transformiert oder nicht unterstützt ausweisen.
 
 ### Unit-Tests
 
@@ -370,6 +395,7 @@ Zusätzlich erhält `npm run plugins:verify` einen Determinismus-Check: Es baut 
 - Fehler in einem Plugin lässt alle bisherigen Bundles unangetastet.
 - Claude-Marketplace wird in einer isolierten Konfiguration geladen und das Plugin-Manifest aufgelöst.
 - Codex-Marketplace wird in einem isolierten `CODEX_HOME` hinzugefügt; Plugin, Skills und gebündelte MCP-Definition werden erkannt.
+- OpenClaw installiert die materialisierte Kompatibilitätsprojektion in einer isolierten Konfiguration und meldet Skills sowie MCP als ausführbar; nur diagnostizierte Komponenten erscheinen nicht als ausführbar.
 - Eine neue Distributionsversion ersetzt in einer frischen Client-Session nachweislich den alten Cache-Inhalt.
 - Azure dient als reale End-to-End-Regression: eindeutige Skills, vorhandener Azure-MCP-Eintrag und vollständige Komponentenbilanz.
 
@@ -389,7 +415,7 @@ git diff --exit-code
 
 Ein Renovate- oder Maintainer-Update ändert zunächst Ref, SHA und bei verändertem Output die `distributionVersion` im Katalog. Danach läuft der Netzwerksync, der Bundles und Lockfile gemeinsam aktualisiert. Der Pull Request zeigt deshalb sowohl die Herkunftsänderung als auch den tatsächlich ausgelieferten Komponenten-Diff.
 
-CI darf einen reinen SHA-Wechsel ohne neue Distributionsversion nicht akzeptieren. Ebenso darf eine neue Upstream-Komponentenart nicht allein deshalb grün werden, weil ältere Adapter sie nicht kennen.
+CI darf einen reinen SHA-Wechsel ohne neue Distributionsversion nicht akzeptieren. Dazu vergleicht sie betroffene Lockfile-Einträge zusätzlich mit dem Merge-Base-Stand; ein gemeinsam manipulierter neuer Katalog- und Lockfile-Stand darf keine bereits verwendete Version mit anderem Hash wiederverwenden. Ebenso darf eine neue Upstream-Komponentenart nicht allein deshalb grün werden, weil ältere Adapter sie nicht kennen.
 
 ## 18. Sicherheit und Betrieb
 
@@ -428,17 +454,19 @@ CI darf einen reinen SHA-Wechsel ohne neue Distributionsversion nicht akzeptiere
 - MCP normalisieren und für Claude/Codex rendern.
 - Runtime-Pins erzwingen.
 - Hooks und Apps inventarisieren; unterstützte Hooks übersetzen und übrige Fälle geschlossen behandeln.
+- Commands, Agents, LSP, Monitors, Styles, Themes, Channels, Executables und Settings inventarisieren und zielgenau projizieren.
 
 ### Phase 5: Client-Smoke-Tests und Dokumentation
 
 - isolierte Claude-/Codex-Installationsprüfungen in CI integrieren.
-- read-only Consumer-CLI mit atomarer Materialisierung ergänzen.
+- Registry-lesende Consumer-CLI mit atomarer Materialisierung ergänzen.
+- OpenClaw-Kompatibilitätsprojektion und isolierten Bundle-Smoke-Test integrieren.
 - lokale Entwicklung, Pipeline-Nutzung und Cloud-Materialisierung dokumentieren.
 - Update- und Ausnahmeprozess dokumentieren.
 
 ### Phase 6: Weitere Adapter
 
-- OpenClaw-Adapter gegen den festgelegten Adaptervertrag bauen.
+- Bei tatsächlichem Bedarf einen nativen OpenClaw-Adapter gegen den festgelegten Adaptervertrag bauen; dieser benötigt eine gesonderte Trust- und Codeausführungsentscheidung.
 - Bei Bedarf schlanke Zielpakete aus dem Universal-Bundle exportieren, ohne eine neue Quelle einzuführen.
 
 Jede Phase endet mit grünem Offline-Validator und einem diff-freien zweiten Build. Die bestehenden Marketplaces bleiben während der Migration benutzbar.
@@ -457,6 +485,7 @@ Die Architektur gilt als umgesetzt, wenn:
 - eine Inhaltsänderung ohne neue Distributionsversion den Build stoppt;
 - ein fehlerhafter Sync keinen partiell aktualisierten Plugin-Baum hinterlässt;
 - Offline-Tests, Validator, Determinismusprüfung sowie isolierte Claude-/Codex-Smoke-Tests grün sind;
+- die OpenClaw-Kompatibilitätsprojektion installierbar ist und ihre ausführbaren gegenüber nur diagnostizierten Komponenten korrekt ausweist;
 - ein weiterer Adapter ausschließlich über den dokumentierten Adaptervertrag hinzugefügt werden kann;
 - ein auf einen Registry-Commit gepinnter Verbraucher ein Bundle offline prüfen und atomar materialisieren kann.
 
@@ -493,5 +522,14 @@ Zu migrieren beziehungsweise vollständig neu zu generieren:
 - `plugins/mattpocock-skills/**`
 - `plugins/azure/**`
 - `plugins/superpowers/**`
+
+## 22. Normative Referenzen
+
+Die Adapter implementieren die am Entwurfsdatum dokumentierten Hostformate; die Offline-Fixtures frieren die jeweils unterstützte Schemaform ein. Änderungen dieser Quellen werden wie Adapteränderungen behandelt und können eine neue Distributionsversion auslösen:
+
+- [Claude Code Plugins Reference](https://code.claude.com/docs/en/plugins-reference)
+- [OpenAI: Package your plugin](https://developers.openai.com/plugins/build/plugins)
+- [OpenAI: Build skills](https://developers.openai.com/plugins/build/skills)
+- [OpenClaw Plugin bundles](https://docs.openclaw.ai/plugins/bundles)
 
 Die eigentliche Umsetzung soll aus dieser Spezifikation in einen separaten, testgetriebenen Implementierungsplan zerlegt werden. Dieser Entwurf nimmt noch keine Änderungen am Generator oder an generierten Plugin-Bundles vor.
