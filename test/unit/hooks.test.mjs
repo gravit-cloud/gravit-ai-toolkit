@@ -294,6 +294,37 @@ test("rejects blocked shell launchers without inspecting their embedded payloads
   }
 });
 
+test("rejects shell control prefixes before inspecting their embedded payloads", () => {
+  for (const command of [
+    'eval "node /tmp/run.mjs"',
+    'exec bash -c "node /tmp/run.mjs"',
+    'command bash -c "node /tmp/run.mjs"',
+    'builtin eval "node /tmp/run.mjs"',
+    'trap "node /tmp/run.mjs" EXIT',
+    'time bash -c "node /tmp/run.mjs"',
+    '! bash -c "node /tmp/run.mjs"',
+    "source /tmp/run.sh",
+    ". /tmp/run.sh",
+    'coproc bash -c "node /tmp/run.mjs"',
+    'tools/EVAL.SH.EXE "node /tmp/run.mjs"',
+    '\"EXEC\" bash -c "node /tmp/run.mjs"',
+    "'COMMAND' bash -c \"node /tmp/run.mjs\"",
+    'tools/BUILTIN.CMD eval "node /tmp/run.mjs"',
+    'tools/TRAP.BAT "node /tmp/run.mjs" EXIT',
+    'tools/TIME.PS1 bash -c "node /tmp/run.mjs"',
+    '"!" bash -c "node /tmp/run.mjs"',
+    "tools/SOURCE.WSH /tmp/run.sh",
+    "'tools/.' /tmp/run.sh",
+    'tools/COPROC.SH bash -c "node /tmp/run.mjs"',
+  ]) {
+    assert.throws(
+      () => normalizeCommand(command),
+      /blocked hook command shell control/,
+      command,
+    );
+  }
+});
+
 test("rejects dynamic interpreter evaluation modes across path and suffix spellings", () => {
   for (const command of [
     'node -e "import(\'/tmp/run.mjs\')"',
@@ -453,7 +484,7 @@ test("normalizing a relative executable hook never runs it", (context) => {
   assert.equal(existsSync(sentinel), false);
 });
 
-test("rejecting shell composition and assignments never runs trailing commands", (context) => {
+test("rejecting shell composition, assignments, and controls never runs commands", (context) => {
   const root = mkdtempSync(resolve(tmpdir(), "hooks-rejected-never-run-"));
   const originalCwd = process.cwd();
   context.after(() => {
@@ -472,6 +503,16 @@ test("rejecting shell composition and assignments never runs trailing commands",
     "MODE=x bin/helper",
     'node "$(bin/helper)"',
     'node "`bin/helper`"',
+    'eval "bin/helper"',
+    "exec bin/helper",
+    "command bin/helper",
+    "builtin source bin/helper",
+    "trap bin/helper EXIT",
+    "time bin/helper",
+    "! bin/helper",
+    "source bin/helper",
+    ". bin/helper",
+    "coproc bin/helper",
   ]) {
     assert.throws(() => normalizeCommand(command));
   }
