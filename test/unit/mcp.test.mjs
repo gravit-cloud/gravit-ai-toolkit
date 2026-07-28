@@ -257,12 +257,16 @@ test("rejects ambiguous Win32 aliases and device paths in normalizer and writer"
     "//Device/HarddiskVolume1/tools/fixture.exe",
     "////dEvIcE\\\\HarddiskVolume1//tools\\fixture.exe",
     "/\\/GLOBAL??\\\\C:\\tools\\fixture.exe",
+    "/??//C:/tools/fixture.exe",
+    "/Device//HarddiskVolume1/tools/fixture.exe",
+    "/gLoBaL??//C:/tools/fixture.exe",
+    "/DOSDEVICES//C:/tools/fixture.exe",
   ];
 
   for (const [index, command] of commands.entries()) {
     assert.throws(
       () => normalizeMcp({ record: wrappedServer({ command }) }),
-      /Windows MCP command path/,
+      /Windows (?:executable path|device namespace)/,
     );
 
     const filePath = resolve(root, String(index), ".mcp.json");
@@ -279,7 +283,7 @@ test("rejects ambiguous Win32 aliases and device paths in normalizer and writer"
         target: "claude",
         filePath,
       }),
-      /Windows MCP command path/,
+      /Windows (?:executable path|device namespace)/,
     );
     assert.equal(existsSync(filePath), false);
   }
@@ -358,10 +362,13 @@ test("rejects command strings that embed executable arguments", () => {
     "bash -lc",
     "node server.mjs",
     '"C:\\tools\\npx.cmd" -y',
+    '"npx"',
+    "'docker'",
+    "`bash`",
   ]) {
     assert.throws(
       () => normalizeMcp({ record: wrappedServer({ command }) }),
-      /MCP command must not embed arguments/,
+      /executable token (?:contains an unsafe quote|must not embed arguments)/,
     );
   }
 });
@@ -715,12 +722,16 @@ test("rejects ambiguous Win32 aliases in nested container commands and entrypoin
     ["run", image, "/Device\\HarddiskVolume1\\tools\\fixture.exe"],
     ["run", "--entrypoint=/Global??\\C:\\tools\\fixture.exe", image],
     ["run", image, "//dOsDeViCeS\\C:\\tools\\fixture.exe"],
+    ["run", "--entrypoint", "/??//C:/tools/fixture.exe", image],
+    ["run", "--entrypoint=/Device//HarddiskVolume1/tools/fixture.exe", image],
+    ["run", image, "/Global??//C:/tools/fixture.exe"],
+    ["run", image, "/DosDevices//C:/tools/fixture.exe"],
   ];
 
   for (const [index, args] of invocations.entries()) {
     assert.throws(
       () => normalizeMcp({ record: wrappedServer({ command: "docker", args }) }),
-      /Windows MCP command path/,
+      /Windows (?:executable path|device namespace)/,
     );
 
     const filePath = resolve(root, String(index), ".mcp.json");
@@ -737,7 +748,7 @@ test("rejects ambiguous Win32 aliases in nested container commands and entrypoin
         target: "codex",
         filePath,
       }),
-      /Windows MCP command path/,
+      /Windows (?:executable path|device namespace)/,
     );
     assert.equal(existsSync(filePath), false);
   }
@@ -757,7 +768,7 @@ test("validates hyphen-leading nested executable paths in every container positi
   for (const [index, args] of invocations.entries()) {
     assert.throws(
       () => normalizeMcp({ record: wrappedServer({ command: "docker", args }) }),
-      /Windows MCP command path/,
+      /Windows (?:executable path|device namespace)/,
     );
 
     const filePath = resolve(root, String(index), ".mcp.json");
@@ -774,7 +785,7 @@ test("validates hyphen-leading nested executable paths in every container positi
         target: "claude",
         filePath,
       }),
-      /Windows MCP command path/,
+      /Windows (?:executable path|device namespace)/,
     );
     assert.equal(existsSync(filePath), false);
   }
@@ -906,6 +917,27 @@ test("writer rejects unsupported targets, duplicate IDs, and malformed server in
     }),
     /stdio MCP server must not define a URL/,
   );
+});
+
+test("writer validates every executable before creating any output", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "mcp-writer-atomic-validation-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const filePath = resolve(root, "nested/.mcp.json");
+  const safe = normalizeMcp({ record: wrappedServer({ command: "node" }, "safe") })[0];
+  const unsafe = {
+    id: "unsafe",
+    transport: "stdio",
+    command: '"npx"',
+    args: ["@fixture/mcp@1.4.2"],
+    env: {},
+    runtimeDependencies: { "@fixture/mcp": "1.4.2" },
+  };
+
+  assert.throws(
+    () => writeMcpConfig({ servers: [safe, unsafe], target: "claude", filePath }),
+    /unsafe quote/,
+  );
+  assert.equal(existsSync(filePath), false);
 });
 
 for (const { name, server, error } of [
