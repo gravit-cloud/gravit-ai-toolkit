@@ -62,6 +62,23 @@ test("accepts exact runtime dependency pins and rejects floating selectors", () 
   }
 });
 
+test("rejects invalid and prototype-like runtime dependency package names", () => {
+  const catalog = fixtureCatalog();
+  for (const name of [
+    "not a package",
+    "@scope/pkg@latest",
+    "constructor",
+    "prototype",
+    "__proto__",
+  ]) {
+    catalog.plugins[0].runtimeDependencies = Object.fromEntries([[name, "1.4.2"]]);
+    assert.throws(
+      () => validateCatalog(catalog),
+      /invalid registry catalog/,
+    );
+  }
+});
+
 test("rejects duplicate plugin names after schema validation", () => {
   const catalog = loadCatalog({
     repositoryRoot,

@@ -3,7 +3,10 @@ import { readJson, writeJson } from "./json.mjs";
 
 const EXACT_SEMVER_SOURCE = String.raw`(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:(?:0|[1-9]\d*)|(?:\d*[A-Za-z-][0-9A-Za-z-]*))(?:\.(?:(?:0|[1-9]\d*)|(?:\d*[A-Za-z-][0-9A-Za-z-]*)))*)?`;
 const EXACT_SEMVER = new RegExp("^" + EXACT_SEMVER_SOURCE + "$");
-const NPM_PACKAGE = /^(@[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*|[a-z0-9][a-z0-9._-]*)(?:@([^@]+))?$/;
+const NPM_PACKAGE_NAME_SOURCE = String.raw`(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*`;
+const NPM_PACKAGE_NAME = new RegExp("^" + NPM_PACKAGE_NAME_SOURCE + "$");
+const NPM_PACKAGE = new RegExp("^(" + NPM_PACKAGE_NAME_SOURCE + ")(?:@([^@]+))?$");
+const PROTOTYPE_PACKAGE_NAMES = new Set(["__proto__", "constructor", "prototype"]);
 const SERVER_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const CONTAINER_COMMANDS = new Set([
@@ -43,6 +46,65 @@ const CONTAINER_VALUE_OPTIONS = new Set([
   "--workdir",
 ]);
 const SERVER_FIELDS = new Set(["args", "command", "env", "type", "url"]);
+const NORMALIZED_SERVER_FIELDS = new Set([
+  "args",
+  "command",
+  "env",
+  "id",
+  "runtimeDependencies",
+  "transport",
+  "url",
+]);
+const DYNAMIC_LAUNCHERS = new Set([
+  "bunx",
+  "bunx.exe",
+  "bunx.ps1",
+  "env",
+  "env.exe",
+  "npm",
+  "npm.cmd",
+  "npm.exe",
+  "npm.ps1",
+  "npx.exe",
+  "npx.ps1",
+  "pnpm",
+  "pnpm.cmd",
+  "pnpm.exe",
+  "pnpm.ps1",
+  "pnpx",
+  "pnpx.cmd",
+  "uvx",
+  "uvx.exe",
+  "uvx.ps1",
+  "yarn",
+  "yarn.cmd",
+  "yarn.exe",
+  "yarn.ps1",
+  "yarnpkg",
+  "yarnpkg.cmd",
+]);
+const SHELL_LAUNCHERS = new Set([
+  "bash",
+  "bash.exe",
+  "cmd",
+  "cmd.exe",
+  "dash",
+  "dash.exe",
+  "fish",
+  "fish.exe",
+  "ksh",
+  "ksh.exe",
+  "powershell",
+  "powershell.exe",
+  "pwsh",
+  "pwsh.exe",
+  "sh",
+  "sh.exe",
+  "wsl",
+  "wsl.exe",
+  "zsh",
+  "zsh.exe",
+]);
 
 function isObject(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
@@ -52,6 +114,24 @@ function isObject(value) {
 
 function hasOwn(value, key) {
   return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function isNpmPackageName(value) {
+  return NPM_PACKAGE_NAME.test(value) && !PROTOTYPE_PACKAGE_NAMES.has(value);
+}
+
+function commandBasename(command) {
+  return command.split(/[\\/]/).at(-1).toLowerCase();
+}
+
+function runtimeKind(command) {
+  const basename = commandBasename(command);
+  if (["npx", "npx.cmd"].includes(basename)) return { basename, kind: "npx" };
+  if (CONTAINER_COMMANDS.has(basename)) return { basename, kind: "container" };
+  if (DYNAMIC_LAUNCHERS.has(basename) || SHELL_LAUNCHERS.has(basename)) {
+    return { basename, kind: "blocked" };
+  }
+  return { basename, kind: "static" };
 }
 
 function sourceObject(record) {
@@ -82,7 +162,7 @@ function serverMap(source) {
 function validateRuntimePins(runtimePins) {
   if (!isObject(runtimePins)) throw new Error("MCP runtime pins must be an object");
   for (const [name, version] of Object.entries(runtimePins)) {
-    if (!NPM_PACKAGE.test(name) || name.includes("@", 1)) {
+    if (!isNpmPackageName(name)) {
       throw new Error("invalid MCP catalog package name: " + name);
     }
     if (typeof version !== "string" || !EXACT_SEMVER.test(version)) {
@@ -117,10 +197,12 @@ function safeEnv(serverId, env) {
 
 function parseNpmPackage(spec) {
   const match = NPM_PACKAGE.exec(spec);
-  return match ? { name: match[1], version: match[2] } : undefined;
+  return match && isNpmPackageName(match[1])
+    ? { name: match[1], version: match[2] }
+    : undefined;
 }
 
-function pinNpxArgs(args, runtimePins) {
+function pinNpxArgs(args, runtimePins, { allowLatest }) {
   let packageIndex = 0;
   let sawYes = false;
   let sawSeparator = false;
@@ -151,6 +233,9 @@ function pinNpxArgs(args, runtimePins) {
 
   if (!hasOwn(runtimePins, parsed.name)) throw new Error("unpinned MCP package " + parsed.name);
   const pinnedVersion = runtimePins[parsed.name];
+  if (parsed.version === "latest" && !allowLatest) {
+    throw new Error("floating MCP package version: " + parsed.name + "@latest");
+  }
   if (parsed.version && parsed.version !== "latest") {
     if (!EXACT_SEMVER.test(parsed.version)) {
       throw new Error("floating MCP package version: " + parsed.name + "@" + parsed.version);
@@ -183,9 +268,10 @@ function validateContainerOptionValue(option, value) {
   }
 }
 
-function containerImage(args) {
+function containerInvocation(args) {
   if (args[0] !== "run") throw new Error("container MCP command must use run");
   let index = 1;
+  let entrypoint;
   while (index < args.length) {
     const argument = args[index];
     if (argument === "--") {
@@ -205,105 +291,124 @@ function containerImage(args) {
     if (equalsIndex !== -1) {
       const value = argument.slice(equalsIndex + 1);
       validateContainerOptionValue(option, value);
+      if (option === "--entrypoint") entrypoint = value;
       index += 1;
       continue;
     }
     validateContainerOptionValue(option, args[index + 1]);
+    if (option === "--entrypoint") entrypoint = args[index + 1];
     index += 2;
   }
   if (index >= args.length) throw new Error("container MCP command is missing an image");
-  return args[index];
+  return { entrypoint, image: args[index], imageIndex: index };
 }
 
 function assertPinnedContainerImage(image) {
-  const digest = /^([^@\s]+)@sha256:([a-f0-9]{64})$/.exec(image);
-  if (digest) return;
-  if (image.includes("@") || /\s/.test(image)) {
-    throw new Error("container image must use an exact version tag or sha256 digest: " + image);
+  const match = /^([^@\s]+)@sha256:[a-f0-9]{64}$/.exec(image);
+  if (match) {
+    const name = match[1];
+    if (name.lastIndexOf(":") <= name.lastIndexOf("/")) return;
   }
-  const lastSlash = image.lastIndexOf("/");
-  const lastColon = image.lastIndexOf(":");
-  const tag = lastColon > lastSlash ? image.slice(lastColon + 1) : "";
-  if (!new RegExp("^v?" + EXACT_SEMVER_SOURCE + "$").test(tag)) {
-    throw new Error("container image must use an exact version tag or sha256 digest: " + image);
+  throw new Error("container image must use an immutable sha256 digest: " + image);
+}
+
+function assertNoNestedContainerRuntime(command) {
+  if (command === undefined || command.startsWith("-")) return;
+  if (runtimeKind(command).kind !== "static") {
+    throw new Error("container MCP must not launch nested runtime: " + command);
   }
 }
 
-function pinArgs(command, args, runtimePins) {
-  if (["npx", "npx.cmd"].includes(command)) return pinNpxArgs(args, runtimePins);
-  if (CONTAINER_COMMANDS.has(command)) {
-    assertPinnedContainerImage(containerImage(args));
+function pinArgs(command, args, runtimePins, { allowLatest }) {
+  const runtime = runtimeKind(command);
+  if (runtime.kind === "npx") return pinNpxArgs(args, runtimePins, { allowLatest });
+  if (runtime.kind === "blocked") {
+    throw new Error("unsupported dynamic MCP launcher: " + runtime.basename);
+  }
+  if (runtime.kind === "container") {
+    const invocation = containerInvocation(args);
+    assertPinnedContainerImage(invocation.image);
+    assertNoNestedContainerRuntime(invocation.entrypoint);
+    assertNoNestedContainerRuntime(args[invocation.imageIndex + 1]);
   }
   return { args, runtimeDependencies: {} };
 }
 
-function normalizedServer(id, server, runtimePins) {
+function sourceServer(id, server) {
   if (!SERVER_ID.test(id)) throw new Error("invalid MCP server ID: " + id);
   if (!isObject(server)) throw new Error("MCP server " + id + " must be an object");
   for (const field of Object.keys(server).sort(compareCodePoints)) {
     if (!SERVER_FIELDS.has(field)) throw new Error("unknown MCP server field: " + id + "." + field);
   }
 
-  const transport = server.type === undefined ? (server.url === undefined ? "stdio" : "http") : server.type;
-  if (!["stdio", "http", "sse"].includes(transport)) {
-    throw new Error("unsupported MCP transport for " + id + ": " + String(transport));
+  const candidate = {
+    id,
+    transport: hasOwn(server, "type") ? server.type : (hasOwn(server, "url") ? "http" : "stdio"),
+  };
+  for (const field of ["command", "args", "env", "url"]) {
+    if (hasOwn(server, field)) candidate[field] = server[field];
   }
-  const env = safeEnv(id, server.env === undefined ? {} : server.env);
-  if (transport === "stdio") {
-    if (typeof server.command !== "string" || server.command.trim().length === 0) {
-      throw new Error("MCP command must be a non-empty string: " + id);
-    }
-    if (server.url !== undefined) throw new Error("stdio MCP server must not define a URL: " + id);
-    const args = validateArgs(id, server.args === undefined ? [] : server.args);
-    const pinned = pinArgs(server.command, args, runtimePins);
-    return {
-      id,
-      transport,
-      command: server.command,
-      args: pinned.args,
-      env,
-      runtimeDependencies: pinned.runtimeDependencies,
-    };
-  }
+  return candidate;
+}
 
-  if (server.command !== undefined || server.args !== undefined) {
-    throw new Error("remote MCP server must not define command or args: " + id);
-  }
-  if (typeof server.url !== "string" || server.url.length === 0) {
-    throw new Error("remote MCP server must define a URL: " + id);
+function safeRemoteUrl(serverId, value) {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error("remote MCP server must define a URL: " + serverId);
   }
   let url;
   try {
-    url = new URL(server.url);
+    url = new URL(value);
   } catch {
-    throw new Error("remote MCP URL must use HTTP or HTTPS: " + id);
+    throw new Error("remote MCP URL must use HTTP or HTTPS: " + serverId);
   }
   if (!["http:", "https:"].includes(url.protocol)) {
-    throw new Error("remote MCP URL must use HTTP or HTTPS: " + id);
+    throw new Error("remote MCP URL must use HTTP or HTTPS: " + serverId);
   }
   if (url.username || url.password) {
-    throw new Error("remote MCP URL must not embed credentials: " + id);
+    throw new Error("remote MCP URL must not embed credentials: " + serverId);
   }
-  return {
-    id,
-    transport,
-    env,
-    url: server.url,
-    runtimeDependencies: {},
-  };
+  return value;
 }
 
-export function normalizeMcp({ record, runtimePins = {} }) {
-  validateRuntimePins(runtimePins);
-  return Object.entries(serverMap(sourceObject(record)))
-    .sort(([left], [right]) => compareCodePoints(left, right))
-    .map(([id, server]) => normalizedServer(id, server, runtimePins));
+function equalStringArrays(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
-function writerFields(server) {
+function equalRuntimeDependencies(left, right) {
+  const leftKeys = Object.keys(left).sort(compareCodePoints);
+  const rightKeys = Object.keys(right).sort(compareCodePoints);
+  return equalStringArrays(leftKeys, rightKeys) &&
+    leftKeys.every((key) => left[key] === right[key]);
+}
+
+function canonicalServer({
+  server,
+  runtimePins,
+  allowLatest,
+  requireCanonicalInput,
+}) {
   if (!isObject(server)) throw new Error("normalized MCP server must be an object");
-  if (!SERVER_ID.test(server.id)) throw new Error("invalid MCP server ID: " + String(server.id));
-  const env = safeEnv(server.id, server.env === undefined ? {} : server.env);
+  for (const field of Object.keys(server).sort(compareCodePoints)) {
+    if (!NORMALIZED_SERVER_FIELDS.has(field)) {
+      throw new Error("unknown normalized MCP server field: " + field);
+    }
+  }
+  if (!SERVER_ID.test(server.id)) {
+    throw new Error("invalid MCP server ID: " + String(server.id));
+  }
+  if (requireCanonicalInput) {
+    for (const field of ["env", "runtimeDependencies", "transport"]) {
+      if (!hasOwn(server, field)) {
+        throw new Error("normalized MCP server is missing field: " + field);
+      }
+    }
+  }
+  validateRuntimePins(runtimePins);
+
+  if (!["stdio", "http", "sse"].includes(server.transport)) {
+    throw new Error("unsupported MCP transport for " + server.id + ": " + String(server.transport));
+  }
+  const env = safeEnv(server.id, hasOwn(server, "env") ? server.env : {});
   if (server.transport === "stdio") {
     if (typeof server.command !== "string" || server.command.trim().length === 0) {
       throw new Error("MCP command must be a non-empty string: " + server.id);
@@ -311,26 +416,73 @@ function writerFields(server) {
     if (hasOwn(server, "url")) {
       throw new Error("stdio MCP server must not define a URL: " + server.id);
     }
-    const args = validateArgs(server.id, server.args === undefined ? [] : server.args);
-    return Object.fromEntries([
-      ["command", server.command],
-      args.length > 0 ? ["args", args] : undefined,
-      Object.keys(env).length > 0 ? ["env", env] : undefined,
-    ].filter(Boolean));
+    if (requireCanonicalInput && !hasOwn(server, "args")) {
+      throw new Error("normalized MCP server is missing field: args");
+    }
+    const args = validateArgs(server.id, hasOwn(server, "args") ? server.args : []);
+    const pinned = pinArgs(server.command, args, runtimePins, { allowLatest });
+    if (requireCanonicalInput && !equalStringArrays(args, pinned.args)) {
+      throw new Error("normalized MCP server arguments are not canonical: " + server.id);
+    }
+    if (
+      requireCanonicalInput &&
+      !equalRuntimeDependencies(server.runtimeDependencies, pinned.runtimeDependencies)
+    ) {
+      throw new Error("MCP runtime dependencies disagree with command: " + server.id);
+    }
+    return {
+      id: server.id,
+      transport: server.transport,
+      command: server.command,
+      args: pinned.args,
+      env,
+      runtimeDependencies: pinned.runtimeDependencies,
+    };
   }
-  if (!["http", "sse"].includes(server.transport)) {
-    throw new Error("unsupported MCP transport for " + server.id + ": " + String(server.transport));
-  }
+
   if (hasOwn(server, "command") || hasOwn(server, "args")) {
     throw new Error("remote MCP server must not define command or args: " + server.id);
   }
-  if (typeof server.url !== "string" || server.url.length === 0) {
-    throw new Error("remote MCP server must define a URL: " + server.id);
+  const url = safeRemoteUrl(server.id, server.url);
+  const runtimeDependencies = {};
+  if (
+    requireCanonicalInput &&
+    !equalRuntimeDependencies(server.runtimeDependencies, runtimeDependencies)
+  ) {
+    throw new Error("MCP runtime dependencies disagree with command: " + server.id);
+  }
+  return {
+    id: server.id,
+    transport: server.transport,
+    env,
+    url,
+    runtimeDependencies,
+  };
+}
+
+export function normalizeMcp({ record, runtimePins = {} }) {
+  return Object.entries(serverMap(sourceObject(record)))
+    .sort(([left], [right]) => compareCodePoints(left, right))
+    .map(([id, server]) => canonicalServer({
+      server: sourceServer(id, server),
+      runtimePins,
+      allowLatest: true,
+      requireCanonicalInput: false,
+    }));
+}
+
+function hostFields(server) {
+  if (server.transport === "stdio") {
+    return Object.fromEntries([
+      ["command", server.command],
+      server.args.length > 0 ? ["args", server.args] : undefined,
+      Object.keys(server.env).length > 0 ? ["env", server.env] : undefined,
+    ].filter(Boolean));
   }
   return Object.fromEntries([
     ["type", server.transport],
     ["url", server.url],
-    Object.keys(env).length > 0 ? ["env", env] : undefined,
+    Object.keys(server.env).length > 0 ? ["env", server.env] : undefined,
   ].filter(Boolean));
 }
 
@@ -343,10 +495,15 @@ export function writeMcpConfig({ servers, target, filePath }) {
   const entries = [...servers]
     .sort((left, right) => compareCodePoints(left?.id, right?.id))
     .map((server) => {
-      const fields = writerFields(server);
-      if (seen.has(server.id)) throw new Error("duplicate MCP server ID: " + server.id);
-      seen.add(server.id);
-      return [server.id, fields];
+      const canonical = canonicalServer({
+        server,
+        runtimePins: isObject(server) ? server.runtimeDependencies : undefined,
+        allowLatest: false,
+        requireCanonicalInput: true,
+      });
+      if (seen.has(canonical.id)) throw new Error("duplicate MCP server ID: " + canonical.id);
+      seen.add(canonical.id);
+      return [canonical.id, hostFields(canonical)];
     });
   writeJson(filePath, target === "codex"
     ? { mcp_servers: Object.fromEntries(entries) }
