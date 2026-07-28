@@ -7,6 +7,9 @@
       "description": "Nested skill rendering fixture",
       "category": "development",
       "distributionVersion": "1.0.0-gravit.1",
+      "runtimeDependencies": {
+        "@fixture/mcp": "1.4.2"
+      },
       "source": {
         "type": "local",
         "path": "test/fixtures/skill-only-source",
