@@ -148,7 +148,10 @@ test("supports only unambiguous npx and npx.cmd yes-option forms", () => {
 test("detects supported npx commands by POSIX and Windows basename", () => {
   for (const command of [
     "/usr/local/bin/npx",
+    "/opt/Program Files/bin/NPX.EXE",
     "C:\\Program Files\\nodejs\\npx.cmd",
+    "C:\\tools\\nPx.BaT",
+    "C:\\tools\\NPX.PS1",
   ]) {
     assert.deepEqual(normalizeMcp({
       record: wrappedServer(npxServer(["-y", "@fixture/mcp@latest"], command)),
@@ -160,6 +163,62 @@ test("detects supported npx commands by POSIX and Windows basename", () => {
       args: ["-y", "@fixture/mcp@1.4.2"],
       env: {},
       runtimeDependencies: { "@fixture/mcp": "1.4.2" },
+    });
+  }
+});
+
+test("normalizes executable suffixes and aliases before blocking dynamic launchers", () => {
+  for (const command of [
+    "C:\\tools\\bunx.cmd",
+    "C:\\tools\\UVX.CMD",
+    "C:\\tools\\env.cmd",
+    "C:\\tools\\bash.cmd",
+    "C:\\tools\\pnpx.exe",
+    "C:\\tools\\yarnpkg.exe",
+    "/opt/tools/BuNx.CoM",
+    "/opt/tools/yarnpkg.PS1",
+    "corepack.bat",
+    "pipx.com",
+  ]) {
+    assert.throws(
+      () => normalizeMcp({
+        record: wrappedServer({ command, args: ["@fixture/mcp"] }),
+      }),
+      /unsupported dynamic MCP launcher/,
+    );
+  }
+});
+
+test("rejects command strings that embed executable arguments", () => {
+  for (const command of [
+    "npx -y",
+    "docker run",
+    "bash -lc",
+    "node server.mjs",
+    '"C:\\tools\\npx.cmd" -y',
+  ]) {
+    assert.throws(
+      () => normalizeMcp({ record: wrappedServer({ command }) }),
+      /MCP command must not embed arguments/,
+    );
+  }
+});
+
+test("allows safe static commands after portable stem normalization", () => {
+  for (const command of [
+    "fixture-server",
+    "/opt/Program Files/bin/fixture-server.exe",
+    "C:\\tools\\fixture-server.CMD",
+  ]) {
+    assert.deepEqual(normalizeMcp({
+      record: wrappedServer({ command, args: ["serve"] }),
+    })[0], {
+      id: "fixture",
+      transport: "stdio",
+      command,
+      args: ["serve"],
+      env: {},
+      runtimeDependencies: {},
     });
   }
 });
@@ -427,8 +486,11 @@ test("container parsing does not mistake option values for the image or embed en
 test("detects container runtimes by POSIX and Windows command basename", () => {
   for (const command of [
     "/usr/bin/docker",
+    "C:\\tools\\DOCKER.CMD",
     "C:\\Program Files\\RedHat\\podman.exe",
+    "C:\\tools\\podman.CmD",
     "/usr/local/bin/container",
+    "C:\\tools\\container.BAT",
   ]) {
     assert.throws(
       () => normalizeMcp({
@@ -442,6 +504,15 @@ test("detects container runtimes by POSIX and Windows command basename", () => {
   }
 });
 
+test("accepts suffixed container runtimes only with an immutable image digest", () => {
+  const image = "ghcr.io/fixture/mcp@sha256:" + "e".repeat(64);
+  for (const command of ["docker.exe", "podman.cmd", "container.com"]) {
+    assert.equal(normalizeMcp({
+      record: wrappedServer({ command, args: ["run", image] }),
+    })[0].command, command);
+  }
+});
+
 test("rejects nested dynamic launchers in container commands and entrypoints", () => {
   const image = "ghcr.io/fixture/mcp@sha256:" + "c".repeat(64);
   for (const args of [
@@ -451,6 +522,8 @@ test("rejects nested dynamic launchers in container commands and entrypoints", (
     ["run", image, "docker", "run", image],
     ["run", "--entrypoint", "npx", image],
     ["run", "--entrypoint=/bin/sh", image],
+    ["run", "--entrypoint", "C:\\tools\\uvx.cmd", image],
+    ["run", image, "C:\\tools\\YARNPKG.EXE", "fixture"],
   ]) {
     assert.throws(
       () => normalizeMcp({ record: wrappedServer({ command: "docker", args }) }),
