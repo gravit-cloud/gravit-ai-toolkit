@@ -9,14 +9,7 @@ const NPM_PACKAGE = new RegExp("^(" + NPM_PACKAGE_NAME_SOURCE + ")(?:@([^@]+))?$
 const PROTOTYPE_PACKAGE_NAMES = new Set(["__proto__", "constructor", "prototype"]);
 const SERVER_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const CONTAINER_COMMANDS = new Set([
-  "container",
-  "container.exe",
-  "docker",
-  "docker.exe",
-  "podman",
-  "podman.exe",
-]);
+const CONTAINER_COMMANDS = new Set(["container", "docker", "podman"]);
 const CONTAINER_BOOLEAN_OPTIONS = new Set([
   "-i",
   "-t",
@@ -57,53 +50,44 @@ const NORMALIZED_SERVER_FIELDS = new Set([
 ]);
 const DYNAMIC_LAUNCHERS = new Set([
   "bunx",
-  "bunx.exe",
-  "bunx.ps1",
+  "corepack",
   "env",
-  "env.exe",
   "npm",
-  "npm.cmd",
-  "npm.exe",
-  "npm.ps1",
-  "npx.exe",
-  "npx.ps1",
+  "pipx",
   "pnpm",
-  "pnpm.cmd",
-  "pnpm.exe",
-  "pnpm.ps1",
-  "pnpx",
-  "pnpx.cmd",
   "uvx",
-  "uvx.exe",
-  "uvx.ps1",
   "yarn",
-  "yarn.cmd",
-  "yarn.exe",
-  "yarn.ps1",
-  "yarnpkg",
-  "yarnpkg.cmd",
 ]);
 const SHELL_LAUNCHERS = new Set([
   "bash",
-  "bash.exe",
   "cmd",
-  "cmd.exe",
   "dash",
-  "dash.exe",
   "fish",
-  "fish.exe",
   "ksh",
-  "ksh.exe",
   "powershell",
-  "powershell.exe",
   "pwsh",
-  "pwsh.exe",
   "sh",
-  "sh.exe",
   "wsl",
-  "wsl.exe",
   "zsh",
-  "zsh.exe",
+]);
+const EXECUTABLE_WRAPPER_SUFFIXES = [
+  ".exe",
+  ".cmd",
+  ".bat",
+  ".com",
+  ".ps1",
+  ".psm1",
+  ".vbs",
+  ".vbe",
+  ".wsf",
+  ".wsh",
+  ".js",
+  ".mjs",
+  ".cjs",
+];
+const EXECUTABLE_ALIASES = new Map([
+  ["pnpx", "pnpm"],
+  ["yarnpkg", "yarn"],
 ]);
 
 function isObject(value) {
@@ -120,18 +104,31 @@ function isNpmPackageName(value) {
   return NPM_PACKAGE_NAME.test(value) && !PROTOTYPE_PACKAGE_NAMES.has(value);
 }
 
-function commandBasename(command) {
-  return command.split(/[\\/]/).at(-1).toLowerCase();
+function executableStem(command) {
+  if (command !== command.trim()) {
+    throw new Error("MCP command must not embed arguments: " + command);
+  }
+  const basename = command.split(/[\\/]/).at(-1);
+  if (!basename || /\s/u.test(basename)) {
+    throw new Error("MCP command must not embed arguments: " + command);
+  }
+  let stem = basename.toLowerCase();
+  let suffix;
+  do {
+    suffix = EXECUTABLE_WRAPPER_SUFFIXES.find((candidate) => stem.endsWith(candidate));
+    if (suffix) stem = stem.slice(0, -suffix.length);
+  } while (suffix);
+  return EXECUTABLE_ALIASES.get(stem) || stem;
 }
 
 function runtimeKind(command) {
-  const basename = commandBasename(command);
-  if (["npx", "npx.cmd"].includes(basename)) return { basename, kind: "npx" };
-  if (CONTAINER_COMMANDS.has(basename)) return { basename, kind: "container" };
-  if (DYNAMIC_LAUNCHERS.has(basename) || SHELL_LAUNCHERS.has(basename)) {
-    return { basename, kind: "blocked" };
+  const stem = executableStem(command);
+  if (stem === "npx") return { kind: "npx", stem };
+  if (CONTAINER_COMMANDS.has(stem)) return { kind: "container", stem };
+  if (DYNAMIC_LAUNCHERS.has(stem) || SHELL_LAUNCHERS.has(stem)) {
+    return { kind: "blocked", stem };
   }
-  return { basename, kind: "static" };
+  return { kind: "static", stem };
 }
 
 function sourceObject(record) {
@@ -323,7 +320,7 @@ function pinArgs(command, args, runtimePins, { allowLatest }) {
   const runtime = runtimeKind(command);
   if (runtime.kind === "npx") return pinNpxArgs(args, runtimePins, { allowLatest });
   if (runtime.kind === "blocked") {
-    throw new Error("unsupported dynamic MCP launcher: " + runtime.basename);
+    throw new Error("unsupported dynamic MCP launcher: " + runtime.stem);
   }
   if (runtime.kind === "container") {
     const invocation = containerInvocation(args);
