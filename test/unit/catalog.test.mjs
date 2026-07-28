@@ -30,6 +30,36 @@ test("loads the checked-in fixture catalog", () => {
     catalogPath: "test/fixtures/skill-only-catalog.json",
   });
   assert.equal(catalog.plugins[0].name, "nested-skills");
+  assert.deepEqual(catalog.plugins[0].runtimeDependencies, {
+    "@fixture/mcp": "1.4.2",
+  });
+});
+
+test("accepts exact runtime dependency pins and rejects floating selectors", () => {
+  const catalog = fixtureCatalog();
+  catalog.plugins[0].runtimeDependencies = { "@fixture/mcp": "1.4.2-beta.1" };
+  assert.doesNotThrow(() => validateCatalog(catalog));
+
+  for (const version of [
+    "latest",
+    "next",
+    "*",
+    "^1.4.2",
+    "~1.4.2",
+    "1.4.x",
+    "1.4",
+    "01.4.2",
+    "1.04.2",
+    "1.4.02",
+    "1.4.2-alpha..1",
+    "1.4.2-alpha.01",
+  ]) {
+    catalog.plugins[0].runtimeDependencies = { "@fixture/mcp": version };
+    assert.throws(
+      () => validateCatalog(catalog),
+      /invalid registry catalog: .*must match pattern/,
+    );
+  }
 });
 
 test("rejects duplicate plugin names after schema validation", () => {
