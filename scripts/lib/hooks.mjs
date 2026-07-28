@@ -4,6 +4,18 @@ import { classifyRuntimeCommand } from "./runtime-command.mjs";
 const PROTOTYPE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const ROOT_REFERENCE = /\$\{(?:CLAUDE_PLUGIN_ROOT|PLUGIN_ROOT)\}/gu;
 const SHELL_TOKEN_BOUNDARIES = new Set([";", "&", "|", "<", ">", "(", ")", "`"]);
+const SHELL_CONTROL_COMMANDS = new Set([
+  ".",
+  "!",
+  "builtin",
+  "command",
+  "coproc",
+  "eval",
+  "exec",
+  "source",
+  "time",
+  "trap",
+]);
 const ENV_ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/u;
 const INTERPRETER_OPTIONS = {
   node: {
@@ -291,12 +303,18 @@ function assertSafeRuntimeCommand(command, tokens) {
   if (ENV_ASSIGNMENT.test(tokens[0])) {
     throw new Error("leading environment assignment in hook command: " + command);
   }
+  if (SHELL_CONTROL_COMMANDS.has(tokens[0])) {
+    throw new Error("blocked hook command shell control: " + command);
+  }
   let runtime;
   try {
     runtime = classifyRuntimeCommand(tokens[0]);
   } catch (error) {
     assertNoAbsoluteCommandPath(command, tokens);
     throw error;
+  }
+  if (SHELL_CONTROL_COMMANDS.has(runtime.stem)) {
+    throw new Error("blocked hook command shell control: " + command);
   }
   if (runtime.runtimeClass === "blocked") {
     throw new Error("blocked hook command runtime: " + command);
