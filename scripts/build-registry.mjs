@@ -17,6 +17,8 @@ import {
 } from "./lib/path-safety.mjs";
 import { stageSource } from "./lib/source-loader.mjs";
 
+const PRODUCTION_ROOT_NAMES = [".claude-plugin", ".agents", "plugins"];
+
 function assertSafeOutput({
   repositoryRoot,
   catalogPath,
@@ -51,6 +53,20 @@ function assertSafeOutput({
     || pathsOverlap(canonicalRepository, canonicalOutput)
   ) {
     throw new Error("unsafe registry output overlaps repository: " + lexicalOutput);
+  }
+
+  for (const name of PRODUCTION_ROOT_NAMES) {
+    const lexicalProductionRoot = resolve(lexicalRepository, name);
+    const canonicalProductionRoot = canonicalPath(lexicalProductionRoot);
+    if (
+      pathsOverlap(lexicalOutput, lexicalProductionRoot)
+      || pathsOverlap(canonicalOutput, canonicalProductionRoot)
+    ) {
+      throw new Error(
+        "unsafe registry output overlaps production root " + name + ": "
+          + lexicalOutput,
+      );
+    }
   }
 
   const lexicalCatalog = resolve(lexicalRepository, catalogPath);
