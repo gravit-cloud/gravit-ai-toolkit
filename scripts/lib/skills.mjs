@@ -9,7 +9,9 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, extname, isAbsolute, relative, resolve, win32 } from "node:path";
+import { decodeNamedCharacterReference } from "decode-named-character-reference";
 import { parse as parseMarkdown, postprocess, preprocess } from "micromark";
+import { decodeNumericCharacterReference } from "micromark-util-decode-numeric-character-reference";
 import { isTrueLike, parseFrontmatter } from "./frontmatter.mjs";
 import {
   assertInside,
@@ -155,17 +157,45 @@ const LINK_DESTINATION_TYPES = new Set([
   "definitionDestinationString",
   "resourceDestinationString",
 ]);
+const LINK_ESCAPE_TYPES = new Set(["characterEscape", "characterReference"]);
+
+function markdownBodyOffset(markdown) {
+  if (!markdown.startsWith("---\n") && !markdown.startsWith("---\r\n")) return 0;
+  try {
+    return parseFrontmatter(markdown).raw.length;
+  } catch {
+    return 0;
+  }
+}
 
 function markdownLinkDestinations(markdown) {
+  const bodyOffset = markdownBodyOffset(markdown);
+  const body = markdown.slice(bodyOffset);
   const events = postprocess(
-    parseMarkdown().document().write(preprocess()(markdown, "utf8", true)),
+    parseMarkdown().document().write(preprocess()(body, "utf8", true)),
   );
-  return events
-    .filter(([kind, token]) => kind === "exit" && LINK_DESTINATION_TYPES.has(token.type))
+  const escapes = events
+    .filter(([kind, token]) => kind === "exit" && LINK_ESCAPE_TYPES.has(token.type))
     .map(([, token]) => ({
       end: token.end.offset,
       start: token.start.offset,
-      wrapped: markdown[token.start.offset - 1] === "<",
+      type: token.type,
+    }));
+  return events
+    .filter(([kind, token]) => kind === "exit" && LINK_DESTINATION_TYPES.has(token.type))
+    .map(([, token]) => ({
+      end: bodyOffset + token.end.offset,
+      escapes: escapes
+        .filter((escape) => (
+          escape.start >= token.start.offset && escape.end <= token.end.offset
+        ))
+        .map((escape) => ({
+          ...escape,
+          end: escape.end - token.start.offset,
+          start: escape.start - token.start.offset,
+        })),
+      start: bodyOffset + token.start.offset,
+      wrapped: body[token.start.offset - 1] === "<",
     }))
     .sort((left, right) => right.start - left.start);
 }
@@ -174,7 +204,7 @@ function rewriteMarkdownLinks(markdown, rewriteDestination) {
   let result = markdown;
   for (const destination of markdownLinkDestinations(markdown)) {
     const rawTarget = markdown.slice(destination.start, destination.end);
-    const replacement = rewriteDestination(rawTarget, destination.wrapped);
+    const replacement = rewriteDestination(rawTarget, destination);
     if (replacement !== undefined) {
       result = result.slice(0, destination.start) + replacement + result.slice(destination.end);
     }
@@ -182,8 +212,42 @@ function rewriteMarkdownLinks(markdown, rewriteDestination) {
   return result;
 }
 
-function unescapeMarkdownDestination(destination) {
-  return destination.replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~])/g, "$1");
+function decodeCharacterReference(reference) {
+  const value = reference.slice(1, -1);
+  if (/^#x/i.test(value)) {
+    return decodeNumericCharacterReference(value.slice(2), 16);
+  }
+  if (value.startsWith("#")) {
+    return decodeNumericCharacterReference(value.slice(1), 10);
+  }
+  return decodeNamedCharacterReference(value) || reference;
+}
+
+function decodeMarkdownUriPath(rawPath, escapes) {
+  let decoded = rawPath;
+  for (const escape of [...escapes].sort((left, right) => right.start - left.start)) {
+    const raw = rawPath.slice(escape.start, escape.end);
+    const replacement = escape.type === "characterReference"
+      ? decodeCharacterReference(raw)
+      : raw.slice(1);
+    decoded = decoded.slice(0, escape.start) + replacement + decoded.slice(escape.end);
+  }
+  try {
+    return decodeURIComponent(decoded);
+  } catch (error) {
+    throw new Error("invalid percent encoding in local Markdown link: " + rawPath, {
+      cause: error,
+    });
+  }
+}
+
+function linkSuffixStart(rawTarget, escapes) {
+  for (let index = 0; index < rawTarget.length; index += 1) {
+    if (rawTarget[index] !== "?" && rawTarget[index] !== "#") continue;
+    if (escapes.some((escape) => escape.start <= index && index < escape.end)) continue;
+    return index;
+  }
+  return rawTarget.length;
 }
 
 function absoluteLinkTarget(rawTarget, targetPath) {
@@ -196,15 +260,77 @@ function absoluteLinkTarget(rawTarget, targetPath) {
   );
 }
 
-function localLink(rawTarget) {
+function localLink(rawTarget, destination) {
   if (!rawTarget || /^(?:[a-z][a-z\d+.-]*:|#)/i.test(rawTarget)) return undefined;
-  const hashIndex = rawTarget.indexOf("#");
-  const rawTargetPath = hashIndex === -1 ? rawTarget : rawTarget.slice(0, hashIndex);
-  const anchor = hashIndex === -1 ? "" : rawTarget.slice(hashIndex);
+  const suffixStart = linkSuffixStart(rawTarget, destination.escapes);
+  const rawTargetPath = rawTarget.slice(0, suffixStart);
+  const suffix = rawTarget.slice(suffixStart);
   if (!rawTargetPath) return undefined;
-  const targetPath = unescapeMarkdownDestination(rawTargetPath);
+  const pathEscapes = destination.escapes.filter((escape) => escape.end <= suffixStart);
+  const targetPath = decodeMarkdownUriPath(rawTargetPath, pathEscapes);
+  if (/^[a-z][a-z\d+.-]*:/i.test(targetPath)) return undefined;
   if (absoluteLinkTarget(rawTargetPath, targetPath)) return undefined;
-  return { anchor, rawTargetPath, targetPath };
+  return { pathEscapes, rawTargetPath, suffix, targetPath };
+}
+
+function rawPathSegments(link) {
+  const slashOffsets = [];
+  for (let index = 0; index < link.rawTargetPath.length; index += 1) {
+    if (
+      link.rawTargetPath[index] === "/"
+      && !link.pathEscapes.some((escape) => escape.start <= index && index < escape.end)
+    ) {
+      slashOffsets.push(index);
+    }
+  }
+
+  const segments = [];
+  let start = 0;
+  for (const end of [...slashOffsets, link.rawTargetPath.length]) {
+    const raw = link.rawTargetPath.slice(start, end);
+    const escapes = link.pathEscapes
+      .filter((escape) => escape.start >= start && escape.end <= end)
+      .map((escape) => ({
+        ...escape,
+        end: escape.end - start,
+        start: escape.start - start,
+      }));
+    const decoded = decodeMarkdownUriPath(raw, escapes);
+    if (decoded === "." || decoded === "") {
+      // Path normalization discards these components.
+    } else if (decoded === "..") {
+      if (segments.length > 0 && segments.at(-1).decoded !== "..") segments.pop();
+      else segments.push({ decoded, raw });
+    } else {
+      segments.push({ decoded, raw });
+    }
+    start = end + 1;
+  }
+  return segments;
+}
+
+function encodedPath(path) {
+  return path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment).replace(
+      /[!'()*]/g,
+      (character) => "%" + character.codePointAt(0).toString(16).toUpperCase(),
+    ))
+    .join("/");
+}
+
+function renderedOwnerRelativePath(link, ownerRelativePath) {
+  if (!ownerRelativePath) return "";
+  const expected = ownerRelativePath.split("/");
+  const available = rawPathSegments(link);
+  const tail = available.slice(-expected.length);
+  if (
+    tail.length === expected.length
+    && tail.every((segment, index) => segment.decoded === expected[index])
+  ) {
+    return tail.map((segment) => segment.raw).join("/");
+  }
+  return encodedPath(ownerRelativePath);
 }
 
 function rewriteLinks({ markdown, sourceMarkdownFile, destinationMarkdownFile, skills, destinationRoot }) {
@@ -213,10 +339,10 @@ function rewriteLinks({ markdown, sourceMarkdownFile, destinationMarkdownFile, s
     sourceDirectory: realpathSync(skill.sourceDirectory),
   }));
   const source = renderedOwner(skillRoots, realpathSync(sourceMarkdownFile));
-  return rewriteMarkdownLinks(markdown, (rawTarget, wrapped) => {
-    const link = localLink(rawTarget);
+  return rewriteMarkdownLinks(markdown, (rawTarget, destination) => {
+    const link = localLink(rawTarget, destination);
     if (!link) return undefined;
-    const { anchor, rawTargetPath, targetPath } = link;
+    const { suffix, targetPath } = link;
 
     const absoluteTarget = resolve(dirname(sourceMarkdownFile), targetPath);
     const exists = existsSync(absoluteTarget);
@@ -233,7 +359,7 @@ function rewriteLinks({ markdown, sourceMarkdownFile, destinationMarkdownFile, s
       resolve(destinationRoot, owner.skill.name),
       "rendered skill destination",
     );
-    const mappedTarget = assertInside(
+    assertInside(
       ownerDestination,
       resolve(
         ownerDestination,
@@ -241,11 +367,17 @@ function rewriteLinks({ markdown, sourceMarkdownFile, destinationMarkdownFile, s
       ),
       "rendered skill link target",
     );
-    let rewritten = relative(dirname(destinationMarkdownFile), mappedTarget).replaceAll("\\", "/");
+    const ownerRelativePath = relative(owner.sourceDirectory, ownershipTarget)
+      .replaceAll("\\", "/");
+    const ownerDestinationPath = relative(dirname(destinationMarkdownFile), ownerDestination)
+      .replaceAll("\\", "/");
+    let rewritten = [
+      ownerDestinationPath,
+      renderedOwnerRelativePath(link, ownerRelativePath),
+    ].filter(Boolean).join("/");
     if (!rewritten.startsWith(".")) rewritten = "./" + rewritten;
-    rewritten += anchor;
-    if (!wrapped && /[ \t]/.test(rewritten)) return "<" + rewritten + ">";
-    if (/\\[()]/.test(rawTargetPath)) rewritten = rewritten.replace(/[()]/g, "\\$&");
+    rewritten += suffix;
+    if (!destination.wrapped && /[ \t]/.test(rewritten)) return "<" + rewritten + ">";
     return rewritten;
   });
 }
@@ -256,7 +388,7 @@ function validateLocalMarkdownLinks(destinationRoot) {
     const markdown = readFileSync(filePath, "utf8");
     for (const destination of markdownLinkDestinations(markdown)) {
       const rawTarget = markdown.slice(destination.start, destination.end);
-      const link = localLink(rawTarget);
+      const link = localLink(rawTarget, destination);
       if (!link) continue;
       const absoluteTarget = assertInside(
         destinationRoot,
