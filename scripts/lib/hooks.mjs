@@ -4,6 +4,82 @@ import { classifyRuntimeCommand } from "./runtime-command.mjs";
 const PROTOTYPE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const ROOT_REFERENCE = /\$\{(?:CLAUDE_PLUGIN_ROOT|PLUGIN_ROOT)\}/gu;
 const SHELL_TOKEN_BOUNDARIES = new Set([";", "&", "|", "<", ">", "(", ")", "`"]);
+const ENV_ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/u;
+const INTERPRETER_OPTIONS = {
+  node: {
+    dynamicShort: new Set(["e", "p"]),
+    clusterShort: new Set(["c", "h", "i", "v", "w"]),
+    valueShort: new Set(["C", "r"]),
+    dynamicLong: new Set(["--eval", "--print"]),
+    valueLong: new Set([
+      "--conditions",
+      "--diagnostic-dir",
+      "--env-file",
+      "--env-file-if-exists",
+      "--experimental-default-config-file",
+      "--experimental-loader",
+      "--heap-prof-dir",
+      "--icu-data-dir",
+      "--import",
+      "--inspect-port",
+      "--loader",
+      "--openssl-config",
+      "--permission",
+      "--redirect-warnings",
+      "--require",
+      "--snapshot-blob",
+      "--test-name-pattern",
+      "--test-reporter",
+      "--test-reporter-destination",
+      "--title",
+      "--trace-event-categories",
+      "--trace-event-file-pattern",
+      "--use-largepages",
+    ]),
+  },
+  bun: {
+    dynamicShort: new Set(["e", "p"]),
+    clusterShort: new Set(["v"]),
+    valueShort: new Set(["r"]),
+    dynamicLong: new Set(["--eval", "--print"]),
+    valueLong: new Set(["--config", "--cwd", "--preload", "--tsconfig"]),
+  },
+  deno: {
+    dynamicShort: new Set(),
+    clusterShort: new Set(["h", "q", "V"]),
+    valueLong: new Set(["--cert", "--config", "--import-map", "--location", "--lock"]),
+  },
+  python: {
+    dynamicShort: new Set(["c"]),
+    clusterShort: new Set([
+      "B", "b", "d", "E", "i", "I", "O", "P", "q", "R", "s", "S", "u", "v", "V", "x",
+    ]),
+    valueShort: new Set(["Q", "W", "X"]),
+    terminalShort: new Set(["m"]),
+  },
+  ruby: {
+    dynamicShort: new Set(["e"]),
+    clusterShort: new Set(["a", "c", "d", "h", "l", "n", "p", "s", "v", "w"]),
+    valueShort: new Set(["C", "E", "I", "r"]),
+    attachedValueShort: new Set(["F", "K", "W", "x"]),
+    terminalShort: new Set(["S"]),
+  },
+  perl: {
+    dynamicShort: new Set(["e", "E"]),
+    clusterShort: new Set([
+      "a", "c", "d", "g", "l", "n", "p", "s", "t", "T", "u", "U", "v", "w", "W",
+    ]),
+    valueShort: new Set(["I"]),
+    attachedValueShort: new Set(["0", "C", "D", "F", "M", "m", "x"]),
+  },
+  php: {
+    dynamicShort: new Set(["r"]),
+    clusterShort: new Set(["a", "n", "q", "s"]),
+    valueShort: new Set(["c", "d", "z"]),
+    terminalShort: new Set(["f"]),
+    dynamicLong: new Set(["--run"]),
+  },
+};
 
 function hasOwn(value, key) {
   return Object.prototype.hasOwnProperty.call(value, key);
@@ -71,12 +147,7 @@ function commandTokens(command) {
         continue;
       }
       if (SHELL_TOKEN_BOUNDARIES.has(character)) {
-        if (tokenStarted) {
-          tokens.push(current);
-          current = "";
-          tokenStarted = false;
-        }
-        continue;
+        throw new Error("unsupported hook command shell composition: " + command);
       }
       if (character === "'" || character === '"') {
         quote = character;
@@ -119,6 +190,12 @@ function commandTokens(command) {
         index += 1;
         continue;
       }
+    }
+    if (
+      quote === '"' &&
+      (character === "`" || (character === "$" && command[index + 1] === "("))
+    ) {
+      throw new Error("unsupported hook command shell composition: " + command);
     }
     current += character;
   }
@@ -166,35 +243,54 @@ function interpreterFamily(stem) {
   return match[1] === "nodejs" ? "node" : match[1];
 }
 
-function hasShortMode(token, mode) {
-  return token === "-" + mode || token.startsWith("-" + mode);
+function shortOptionEffect(token, options) {
+  if (token.length < 2 || token[0] !== "-" || token[1] === "-") return {};
+  for (let index = 1; index < token.length; index += 1) {
+    const flag = token[index];
+    if (options.dynamicShort.has(flag)) return { dynamic: true };
+    if (options.terminalShort?.has(flag)) return { terminal: true };
+    if (options.valueShort?.has(flag)) {
+      return { consumesNext: index === token.length - 1 };
+    }
+    if (options.attachedValueShort?.has(flag)) return {};
+    if (!options.clusterShort.has(flag)) return {};
+  }
+  return {};
+}
+
+function longOptionEffect(token, options) {
+  if (!token.startsWith("--")) return {};
+  const separator = token.indexOf("=");
+  const name = separator === -1 ? token : token.slice(0, separator);
+  if (options.dynamicLong?.has(name)) return { dynamic: true };
+  if (options.terminalLong?.has(name)) return { terminal: true };
+  if (options.valueLong?.has(name)) return { consumesNext: separator === -1 };
+  return {};
 }
 
 function hasDynamicEvaluationMode(family, args) {
-  const optionArgs = args.slice(0, args.indexOf("--") === -1 ? undefined : args.indexOf("--"));
-  if (family === "deno") return optionArgs.includes("eval");
-  if (family === "node") {
-    return optionArgs.some((token) =>
-      hasShortMode(token, "e") ||
-      hasShortMode(token, "p") ||
-      token === "--eval" ||
-      token.startsWith("--eval=") ||
-      token === "--print" ||
-      token.startsWith("--print="));
+  const options = INTERPRETER_OPTIONS[family];
+  for (let index = 0; index < args.length; index += 1) {
+    const token = args[index];
+    if (token === "--") return false;
+    if (token === "-" || !token.startsWith("-")) {
+      return family === "deno" && token === "eval";
+    }
+    if (!options) continue;
+    const effect = token.startsWith("--")
+      ? longOptionEffect(token, options)
+      : shortOptionEffect(token, options);
+    if (effect.dynamic) return true;
+    if (effect.terminal) return false;
+    if (effect.consumesNext) index += 1;
   }
-  if (family === "bun") {
-    return optionArgs.some((token) =>
-      hasShortMode(token, "e") || token === "--eval" || token.startsWith("--eval="));
-  }
-  if (family === "python") return optionArgs.some((token) => hasShortMode(token, "c"));
-  if (family === "ruby") return optionArgs.some((token) => hasShortMode(token, "e"));
-  if (family === "perl") {
-    return optionArgs.some((token) => hasShortMode(token, "e") || hasShortMode(token, "E"));
-  }
-  return optionArgs.some((token) => hasShortMode(token, "r"));
+  return false;
 }
 
 function assertSafeRuntimeCommand(command, tokens) {
+  if (ENV_ASSIGNMENT.test(tokens[0])) {
+    throw new Error("leading environment assignment in hook command: " + command);
+  }
   let runtime;
   try {
     runtime = classifyRuntimeCommand(tokens[0]);

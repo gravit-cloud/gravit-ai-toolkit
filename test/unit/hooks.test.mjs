@@ -20,6 +20,12 @@ function inlineRecord(inline) {
   return { sourceFormat: "inline", inline };
 }
 
+function normalizeCommand(command) {
+  return normalizeHooks(inlineRecord({
+    SessionStart: [{ hooks: [{ type: "command", command }] }],
+  })).hooks.SessionStart[0].hooks[0].command;
+}
+
 test("renders exact plugin-root references for each host", () => {
   const record = inventorySource({ sourceRoot: fixture }).components
     .find((component) => component.type === "hook");
@@ -199,15 +205,6 @@ test("rejects absolute source paths in any command token or option value", () =>
     String.raw`node \DosDevices\C:\checkout\run.mjs`,
     "node file:///tmp/run.mjs",
     "node \"FILE:C:/checkout/run.mjs\"",
-    "node x;/tmp/run.mjs",
-    "node x&&/tmp/run.mjs",
-    "node x||/tmp/run.mjs",
-    "node x|/tmp/run.mjs",
-    "node x&/tmp/run.mjs",
-    "node x>/tmp/output.log",
-    "node x</tmp/input.json",
-    "node $(/tmp/run.mjs)",
-    "node `/tmp/run.mjs`",
   ];
 
   for (const command of commands) {
@@ -216,6 +213,65 @@ test("rejects absolute source paths in any command token or option value", () =>
         SessionStart: [{ hooks: [{ type: "command", command }] }],
       })),
       /absolute hook command path/,
+      command,
+    );
+  }
+});
+
+test("rejects every unquoted shell composition operator before runtime inspection", () => {
+  for (const command of [
+    "true && bash -c 'touch hook-ran'",
+    "node script.mjs; bash -c 'touch hook-ran'",
+    "node script.mjs & bash -c 'touch hook-ran'",
+    "node script.mjs | bash -c 'touch hook-ran'",
+    "node script.mjs < input.json",
+    "node script.mjs > output.log",
+    "node $(bash -c 'touch hook-ran')",
+    "node (bash -c 'touch hook-ran')",
+    "node `bash -c 'touch hook-ran'`",
+  ]) {
+    assert.throws(
+      () => normalizeCommand(command),
+      /unsupported hook command shell composition/,
+      command,
+    );
+  }
+});
+
+test("rejects active command substitutions inside double quotes", () => {
+  for (const command of [
+    'node "$(bin/helper)"',
+    'node "$((1 + 1))"',
+    'node "`bin/helper`"',
+  ]) {
+    assert.throws(
+      () => normalizeCommand(command),
+      /unsupported hook command shell composition/,
+      command,
+    );
+  }
+});
+
+test("allows literal command-substitution characters when single-quoted or escaped", () => {
+  for (const command of [
+    "node '$(bin/helper)'",
+    "node '`bin/helper`'",
+    'node "\\$(bin/helper)"',
+    'node "\\`bin/helper\\`"',
+  ]) {
+    assert.equal(normalizeCommand(command), command, command);
+  }
+});
+
+test("rejects a leading environment assignment instead of skipping to a runtime", () => {
+  for (const command of [
+    "MODE=x bash -c 'touch hook-ran'",
+    "_TRACE=1 node scripts/run.mjs",
+    "PATH=/tmp bin/helper",
+  ]) {
+    assert.throws(
+      () => normalizeCommand(command),
+      /leading environment assignment/,
       command,
     );
   }
@@ -243,6 +299,7 @@ test("rejects dynamic interpreter evaluation modes across path and suffix spelli
     'node -e "import(\'/tmp/run.mjs\')"',
     'tools/NODE.EXE.CMD --eval="process.exit()"',
     'bun -e "await import(\'./run.mjs\')"',
+    'bun --print="process.exit()"',
     'tools/DENO.SH.EXE eval "Deno.exit()"',
     'python3.13.exe -c "open(\'/tmp/input\')"',
     'ruby.rb.exe -e "load \'/tmp/run.rb\'"',
@@ -259,6 +316,63 @@ test("rejects dynamic interpreter evaluation modes across path and suffix spelli
   }
 });
 
+test("rejects clustered and attached dynamic interpreter evaluation modes", () => {
+  for (const command of [
+    'node -pe "process.exit()"',
+    "node -eprocess",
+    'bun -pe "process.exit()"',
+    "bun -pprocess",
+    'python -Bc "open(\'/tmp/input\')"',
+    "python -cpass",
+    'ruby -we "load \'/tmp/run.rb\'"',
+    "ruby -eputs",
+    "ruby -W -e puts",
+    "ruby -x -e puts",
+    'perl -we "require \'/tmp/run.pl\'"',
+    "perl -Eprint",
+    "perl -C -e print",
+    "perl -x -E print",
+    'php -nr "include \'/tmp/run.php\';"',
+    "php -recho",
+    'deno --config deno.json eval "Deno.exit()"',
+  ]) {
+    assert.throws(
+      () => normalizeCommand(command),
+      /dynamic hook command evaluation/,
+      command,
+    );
+  }
+});
+
+test("allows interpreter-looking flags after a relative script or subcommand", () => {
+  for (const command of [
+    "node scripts/run.mjs -e harmless",
+    "node scripts/run.mjs -p harmless",
+    "bun scripts/run.ts --print harmless",
+    "python scripts/run.py -c harmless",
+    "ruby scripts/run.rb -e harmless",
+    "perl scripts/run.pl -E harmless",
+    "php scripts/run.php -r harmless",
+    "deno run scripts/run.ts eval harmless",
+  ]) {
+    assert.equal(normalizeCommand(command), command, command);
+  }
+});
+
+test("does not read attached interpreter option payloads as short-flag clusters", () => {
+  for (const command of [
+    "node -rpeople scripts/run.mjs",
+    "ruby -Ipeople scripts/run.rb",
+    "ruby -rpeople scripts/run.rb",
+    "perl -Ipeople scripts/run.pl",
+    "perl -Mpeople scripts/run.pl",
+    "php -ddisplay_errors=1 scripts/run.php",
+    "php -d display_errors=1 scripts/run.php",
+  ]) {
+    assert.equal(normalizeCommand(command), command, command);
+  }
+});
+
 test("allows plugin-root paths, relative commands, flags, and HTTP URLs", () => {
   for (const command of [
     "node \"${CLAUDE_PLUGIN_ROOT}/bin/helper\"",
@@ -271,7 +385,10 @@ test("allows plugin-root paths, relative commands, flags, and HTTP URLs", () => 
     "node scripts/run.mjs 'https://example.test/resource?from=hook&next=/tmp/file'",
     "node scripts/run.mjs https://example.test/resource?from=hook\\&next=/tmp/file",
     "node 'literal;/tmp/run.mjs' \"literal&&/tmp/run.mjs\"",
-    "node literal\\;/tmp/run.mjs literal\\|/tmp/run.mjs",
+    "node 'literal&|<>()>`/tmp/run.mjs'",
+    "node literal\\;/tmp/run.mjs literal\\|/tmp/run.mjs literal\\&/tmp/run.mjs",
+    "node literal\\</tmp/run.mjs literal\\>/tmp/run.mjs literal\\(/tmp/run.mjs",
+    "node literal\\)/tmp/run.mjs literal\\`/tmp/run.mjs",
   ]) {
     assert.equal(
       normalizeHooks(inlineRecord({
@@ -289,7 +406,7 @@ test("rejects an unquoted URL ampersand as a shell operator before an absolute p
     () => normalizeHooks(inlineRecord({
       SessionStart: [{ hooks: [{ type: "command", command }] }],
     })),
-    /absolute hook command path/,
+    /unsupported hook command shell composition/,
   );
 });
 
@@ -332,6 +449,32 @@ test("normalizing a relative executable hook never runs it", (context) => {
   normalizeHooks(inlineRecord({
     SessionStart: [{ hooks: [{ type: "command", command: "bin/helper" }] }],
   }));
+
+  assert.equal(existsSync(sentinel), false);
+});
+
+test("rejecting shell composition and assignments never runs trailing commands", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "hooks-rejected-never-run-"));
+  const originalCwd = process.cwd();
+  context.after(() => {
+    process.chdir(originalCwd);
+    rmSync(root, { recursive: true, force: true });
+  });
+  const helper = resolve(root, "bin/helper");
+  const sentinel = resolve(root, "hook-ran");
+  mkdirSync(resolve(root, "bin"));
+  writeFileSync(helper, "#!/bin/sh\nprintf ran > hook-ran\n", { mode: 0o755 });
+  chmodSync(helper, 0o755);
+  process.chdir(root);
+
+  for (const command of [
+    "true && bin/helper",
+    "MODE=x bin/helper",
+    'node "$(bin/helper)"',
+    'node "`bin/helper`"',
+  ]) {
+    assert.throws(() => normalizeCommand(command));
+  }
 
   assert.equal(existsSync(sentinel), false);
 });
