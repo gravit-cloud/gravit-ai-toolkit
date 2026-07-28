@@ -28,10 +28,12 @@ export function pathsOverlap(left, right) {
 }
 
 export function canonicalPath(candidate) {
-  const absoluteCandidate = resolve(candidate);
-  const candidateRoot = parse(absoluteCandidate).root;
+  const candidatePath = isAbsolute(candidate)
+    ? candidate
+    : process.cwd() + sep + candidate;
+  const candidateRoot = parse(candidatePath).root;
   let current = candidateRoot;
-  let pending = absoluteCandidate
+  let pending = candidatePath
     .slice(candidateRoot.length)
     .split(sep)
     .filter(Boolean);
@@ -39,6 +41,11 @@ export function canonicalPath(candidate) {
 
   while (pending.length > 0) {
     const segment = pending.shift();
+    if (segment === ".") continue;
+    if (segment === "..") {
+      current = dirname(current);
+      continue;
+    }
     const next = resolve(current, segment);
     let stats;
     try {
@@ -70,11 +77,10 @@ export function canonicalPath(candidate) {
         { cause: error },
       );
     }
-    const absoluteTarget = resolve(dirname(next), target);
-    const targetRoot = parse(absoluteTarget).root;
-    current = targetRoot;
+    const targetRoot = parse(target).root;
+    current = targetRoot || dirname(next);
     pending = [
-      ...absoluteTarget.slice(targetRoot.length).split(sep).filter(Boolean),
+      ...target.slice(targetRoot.length).split(sep).filter(Boolean),
       ...pending,
     ];
   }

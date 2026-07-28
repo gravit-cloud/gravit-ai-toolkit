@@ -404,6 +404,60 @@ test("rejects every dangling production-root overlap before manifest exposure", 
   assert.deepEqual(failures, []);
 });
 
+test("rejects production targets whose dot segments follow a symlink pivot", (context) => {
+  const failures = [];
+  const cases = [
+    [".claude-plugin", "pivot-one/../production-target"],
+    [".agents", "absolute"],
+    ["plugins", "pivot-one/./nested/../../production-target"],
+  ];
+
+  for (const [productionName, configuredTarget] of cases) {
+    const input = sandboxRegistry(context);
+    const external = resolve(input.repositoryParent, "..", "pivot-external");
+    const pivotTarget = resolve(external, "pivot-target");
+    mkdirSync(resolve(pivotTarget, "nested"), { recursive: true });
+    const sentinel = resolve(external, "production-sentinel.txt");
+    writeFileSync(sentinel, "keep\n");
+    symlinkSync(pivotTarget, resolve(input.repositoryRoot, "pivot-two"));
+    symlinkSync("pivot-two", resolve(input.repositoryRoot, "pivot-one"));
+    const productionLink = resolve(input.repositoryRoot, productionName);
+    const linkTarget = configuredTarget === "absolute"
+      ? input.repositoryRoot + "/pivot-one/./nested/../../production-target"
+      : configuredTarget;
+    symlinkSync(linkTarget, productionLink);
+    const outputRoot = resolve(external, "production-target");
+    const outputManifest = resolve(
+      outputRoot,
+      "plugins/safe-plugin/.agent-plugin/plugin.json",
+    );
+    const exposedManifest = resolve(
+      productionLink,
+      "plugins/safe-plugin/.agent-plugin/plugin.json",
+    );
+
+    const error = captureBuildError({ ...input, outputRoot });
+    const observed = {
+      error: error?.message ?? "",
+      exposedManifest: existsSync(exposedManifest),
+      outputManifest: existsSync(outputManifest),
+      productionLinkActive: existsSync(productionLink),
+      sentinel: existsSync(sentinel) ? readFileSync(sentinel, "utf8") : "<missing>",
+    };
+    if (
+      !/unsafe registry output/.test(observed.error)
+      || observed.exposedManifest
+      || observed.outputManifest
+      || observed.productionLinkActive
+      || observed.sentinel !== "keep\n"
+    ) {
+      failures.push({ productionName, ...observed });
+    }
+  }
+
+  assert.deepEqual(failures, []);
+});
+
 test("allows a disjoint foundation output below the real .tmp root", (context) => {
   const input = sandboxRegistry(context);
   const outputRoot = resolve(input.repositoryRoot, ".tmp/foundation-output");
