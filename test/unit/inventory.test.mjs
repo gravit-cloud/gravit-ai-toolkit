@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  cpSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -133,6 +134,128 @@ test("rejects unknown Claude, experimental, and Codex component fields", () => {
       },
     }),
     /unknown Codex component field: runtimes/,
+  );
+});
+
+test("manifest allowlists reject every non-allowlisted key spelling", () => {
+  const manifests = inventorySource({ sourceRoot: fixture }).manifests;
+  for (const [host, label] of [["claude", "Claude"], ["codex", "Codex"]]) {
+    for (const key of ["UnknownRuntime", "_runtime", "$runtime"]) {
+      assert.throws(
+        () => inventorySource({
+          sourceRoot: fixture,
+          manifestOverrides: {
+            [host]: { ...manifests[host], [key]: "./runtime.json" },
+          },
+        }),
+        (error) => error.message === "unknown " + label + " component field: " + key,
+      );
+    }
+    assert.doesNotThrow(() => inventorySource({
+      sourceRoot: fixture,
+      manifestOverrides: {
+        [host]: {
+          ...manifests[host],
+          $schema: "https://example.invalid/plugin.schema.json",
+        },
+      },
+    }));
+  }
+});
+
+test("experimental declarations suppress their conventional component roots", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "inventory-experimental-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const source = resolve(root, "source");
+  cpSync(fixture, source, { recursive: true });
+  const manifests = inventorySource({ sourceRoot: source }).manifests;
+  writeFileSync(resolve(source, "alternate-theme.json"), "{\"name\":\"alternate\"}\n");
+  writeFileSync(resolve(source, "monitors/custom.json"), "{\"custom\":true}\n");
+
+  const declared = inventorySource({
+    sourceRoot: source,
+    manifestOverrides: {
+      claude: {
+        ...manifests.claude,
+        experimental: {
+          themes: "./alternate-theme.json",
+          monitors: "./monitors/custom.json",
+        },
+      },
+    },
+  });
+  assert.deepEqual(
+    declared.components
+      .filter(({ type }) => ["theme", "monitor"].includes(type))
+      .map(({ type, metadata }) => type + ":" + metadata.relativePath),
+    ["monitor:monitors/custom.json", "theme:alternate-theme.json"],
+  );
+
+  rmSync(resolve(source, "alternate-theme.json"));
+  rmSync(resolve(source, "monitors/custom.json"));
+  const disabled = inventorySource({
+    sourceRoot: source,
+    manifestOverrides: {
+      claude: {
+        ...manifests.claude,
+        experimental: { themes: [], monitors: [] },
+      },
+    },
+  });
+  assert.deepEqual(
+    disabled.components.filter(({ type }) => ["theme", "monitor"].includes(type)),
+    [],
+  );
+});
+
+test("rejects unknown top-level roots but permits declared roots and standard resources", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "inventory-roots-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const source = resolve(root, "source");
+  cpSync(fixture, source, { recursive: true });
+  mkdirSync(resolve(source, "runtime"));
+  writeFileSync(resolve(source, "runtime/component.json"), "{}\n");
+
+  assert.throws(
+    () => inventorySource({ sourceRoot: source }),
+    /unknown top-level source entry: runtime/,
+  );
+
+  const manifests = inventorySource({ sourceRoot: fixture }).manifests;
+  const declared = inventorySource({
+    sourceRoot: source,
+    manifestOverrides: {
+      claude: { ...manifests.claude, commands: "./runtime/component.json" },
+    },
+  });
+  assert.equal(
+    declared.components.find(({ type }) => type === "command").metadata.relativePath,
+    "runtime/component.json",
+  );
+  assert.deepEqual(declared.skills.map(({ name }) => name), ["fixture"]);
+
+  writeFileSync(resolve(source, "runtime/unaccounted.json"), "{}\n");
+  assert.throws(
+    () => inventorySource({
+      sourceRoot: source,
+      manifestOverrides: {
+        claude: { ...manifests.claude, commands: "./runtime/component.json" },
+      },
+    }),
+    /unknown top-level source entry: runtime/,
+  );
+});
+
+test("rejects dangling symbolic links during top-level classification", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "inventory-root-link-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const source = resolve(root, "source");
+  cpSync(fixture, source, { recursive: true });
+  symlinkSync("missing-target", resolve(source, "runtime"));
+
+  assert.throws(
+    () => inventorySource({ sourceRoot: source }),
+    /symbolic links are not allowed in staged components: .*runtime/,
   );
 });
 

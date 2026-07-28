@@ -1,9 +1,15 @@
-import { existsSync, lstatSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, realpathSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { treeHash, sha256 } from "./hash.mjs";
 import { stableJson } from "./json.mjs";
 import { compareCodePoints } from "./ordering.mjs";
-import { assertInside, assertRealInside, assertRegistryName } from "./path-safety.mjs";
+import {
+  assertInside,
+  assertRealInside,
+  assertRegistryName,
+  pathIsInside,
+  walkFiles,
+} from "./path-safety.mjs";
 import { declaredSkillPaths, discoverSkills } from "./skills.mjs";
 import {
   CLAUDE_COMPONENT_FIELDS,
@@ -51,13 +57,100 @@ const CODEX_METADATA_FIELDS = new Set([
 
 const CLAUDE_EXPERIMENTAL_COMPONENT_FIELDS = new Set(["themes", "monitors"]);
 
+const EXPERIMENTAL_TYPE_CONFIG = {
+  themes: { type: "theme", defaultPath: "themes" },
+  monitors: { type: "monitor", defaultPath: "monitors/monitors.json" },
+};
+
 const CONVENTIONAL_COMPONENTS = [
-  ["monitor", "monitors/monitors.json"],
-  ["theme", "themes"],
   ["executable", "bin"],
   ["settings", "settings.json"],
   ["asset", "assets"],
 ];
+
+// Host manifests and conventional component roots are classified even when a
+// particular plugin does not contain a declaration for them. Custom declared
+// roots are added dynamically below, so upstreams are not limited to these names.
+const KNOWN_TOP_LEVEL_DIRECTORIES = new Set([
+  ".claude-plugin",
+  ".codex-plugin",
+  "agents",
+  "assets",
+  "bin",
+  "channels",
+  "commands",
+  "hooks",
+  "monitors",
+  "output-styles",
+  "skills",
+  "themes",
+]);
+
+const KNOWN_TOP_LEVEL_FILES = new Set([
+  ".app.json",
+  ".lsp.json",
+  ".mcp.json",
+  "settings.json",
+]);
+
+// These roots contain repository metadata, documentation, examples, or tests;
+// they are source context rather than installable plugin components.
+const NON_COMPONENT_RESOURCE_DIRECTORIES = new Set([
+  ".changeset",
+  ".circleci",
+  ".devcontainer",
+  ".github",
+  ".gitlab",
+  ".husky",
+  ".vscode",
+  "docs",
+  "examples",
+  "test",
+  "tests",
+]);
+
+const NON_COMPONENT_METADATA_FILES = new Set([
+  ".editorconfig",
+  ".gitattributes",
+  ".gitignore",
+  ".markdownlint.json",
+  ".npmignore",
+  ".prettierignore",
+  ".prettierrc",
+  ".prettierrc.json",
+  ".prettierrc.yaml",
+  ".prettierrc.yml",
+  "Cargo.lock",
+  "Cargo.toml",
+  "Gemfile",
+  "Gemfile.lock",
+  "Makefile",
+  "Taskfile.yaml",
+  "Taskfile.yml",
+  "bun.lock",
+  "bun.lockb",
+  "composer.json",
+  "composer.lock",
+  "deno.json",
+  "deno.jsonc",
+  "flake.lock",
+  "flake.nix",
+  "go.mod",
+  "go.sum",
+  "jsconfig.json",
+  "package-lock.json",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pyproject.toml",
+  "requirements-dev.txt",
+  "requirements.txt",
+  "renovate.json",
+  "tsconfig.json",
+  "uv.lock",
+  "yarn.lock",
+]);
+
+const NON_COMPONENT_DOCUMENTATION_FILE = /^(?:AGENTS|AUTHORS|CHANGELOG|CLAUDE|CODE_OF_CONDUCT|CONTRIBUTING|GEMINI|LICENSE|NOTICE|README|SECURITY|SUPPORT|VERSION)(?:\.(?:md|rst|txt))?$/i;
 
 function values(value) {
   if (value === undefined) return [];
@@ -85,7 +178,7 @@ function validateManifest(manifest, host) {
     ? CLAUDE_METADATA_FIELDS
     : CODEX_METADATA_FIELDS;
   for (const key of Object.keys(manifest)) {
-    if (!/^[a-z]/.test(key) || metadataFields.has(key) || componentFields.has(key)) continue;
+    if (key === "$schema" || metadataFields.has(key) || componentFields.has(key)) continue;
     if (host === "Claude" && key === "experimental") continue;
     throw new Error("unknown " + host + " component field: " + key);
   }
@@ -98,6 +191,93 @@ function validateManifest(manifest, host) {
     if (!CLAUDE_EXPERIMENTAL_COMPONENT_FIELDS.has(key)) {
       throw new Error("unknown Claude experimental component field: " + key);
     }
+  }
+}
+
+function declaredPath(sourceRoot, configuredPath, label) {
+  const absoluteRoot = resolve(sourceRoot);
+  return assertInside(
+    absoluteRoot,
+    resolve(absoluteRoot, configuredPath),
+    label,
+  );
+}
+
+function declaredComponentPaths({ sourceRoot, manifests, skillPaths }) {
+  const result = [];
+  for (const manifest of [manifests.claude, manifests.codex]) {
+    for (const [field, config] of Object.entries(TYPE_CONFIG)) {
+      for (const value of values(manifest[field])) {
+        if (typeof value === "string") {
+          result.push(declaredPath(sourceRoot, value, config.type + " component"));
+        }
+      }
+    }
+  }
+  for (const [field, config] of Object.entries(EXPERIMENTAL_TYPE_CONFIG)) {
+    for (const value of values(manifests.claude.experimental?.[field])) {
+      if (typeof value === "string") {
+        result.push(declaredPath(sourceRoot, value, config.type + " component"));
+      }
+    }
+  }
+  for (const value of skillPaths || []) {
+    result.push(declaredPath(sourceRoot, value, "declared skill"));
+  }
+  return result;
+}
+
+function entryCoveredByDeclarations(entryPath, declarations) {
+  const relevant = declarations.filter((declaration) => (
+    pathIsInside(entryPath, declaration) || pathIsInside(declaration, entryPath)
+  ));
+  if (relevant.length === 0) return false;
+  const stats = lstatSync(entryPath);
+  const files = stats.isDirectory() ? walkFiles(entryPath) : [entryPath];
+  return files.every((filePath) => relevant.some((declaration) => (
+    pathIsInside(declaration, filePath)
+  )));
+}
+
+function assertKnownTopLevelEntries({ sourceRoot, manifests, skillPaths }) {
+  const absoluteRoot = resolve(sourceRoot);
+  const declarations = declaredComponentPaths({ sourceRoot, manifests, skillPaths });
+  const entries = readdirSync(absoluteRoot, { withFileTypes: true })
+    .sort((left, right) => compareCodePoints(left.name, right.name));
+  for (const entry of entries) {
+    const entryPath = resolve(absoluteRoot, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error("symbolic links are not allowed in staged components: " + entryPath);
+    }
+    if (KNOWN_TOP_LEVEL_DIRECTORIES.has(entry.name)) {
+      if (!entry.isDirectory()) {
+        throw new Error("top-level source entry must be a directory: " + entry.name);
+      }
+      continue;
+    }
+    if (KNOWN_TOP_LEVEL_FILES.has(entry.name)) {
+      if (!entry.isFile()) {
+        throw new Error("top-level source entry must be a file: " + entry.name);
+      }
+      continue;
+    }
+    if (NON_COMPONENT_RESOURCE_DIRECTORIES.has(entry.name)) {
+      if (!entry.isDirectory()) {
+        throw new Error("non-component resource root must be a directory: " + entry.name);
+      }
+      continue;
+    }
+    if (
+      NON_COMPONENT_METADATA_FILES.has(entry.name)
+      || NON_COMPONENT_DOCUMENTATION_FILE.test(entry.name)
+    ) {
+      if (!entry.isFile()) {
+        throw new Error("non-component metadata entry must be a file: " + entry.name);
+      }
+      continue;
+    }
+    if (entryCoveredByDeclarations(entryPath, declarations)) continue;
+    throw new Error("unknown top-level source entry: " + entry.name);
   }
 }
 
@@ -195,6 +375,8 @@ export function inventorySource({ sourceRoot, declaredSkills, manifestOverrides 
   };
   validateManifest(manifests.claude, "Claude");
   validateManifest(manifests.codex, "Codex");
+  const skillPaths = configuredSkillPaths(manifests, declaredSkills);
+  assertKnownTopLevelEntries({ sourceRoot, manifests, skillPaths });
 
   const components = [];
   const seen = new Set();
@@ -212,9 +394,15 @@ export function inventorySource({ sourceRoot, declaredSkills, manifestOverrides 
     }
   }
 
-  for (const [field, type] of [["themes", "theme"], ["monitors", "monitor"]]) {
-    for (const value of values(manifests.claude.experimental?.[field])) {
-      addRecord(components, seen, recordFor({ sourceRoot, type, value }));
+  const experimental = manifests.claude.experimental || {};
+  for (const [field, config] of Object.entries(EXPERIMENTAL_TYPE_CONFIG)) {
+    const declared = Object.hasOwn(experimental, field);
+    const conventionalPath = resolve(sourceRoot, config.defaultPath);
+    const candidates = declared
+      ? values(experimental[field])
+      : pathEntryExists(conventionalPath) ? [config.defaultPath] : [];
+    for (const value of candidates) {
+      addRecord(components, seen, recordFor({ sourceRoot, type: config.type, value }));
     }
   }
 
@@ -227,7 +415,7 @@ export function inventorySource({ sourceRoot, declaredSkills, manifestOverrides 
     manifests,
     skills: discoverSkills({
       sourceRoot,
-      declaredSkills: configuredSkillPaths(manifests, declaredSkills),
+      declaredSkills: skillPaths,
     }),
     components: components.sort((left, right) => compareCodePoints(
       left.type + ":" + left.id,
