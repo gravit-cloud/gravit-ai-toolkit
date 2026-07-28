@@ -163,6 +163,16 @@ test("requires plain objects, own fields, and registry-safe component identity",
       /component (?:id|type) must match \^\[a-z0-9\]/,
     );
   }
+  for (const id of ["__proto__", "constructor", "prototype"]) {
+    assert.throws(
+      () => targetDisposition({
+        component: { id, type: "skill" },
+        target: "codex",
+        targetPolicies: {},
+      }),
+      new RegExp("prototype registry name is not allowed: " + id.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")),
+    );
+  }
   assert.throws(
     () => targetDisposition({ component: component("skill"), targetPolicies: {} }),
     /targetDisposition input requires target/,

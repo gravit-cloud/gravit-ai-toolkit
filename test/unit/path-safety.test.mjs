@@ -3,7 +3,16 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { canonicalPath } from "../../scripts/lib/path-safety.mjs";
+import { assertRegistryName, canonicalPath } from "../../scripts/lib/path-safety.mjs";
+
+test("assertRegistryName rejects prototype-like names that ordinary object maps cannot safely account for", () => {
+  for (const name of ["__proto__", "constructor", "prototype"]) {
+    assert.throws(
+      () => assertRegistryName(name, "component id"),
+      new RegExp("prototype registry name is not allowed: " + name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")),
+    );
+  }
+});
 
 test("canonicalPath resolves relative and absolute dangling symlink chains", (context) => {
   const root = mkdtempSync(resolve(tmpdir(), "registry-canonical-"));

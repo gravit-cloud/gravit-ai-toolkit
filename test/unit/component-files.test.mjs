@@ -199,7 +199,6 @@ test("fails closed on malformed component records and JSON values", (context) =>
     [JSON.parse(
       '{"id":"asset-fixture","type":"asset","sourceFormat":"path","sourcePath":"ignored","prototype":true}',
     ), /prototype key is not allowed in component: prototype/],
-    [pathComponent(source, { type: "constructor" }), /prototype registry name is not allowed: constructor/],
     [pathComponent(source, { sourceFormat: "url" }), /sourceFormat must be path or inline/],
     [pathComponent(resolve(root, "missing")), /component source does not exist/],
     [{ id: "app-fixture", type: "app", sourceFormat: "inline" }, /inline component requires an own inline property/],
@@ -217,6 +216,16 @@ test("fails closed on malformed component records and JSON values", (context) =>
     assert.throws(
       () => copyComponent({ component, bundleRoot, neutralRoot }),
       expected,
+    );
+  }
+  for (const id of ["__proto__", "constructor", "prototype"]) {
+    assert.throws(
+      () => copyComponent({
+        component: pathComponent(source, { id }),
+        bundleRoot,
+        neutralRoot,
+      }),
+      new RegExp("prototype registry name is not allowed: " + id.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")),
     );
   }
   assert.equal(existsSync(neutralRoot), false);
