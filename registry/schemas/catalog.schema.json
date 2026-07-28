@@ -53,6 +53,14 @@
             "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*))(?:\\.(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*)))*)?$"
           }
         },
+        "targetPolicies": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "claude": { "$ref": "#/$defs/targetPolicy" },
+            "codex": { "$ref": "#/$defs/targetPolicy" }
+          }
+        },
         "source": {
           "oneOf": [
             {
@@ -91,6 +99,38 @@
           "properties": {
             "default": { "enum": ["transform-or-fail"] },
             "skills": { "enum": ["preserve", "transform"] }
+          }
+        }
+      }
+    },
+    "targetPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unsupported"],
+      "properties": {
+        "unsupported": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "skill",
+              "command",
+              "agent",
+              "hook",
+              "mcp",
+              "lsp",
+              "output-style",
+              "monitor",
+              "theme",
+              "channel",
+              "executable",
+              "settings",
+              "asset",
+              "app"
+            ]
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
           }
         }
       }
