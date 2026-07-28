@@ -36,6 +36,18 @@
         },
         "runtimeDependencies": {
           "type": "object",
+          "propertyNames": {
+            "allOf": [
+              {
+                "pattern": "^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$"
+              },
+              {
+                "not": {
+                  "enum": ["__proto__", "constructor", "prototype"]
+                }
+              }
+            ]
+          },
           "additionalProperties": {
             "type": "string",
             "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*))(?:\\.(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*)))*)?$"

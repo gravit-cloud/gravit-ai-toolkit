@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -81,11 +82,11 @@ test("rejects latest when the catalog does not provide an exact pin", () => {
   );
 });
 
-test("does not resolve package pins through object prototypes", () => {
+test("rejects prototype-like package specs before pin lookup", () => {
   const record = wrappedServer(npxServer(["constructor"]));
   assert.throws(
     () => normalizeMcp({ record, runtimePins: {} }),
-    /unpinned MCP package constructor/,
+    /invalid npx MCP package: constructor/,
   );
 });
 
@@ -141,6 +142,68 @@ test("supports only unambiguous npx and npx.cmd yes-option forms", () => {
     const normalized = normalizeMcp({ record, runtimePins: exactPin })[0];
     assert.equal(normalized.command, command);
     assert.deepEqual(normalized.args, [...prefix, "@fixture/mcp@1.4.2", "serve"]);
+  }
+});
+
+test("detects supported npx commands by POSIX and Windows basename", () => {
+  for (const command of [
+    "/usr/local/bin/npx",
+    "C:\\Program Files\\nodejs\\npx.cmd",
+  ]) {
+    assert.deepEqual(normalizeMcp({
+      record: wrappedServer(npxServer(["-y", "@fixture/mcp@latest"], command)),
+      runtimePins: exactPin,
+    })[0], {
+      id: "fixture",
+      transport: "stdio",
+      command,
+      args: ["-y", "@fixture/mcp@1.4.2"],
+      env: {},
+      runtimeDependencies: { "@fixture/mcp": "1.4.2" },
+    });
+  }
+});
+
+test("rejects package-manager launchers and shell wrappers by command basename", () => {
+  for (const [command, args] of [
+    ["/usr/bin/npm", ["exec", "@fixture/mcp"]],
+    ["C:\\Program Files\\nodejs\\npm.cmd", ["run", "mcp"]],
+    ["/usr/local/bin/pnpm", ["dlx", "@fixture/mcp"]],
+    ["yarn", ["dlx", "@fixture/mcp"]],
+    ["bunx", ["@fixture/mcp"]],
+    ["uvx", ["fixture-mcp"]],
+    ["/bin/sh", ["-c", "npx @fixture/mcp"]],
+    ["C:\\Program Files\\Git\\bin\\bash.exe", ["-lc", "npx @fixture/mcp"]],
+    ["/usr/bin/env", ["npx", "@fixture/mcp"]],
+    ["cmd.exe", ["/c", "npx @fixture/mcp"]],
+    ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", [
+      "-Command",
+      "npx @fixture/mcp",
+    ]],
+    ["pwsh", ["-Command", "npx @fixture/mcp"]],
+  ]) {
+    assert.throws(
+      () => normalizeMcp({ record: wrappedServer({ command, args }) }),
+      /unsupported dynamic MCP launcher/,
+    );
+  }
+});
+
+test("rejects invalid and prototype-like runtime pin package names", () => {
+  for (const name of [
+    "not a package",
+    "@scope/pkg@latest",
+    "constructor",
+    "prototype",
+    "__proto__",
+  ]) {
+    assert.throws(
+      () => normalizeMcp({
+        record: wrappedServer({ command: "node" }),
+        runtimePins: Object.fromEntries([[name, "1.4.2"]]),
+      }),
+      /invalid MCP catalog package name/,
+    );
   }
 });
 
@@ -283,14 +346,14 @@ test("accepts only empty or same-name env placeholders", () => {
   })[0].env, prototypeEnv);
 });
 
-test("accepts versioned container tags and immutable image digests", () => {
+test("accepts only immutable container image digests", () => {
   const digest = "a".repeat(64);
   const record = inlineRecord({
     docker: {
       command: "docker",
       args: [
         "run", "-i", "--rm", "-e", "TOKEN",
-        "registry.example.invalid/fixture/mcp:1.4.2",
+        "registry.example.invalid/fixture/mcp@sha256:" + digest,
       ],
       env: { TOKEN: "${TOKEN}" },
     },
@@ -300,7 +363,7 @@ test("accepts versioned container tags and immutable image digests", () => {
     },
     container: {
       command: "container",
-      args: ["run", "ghcr.io/fixture/mcp:v1.4.2-beta.1"],
+      args: ["run", "ghcr.io/fixture/mcp@sha256:" + digest],
     },
   });
 
@@ -308,12 +371,12 @@ test("accepts versioned container tags and immutable image digests", () => {
   assert.deepEqual(normalized.map(({ id }) => id), ["container", "docker", "podman"]);
   assert.deepEqual(normalized.find(({ id }) => id === "docker").args, [
     "run", "-i", "--rm", "-e", "TOKEN",
-    "registry.example.invalid/fixture/mcp:1.4.2",
+    "registry.example.invalid/fixture/mcp@sha256:" + digest,
   ]);
   assert.match(normalized.find(({ id }) => id === "podman").args.at(-1), /@sha256:[a-f0-9]{64}$/);
 });
 
-test("rejects unversioned, latest, floating, and malformed container image references", () => {
+test("rejects every container tag plus unversioned and malformed image references", () => {
   const images = [
     "ghcr.io/fixture/mcp",
     "ghcr.io/fixture/mcp:latest",
@@ -323,38 +386,77 @@ test("rejects unversioned, latest, floating, and malformed container image refer
     "ghcr.io/fixture/mcp:1.4",
     "ghcr.io/fixture/mcp:1.4.x",
     "ghcr.io/fixture/mcp:*",
+    "ghcr.io/fixture/mcp:1.4.2",
+    "ghcr.io/fixture/mcp:v1.4.2-beta.1",
     "ghcr.io/fixture/mcp:01.4.2",
     "ghcr.io/fixture/mcp:1.4.2-alpha..1",
     "ghcr.io/fixture/mcp@sha256:abc",
+    "ghcr.io/fixture/mcp:1.4.2@sha256:" + "d".repeat(64),
   ];
   for (const image of images) {
     assert.throws(
       () => normalizeMcp({ record: wrappedServer({ command: "docker", args: ["run", image] }) }),
-      /container image must use an exact version tag or sha256 digest/,
+      /container image must use an immutable sha256 digest/,
     );
   }
 });
 
 test("container parsing does not mistake option values for the image or embed env values", () => {
+  const image = "fixture/mcp@sha256:" + "b".repeat(64);
   assert.doesNotThrow(() => normalizeMcp({
     record: wrappedServer({
       command: "docker",
-      args: ["run", "--name", "fixture", "--platform=linux/amd64", "fixture/mcp:1.4.2"],
+      args: ["run", "--name", "fixture", "--platform=linux/amd64", image],
     }),
   }));
   assert.throws(
     () => normalizeMcp({
       record: wrappedServer({
         command: "docker",
-        args: ["run", "--env", "TOKEN=secret-value", "fixture/mcp:1.4.2"],
+        args: ["run", "--env", "TOKEN=secret-value", image],
       }),
     }),
     /container env must not embed a value/,
   );
   assert.throws(
-    () => normalizeMcp({ record: wrappedServer({ command: "docker", args: ["pull", "fixture/mcp:1.4.2"] }) }),
+    () => normalizeMcp({ record: wrappedServer({ command: "docker", args: ["pull", image] }) }),
     /container MCP command must use run/,
   );
+});
+
+test("detects container runtimes by POSIX and Windows command basename", () => {
+  for (const command of [
+    "/usr/bin/docker",
+    "C:\\Program Files\\RedHat\\podman.exe",
+    "/usr/local/bin/container",
+  ]) {
+    assert.throws(
+      () => normalizeMcp({
+        record: wrappedServer({
+          command,
+          args: ["run", "ghcr.io/fixture/mcp:latest"],
+        }),
+      }),
+      /container image must use an immutable sha256 digest/,
+    );
+  }
+});
+
+test("rejects nested dynamic launchers in container commands and entrypoints", () => {
+  const image = "ghcr.io/fixture/mcp@sha256:" + "c".repeat(64);
+  for (const args of [
+    ["run", image, "npx", "@fixture/mcp"],
+    ["run", image, "/usr/bin/npm", "exec", "@fixture/mcp"],
+    ["run", image, "cmd.exe", "/c", "npx @fixture/mcp"],
+    ["run", image, "docker", "run", image],
+    ["run", "--entrypoint", "npx", image],
+    ["run", "--entrypoint=/bin/sh", image],
+  ]) {
+    assert.throws(
+      () => normalizeMcp({ record: wrappedServer({ command: "docker", args }) }),
+      /container MCP must not launch nested runtime/,
+    );
+  }
 });
 
 test("writes deterministic Claude and Codex configs without empty host fields", (context) => {
@@ -442,4 +544,170 @@ test("writer rejects unsupported targets, duplicate IDs, and malformed server in
     }),
     /stdio MCP server must not define a URL/,
   );
+});
+
+for (const { name, server, error } of [
+  {
+    name: "file URLs",
+    server: {
+      id: "remote",
+      transport: "http",
+      env: {},
+      url: "file:///tmp/mcp.sock",
+      runtimeDependencies: {},
+    },
+    error: /remote MCP URL must use HTTP or HTTPS/,
+  },
+  {
+    name: "URL userinfo",
+    server: {
+      id: "remote",
+      transport: "sse",
+      env: {},
+      url: "https://user:secret-value@example.invalid/events",
+      runtimeDependencies: {},
+    },
+    error: /remote MCP URL must not embed credentials/,
+  },
+  {
+    name: "floating npx packages",
+    server: {
+      id: "local",
+      transport: "stdio",
+      command: "npx",
+      args: ["@fixture/mcp@latest"],
+      env: {},
+      runtimeDependencies: { "@fixture/mcp": "1.4.2" },
+    },
+    error: /floating MCP package version/,
+  },
+  {
+    name: "missing npx runtime dependencies",
+    server: {
+      id: "local",
+      transport: "stdio",
+      command: "npx",
+      args: ["@fixture/mcp@1.4.2"],
+      env: {},
+      runtimeDependencies: {},
+    },
+    error: /unpinned MCP package @fixture\/mcp/,
+  },
+  {
+    name: "unexpected static runtime dependencies",
+    server: {
+      id: "local",
+      transport: "stdio",
+      command: "node",
+      args: ["server.mjs"],
+      env: {},
+      runtimeDependencies: { "@fixture/mcp": "1.4.2" },
+    },
+    error: /MCP runtime dependencies disagree with command/,
+  },
+  {
+    name: "floating runtime dependency pins",
+    server: {
+      id: "local",
+      transport: "stdio",
+      command: "node",
+      args: ["server.mjs"],
+      env: {},
+      runtimeDependencies: { "@fixture/mcp": "latest" },
+    },
+    error: /MCP catalog pin must be an exact semver/,
+  },
+  {
+    name: "non-object runtime dependencies",
+    server: {
+      id: "local",
+      transport: "stdio",
+      command: "node",
+      args: ["server.mjs"],
+      env: {},
+      runtimeDependencies: [],
+    },
+    error: /MCP runtime pins must be an object/,
+  },
+  {
+    name: "literal env values",
+    server: {
+      id: "local",
+      transport: "stdio",
+      command: "node",
+      args: [],
+      env: { TOKEN: "secret-value" },
+      runtimeDependencies: {},
+    },
+    error: /MCP env must not embed a value/,
+  },
+  {
+    name: "non-string args",
+    server: {
+      id: "local",
+      transport: "stdio",
+      command: "node",
+      args: [42],
+      env: {},
+      runtimeDependencies: {},
+    },
+    error: /MCP args must be an array of strings/,
+  },
+  {
+    name: "unsupported transports",
+    server: {
+      id: "remote",
+      transport: "websocket",
+      env: {},
+      url: "https://example.invalid/mcp",
+      runtimeDependencies: {},
+    },
+    error: /unsupported MCP transport/,
+  },
+  {
+    name: "unknown normalized fields",
+    server: {
+      id: "local",
+      transport: "stdio",
+      command: "node",
+      args: [],
+      env: {},
+      runtimeDependencies: {},
+      headers: { Authorization: "placeholder" },
+    },
+    error: /unknown normalized MCP server field/,
+  },
+]) {
+  test("writer rejects " + name + " before emitting a config", (context) => {
+    const root = mkdtempSync(resolve(tmpdir(), "mcp-writer-gate-"));
+    context.after(() => rmSync(root, { recursive: true, force: true }));
+    const filePath = resolve(root, ".mcp.json");
+
+    assert.throws(
+      () => writeMcpConfig({ servers: [server], target: "claude", filePath }),
+      error,
+    );
+    assert.equal(existsSync(filePath), false);
+  });
+}
+
+test("writer accepts a canonically normalized pinned npx server", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "mcp-writer-pinned-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const filePath = resolve(root, ".mcp.json");
+  const server = normalizeMcp({
+    record: wrappedServer(npxServer(["-y", "@fixture/mcp@latest"])),
+    runtimePins: exactPin,
+  })[0];
+
+  writeMcpConfig({ servers: [server], target: "claude", filePath });
+
+  assert.deepEqual(JSON.parse(readFileSync(filePath, "utf8")), {
+    mcpServers: {
+      fixture: {
+        command: "npx",
+        args: ["-y", "@fixture/mcp@1.4.2"],
+      },
+    },
+  });
 });
