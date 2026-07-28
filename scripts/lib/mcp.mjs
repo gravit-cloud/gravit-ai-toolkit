@@ -127,14 +127,15 @@ function assertUnambiguousWindowsCommandPath(command) {
     ? "\\" + separatorView.replace(/^\\+/u, "")
     : separatorView;
   const hasDoubleSeparatorPrefix = /^[\\/]{2}/u.test(command);
-  const hasNativeNtPrefix = command.startsWith("\\");
+  const hasBackslash = command.includes("\\");
+  const hasWindowsNamespaceSemantics = hasBackslash || hasDoubleSeparatorPrefix;
   if (
     (
       hasDoubleSeparatorPrefix &&
       ["\\?\\", "\\.\\", "\\??\\"].some((prefix) => namespaceView.startsWith(prefix))
     ) ||
     (
-      hasNativeNtPrefix &&
+      hasWindowsNamespaceSemantics &&
       ["\\??\\", "\\device\\", "\\global??\\", "\\dosdevices\\"]
         .some((prefix) => namespaceView.startsWith(prefix))
     )
@@ -146,7 +147,7 @@ function assertUnambiguousWindowsCommandPath(command) {
   const isWindowsPath = isBareCommand ||
     /^[A-Za-z]:/u.test(command) ||
     hasDoubleSeparatorPrefix ||
-    command.includes("\\");
+    hasBackslash;
   if (
     isWindowsPath &&
     command.split(/[\\/]/u).some((segment) => /[. ]$/u.test(segment))
@@ -364,7 +365,7 @@ function assertPinnedContainerImage(image) {
 }
 
 function assertNoNestedContainerRuntime(command) {
-  if (command === undefined || command.startsWith("-")) return;
+  if (command === undefined) return;
   if (runtimeKind(command).kind !== "static") {
     throw new Error("container MCP must not launch nested runtime: " + command);
   }
