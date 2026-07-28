@@ -1,9 +1,10 @@
-import { cpSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { treeHash } from "./hash.mjs";
 import { writeJson } from "./json.mjs";
-import { assertInside, assertRegistryName } from "./path-safety.mjs";
-import { discoverSkills } from "./skills.mjs";
+import { compareCodePoints } from "./ordering.mjs";
+import { assertRegistryName } from "./path-safety.mjs";
+import { discoverSkills, renderSkills } from "./skills.mjs";
 import { renderClaudeTarget } from "./targets/claude.mjs";
 import { renderCodexTarget } from "./targets/codex.mjs";
 
@@ -13,22 +14,21 @@ export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
 
   mkdirSync(bundleRoot, { recursive: true });
   const componentsRoot = resolve(bundleRoot, "components/skills");
-  const components = skills
+  const renderedComponents = renderSkills({
+    skills,
+    destinationRoot: componentsRoot,
+    target: "neutral",
+  });
+  const components = renderedComponents
     .map((skill) => {
-      const destination = assertInside(
-        componentsRoot,
-        resolve(componentsRoot, skill.name),
-        "skill component destination",
-      );
-      cpSync(skill.sourceDirectory, destination, { recursive: true });
       return {
         id: skill.name,
         type: "skill",
-        path: relative(bundleRoot, destination).replaceAll("\\", "/"),
-        digest: treeHash(destination),
+        path: relative(bundleRoot, skill.directory).replaceAll("\\", "/"),
+        digest: treeHash(skill.directory),
       };
     })
-    .sort((left, right) => left.id.localeCompare(right.id));
+    .sort((left, right) => compareCodePoints(left.id, right.id));
 
   const targets = {};
   if (plugin.targets.includes("claude")) {
