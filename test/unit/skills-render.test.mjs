@@ -279,6 +279,143 @@ test("rendering parses rich inline links and skips code", (context) => {
   assert.match(rendered, /```md\n\[fenced\]\(\.\/child\/SKILL\.md\)\n```/);
 });
 
+test("preserves YAML frontmatter except for the Codex skill directive", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const parentDirectory = resolve(temporaryRoot, "source", "parent");
+  const childDirectory = resolve(parentDirectory, "child");
+  const skillFrontmatter = [
+    "---",
+    "name: parent",
+    "description: Parent",
+    "disable-model-invocation: true",
+    'inline-card: "[front inline](./child/SKILL.md)"',
+    'image-card: "![front image](./child/diagram.png)"',
+    "---",
+    "",
+  ].join("\n");
+  const resourceFrontmatter = [
+    "---",
+    "disable-model-invocation: true",
+    'inline-card: "[resource inline](./child/SKILL.md)"',
+    'image-card: "![resource image](./child/diagram.png)"',
+    "---",
+    "",
+  ].join("\n");
+  const codexSkillFrontmatter = [
+    "---",
+    "name: parent",
+    "description: Parent",
+    'inline-card: "[front inline](./child/SKILL.md)"',
+    'image-card: "![front image](./child/diagram.png)"',
+    "---",
+    "",
+  ].join("\n");
+  mkdirSync(childDirectory, { recursive: true });
+  writeFileSync(
+    resolve(parentDirectory, "SKILL.md"),
+    skillFrontmatter + "Read [the guide](./guide.md).\n",
+  );
+  writeFileSync(
+    resolve(parentDirectory, "guide.md"),
+    resourceFrontmatter + "Read [the child](./child/SKILL.md).\n",
+  );
+  writeFileSync(
+    resolve(childDirectory, "SKILL.md"),
+    "---\nname: child\ndescription: Child\n---\n",
+  );
+  writeFileSync(resolve(childDirectory, "diagram.png"), "diagram\n");
+  const skills = [
+    { id: "parent", name: "parent", sourceDirectory: parentDirectory },
+    { id: "child", name: "child", sourceDirectory: childDirectory },
+  ];
+
+  for (const target of ["neutral", "claude", "codex"]) {
+    const destinationRoot = resolve(temporaryRoot, target);
+    renderSkills({ skills, destinationRoot, target });
+    const renderedSkill = readFileSync(
+      resolve(destinationRoot, "parent/SKILL.md"),
+      "utf8",
+    );
+    const renderedResource = readFileSync(
+      resolve(destinationRoot, "parent/guide.md"),
+      "utf8",
+    );
+    const expectedSkillFrontmatter = target === "codex"
+      ? codexSkillFrontmatter
+      : skillFrontmatter;
+
+    assert.equal(
+      renderedSkill.slice(0, expectedSkillFrontmatter.length),
+      expectedSkillFrontmatter,
+      target + " skill frontmatter",
+    );
+    assert.equal(
+      renderedResource.slice(0, resourceFrontmatter.length),
+      resourceFrontmatter,
+      target + " resource frontmatter",
+    );
+    assert.match(renderedResource, /Read \[the child\]\(\.\.\/child\/SKILL\.md\)\./);
+  }
+});
+
+test("resolves encoded local paths while preserving URI suffixes and code", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const parentDirectory = resolve(temporaryRoot, "source", "parent");
+  const childDirectory = resolve(parentDirectory, "child");
+  mkdirSync(childDirectory, { recursive: true });
+  writeFileSync(
+    resolve(parentDirectory, "SKILL.md"),
+    "---\nname: parent\ndescription: Parent\n---\n\nRead [the guide](./guide.md).\n",
+  );
+  const sourceGuide = [
+    "[same owner](./same%20name%23part&amp;notes.md?raw=1#same)",
+    "[cross inline](./child/guide%20name%23part&amp;notes.md?download=1#section)",
+    "![cross image](./child/diagram%20%231&amp;2.png?raw=true#preview)",
+    "[cross reference][encoded-reference]",
+    "",
+    "[encoded-reference]: ./child/reference%20name%23x&amp;y.md?mode=raw#details",
+    "",
+    "    [indented code](./child/guide%20name%23part&amp;notes.md?code=1#literal)",
+    "",
+  ].join("\n");
+  writeFileSync(resolve(parentDirectory, "guide.md"), sourceGuide);
+  writeFileSync(resolve(parentDirectory, "same name#part&notes.md"), "# Same owner\n");
+  writeFileSync(
+    resolve(childDirectory, "SKILL.md"),
+    "---\nname: child\ndescription: Child\n---\n",
+  );
+  writeFileSync(resolve(childDirectory, "guide name#part&notes.md"), "# Guide\n");
+  writeFileSync(resolve(childDirectory, "diagram #1&2.png"), "diagram\n");
+  writeFileSync(resolve(childDirectory, "reference name#x&y.md"), "# Reference\n");
+
+  const destinationRoot = resolve(temporaryRoot, "neutral");
+  renderSkills({
+    skills: [
+      { id: "parent", name: "parent", sourceDirectory: parentDirectory },
+      { id: "child", name: "child", sourceDirectory: childDirectory },
+    ],
+    destinationRoot,
+    target: "neutral",
+  });
+
+  assert.equal(
+    readFileSync(resolve(destinationRoot, "parent/guide.md"), "utf8"),
+    [
+      "[same owner](./same%20name%23part&amp;notes.md?raw=1#same)",
+      "[cross inline](../child/guide%20name%23part&amp;notes.md?download=1#section)",
+      "![cross image](../child/diagram%20%231&amp;2.png?raw=true#preview)",
+      "[cross reference][encoded-reference]",
+      "",
+      "[encoded-reference]: ../child/reference%20name%23x&amp;y.md?mode=raw#details",
+      "",
+      "    [indented code](./child/guide%20name%23part&amp;notes.md?code=1#literal)",
+      "",
+    ].join("\n"),
+  );
+});
+
 test("rewrites links in copied Markdown resources but not CommonMark indented code", (context) => {
   const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
   context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
