@@ -228,10 +228,27 @@ test("rejects ambiguous Win32 aliases and device paths in normalizer and writer"
     "C:\\tools.\\fixture-server.exe",
     "C:\\tools. \\fixture-server.exe",
     "C:/tools/npm.exe.",
+    "C:tools/nPx.CmD.",
+    "c:tools /fixture.exe",
+    "D:tools./fixture.exe",
+    "e:/tools./fixture.exe",
+    "F:\\tools./fixture.exe",
+    "g:tools\\fixture.exe.",
     "\\\\server\\share\\docker.exe.",
     "//server/share/npx.cmd.",
+    "/\\server/share./fixture.exe",
+    "\\/server\\share./fixture.exe",
     "\\\\?\\C:\\tools\\npx.cmd",
     "\\\\.\\C:\\tools\\docker.exe",
+    "\\\\?/C:\\tools\\fixture.exe",
+    "//?\\C:\\tools\\fixture.exe",
+    "\\\\./C:/tools/fixture.exe",
+    "//.\\C:/tools/fixture.exe",
+    "\\??\\C:\\tools\\fixture.exe",
+    "\\\\??\\C:\\tools\\fixture.exe",
+    "\\Device\\HarddiskVolume1\\tools\\fixture.exe",
+    "\\Global??\\C:\\tools\\fixture.exe",
+    "\\DosDevices\\C:\\tools\\fixture.exe",
   ];
 
   for (const [index, command] of commands.entries()) {
@@ -260,7 +277,7 @@ test("rejects ambiguous Win32 aliases and device paths in normalizer and writer"
   }
 });
 
-test("keeps POSIX trailing-dot paths and unknown static wrapper scripts usable", (context) => {
+test("keeps true POSIX paths and unambiguous static Windows commands usable", (context) => {
   const root = mkdtempSync(resolve(tmpdir(), "mcp-posix-paths-"));
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const commands = [
@@ -270,6 +287,15 @@ test("keeps POSIX trailing-dot paths and unknown static wrapper scripts usable",
     "/opt/tools/fixture-server.",
     "/opt/tools/fixture-server.sh",
     "/opt/tools/fixture-server.py",
+    "/opt/name:tools/npx.cmd.",
+    "tools:name/fixture.exe.",
+    "/opt/C:tools/fixture.exe.",
+    "/??/fixture.exe.",
+    "/Device/fixture.exe.",
+    "/Global??/fixture.exe.",
+    "C:tools/fixture-server.exe",
+    "d:/tools/fixture-server.exe",
+    "E:\\tools/fixture-server.exe",
   ];
 
   for (const [index, command] of commands.entries()) {
@@ -668,6 +694,13 @@ test("rejects ambiguous Win32 aliases in nested container commands and entrypoin
     ["run", image, "docker.exe."],
     ["run", "--entrypoint", "\\\\server\\share\\npx.cmd.", image],
     ["run", image, "\\\\?\\C:\\tools\\npx.cmd"],
+    ["run", "--entrypoint", "C:tools/nPx.CmD.", image],
+    ["run", image, "c:tools /fixture.exe"],
+    ["run", "--entrypoint", "D:/tools./fixture.exe", image],
+    ["run", image, "e:tools\\fixture.exe."],
+    ["run", "--entrypoint", "\\\\?/C:\\tools\\fixture.exe", image],
+    ["run", image, "//?\\C:\\tools\\fixture.exe"],
+    ["run", "--entrypoint", "\\Global??\\C:\\tools\\fixture.exe", image],
   ];
 
   for (const [index, args] of invocations.entries()) {
