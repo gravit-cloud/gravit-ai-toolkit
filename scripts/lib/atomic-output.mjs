@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
+import { pathIsInside } from "./path-safety.mjs";
 
 function removeIfPresent(path) {
   if (existsSync(path)) rmSync(path, { recursive: true, force: true });
@@ -65,6 +66,15 @@ export function withAtomicOutput({ finalRoot, build }, fileSystem = {}) {
       removeIfPresent(stage);
     } catch (cleanupError) {
       if (!activeError) throw cleanupError;
+    }
+    if (
+      activeError
+      && typeof activeError === "object"
+      && typeof activeError.recoveryPath === "string"
+      && pathIsInside(stage, activeError.recoveryPath)
+      && !existsSync(activeError.recoveryPath)
+    ) {
+      delete activeError.recoveryPath;
     }
     if (backupRoot && !keepBackupRoot) {
       try {

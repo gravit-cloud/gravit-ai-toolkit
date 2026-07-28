@@ -178,6 +178,36 @@ test("rejects a traversal skill name without promoting escaped artifacts", (cont
   assert.match(error?.message ?? "", /skill name must match \^\[a-z0-9\]/);
 });
 
+test("removes a stageSource recoveryPath after outer cleanup deletes it", (context) => {
+  const input = sandboxRegistry(context);
+  const catalogFile = resolve(input.repositoryRoot, input.catalogPath);
+  const catalog = JSON.parse(readFileSync(catalogFile, "utf8"));
+  catalog.plugins[0].source = {
+    type: "github",
+    repo: "owner/repository",
+    ref: "v1.0.0",
+    sha: "0123456789abcdef0123456789abcdef01234567",
+    root: ".",
+  };
+  writeFileSync(catalogFile, JSON.stringify(catalog));
+  let error;
+
+  assert.throws(() => buildRegistry({
+    ...input,
+    outputRoot: resolve(input.repositoryParent, "../recovery-output"),
+    fetchGitHub({ destination }) {
+      mkdirSync(destination, { recursive: true });
+      writeFileSync(resolve(destination, "partial.txt"), "partial\n");
+      throw new Error("synthetic registry fetch failure");
+    },
+  }), (caught) => {
+    error = caught;
+    return /synthetic registry fetch failure/.test(caught.message);
+  });
+
+  assert.equal(Object.hasOwn(error, "recoveryPath"), false);
+});
+
 test("rejects repository and local-source output overlap before atomic promotion", (context) => {
   const cases = [
     ["repository root", ({ repositoryRoot: root }) => root],
@@ -257,6 +287,49 @@ test("rejects a symlinked .tmp root that resolves into a production tree", (cont
     readFileSync(resolve(productionTree, "preflight-sentinel.txt"), "utf8"),
     "keep\n",
   );
+});
+
+test("rejects ancestor and descendant overlap with canonical production roots", (context) => {
+  const cases = [
+    {
+      label: "Claude production root contains output",
+      productionName: ".claude-plugin",
+      paths(input) {
+        const target = resolve(input.repositoryRoot, ".tmp/production-target");
+        return { outputRoot: resolve(target, "generated"), target };
+      },
+    },
+    {
+      label: "output contains Agents production root",
+      productionName: ".agents",
+      paths(input) {
+        const outputRoot = resolve(input.repositoryParent, "../external-production");
+        return { outputRoot, target: resolve(outputRoot, "agents-target") };
+      },
+    },
+    {
+      label: "output equals plugins production root",
+      productionName: "plugins",
+      paths(input) {
+        const target = resolve(input.repositoryParent, "../external-plugins");
+        return { outputRoot: target, target };
+      },
+    },
+  ];
+
+  for (const { label, paths, productionName } of cases) {
+    const input = sandboxRegistry(context);
+    const { outputRoot, target } = paths(input);
+    mkdirSync(target, { recursive: true });
+    const sentinel = resolve(target, "production-sentinel.txt");
+    writeFileSync(sentinel, "keep\n");
+    symlinkSync(target, resolve(input.repositoryRoot, productionName));
+
+    const error = captureBuildError({ ...input, outputRoot });
+
+    assert.match(error?.message ?? "", /unsafe registry output/, label);
+    assert.equal(readFileSync(sentinel, "utf8"), "keep\n", label);
+  }
 });
 
 test("allows a disjoint foundation output below the real .tmp root", (context) => {
