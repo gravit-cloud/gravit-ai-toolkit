@@ -18,6 +18,24 @@ import { stableJson } from "../../scripts/lib/json.mjs";
 
 const fixture = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/complete-plugin");
 
+function temporarySource(context, manifest = {}) {
+  const root = mkdtempSync(resolve(tmpdir(), "inventory-coverage-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const source = resolve(root, "source");
+  mkdirSync(resolve(source, ".claude-plugin"), { recursive: true });
+  writeFileSync(
+    resolve(source, ".claude-plugin/plugin.json"),
+    JSON.stringify({ name: "coverage", version: "1.0.0", ...manifest }),
+  );
+  return source;
+}
+
+function writeSourceFile(source, relativePath, contents = "{}\n") {
+  const filePath = resolve(source, relativePath);
+  mkdirSync(dirname(filePath), { recursive: true });
+  writeFileSync(filePath, contents);
+}
+
 test("inventories every known component type exactly once", () => {
   const inventory = inventorySource({ sourceRoot: fixture });
   assert.deepEqual(
@@ -169,6 +187,8 @@ test("experimental declarations suppress their conventional component roots", (c
   const source = resolve(root, "source");
   cpSync(fixture, source, { recursive: true });
   const manifests = inventorySource({ sourceRoot: source }).manifests;
+  rmSync(resolve(source, "themes"), { recursive: true });
+  rmSync(resolve(source, "monitors/monitors.json"));
   writeFileSync(resolve(source, "alternate-theme.json"), "{\"name\":\"alternate\"}\n");
   writeFileSync(resolve(source, "monitors/custom.json"), "{\"custom\":true}\n");
 
@@ -225,11 +245,16 @@ test("rejects unknown top-level roots but permits declared roots and standard re
   const declared = inventorySource({
     sourceRoot: source,
     manifestOverrides: {
-      claude: { ...manifests.claude, commands: "./runtime/component.json" },
+      claude: {
+        ...manifests.claude,
+        commands: ["./commands/release.md", "./runtime/component.json"],
+      },
     },
   });
   assert.equal(
-    declared.components.find(({ type }) => type === "command").metadata.relativePath,
+    declared.components.find(({ metadata }) => (
+      metadata.relativePath === "runtime/component.json"
+    )).metadata.relativePath,
     "runtime/component.json",
   );
   assert.deepEqual(declared.skills.map(({ name }) => name), ["fixture"]);
@@ -239,7 +264,10 @@ test("rejects unknown top-level roots but permits declared roots and standard re
     () => inventorySource({
       sourceRoot: source,
       manifestOverrides: {
-        claude: { ...manifests.claude, commands: "./runtime/component.json" },
+        claude: {
+          ...manifests.claude,
+          commands: ["./commands/release.md", "./runtime/component.json"],
+        },
       },
     }),
     /unknown top-level source entry: runtime/,
@@ -256,6 +284,68 @@ test("rejects dangling symbolic links during top-level classification", (context
   assert.throws(
     () => inventorySource({ sourceRoot: source }),
     /symbolic links are not allowed in staged components: .*runtime/,
+  );
+});
+
+for (const [relativePath, expectedError] of [
+  ["channels/alerts.json", /unaccounted source file: channels\/alerts\.json/],
+  ["monitors/custom.json", /unaccounted source file: monitors\/custom\.json/],
+  ["hooks/custom.json", /unaccounted source file: hooks\/custom\.json/],
+]) {
+  test("rejects an unaccounted known-root file at " + relativePath, (context) => {
+    const source = temporarySource(context);
+    writeSourceFile(source, relativePath);
+
+    assert.throws(
+      () => inventorySource({ sourceRoot: source }),
+      expectedError,
+    );
+  });
+}
+
+test("a directory component record covers every descendant", (context) => {
+  const source = temporarySource(context);
+  writeSourceFile(source, "commands/release.md", "# Release\n");
+  writeSourceFile(source, "commands/nested/verify.md", "# Verify\n");
+
+  const inventory = inventorySource({ sourceRoot: source });
+  assert.deepEqual(
+    inventory.components
+      .filter(({ type }) => type === "command")
+      .map(({ metadata }) => metadata.relativePath),
+    ["commands"],
+  );
+});
+
+test("a declared file component does not cover a sibling", (context) => {
+  const source = temporarySource(context, { commands: "./commands/release.md" });
+  writeSourceFile(source, "commands/release.md", "# Release\n");
+  writeSourceFile(source, "commands/hidden.md", "# Hidden\n");
+
+  assert.throws(
+    () => inventorySource({ sourceRoot: source }),
+    /unaccounted source file: commands\/hidden\.md/,
+  );
+});
+
+test("a skill covers nested resources but not siblings in the skills root", (context) => {
+  const source = temporarySource(context);
+  writeSourceFile(
+    source,
+    "skills/fixture/SKILL.md",
+    "---\nname: fixture\ndescription: Coverage fixture\n---\n",
+  );
+  writeSourceFile(source, "skills/fixture/references/guide.md", "# Guide\n");
+
+  assert.deepEqual(
+    inventorySource({ sourceRoot: source }).skills.map(({ name }) => name),
+    ["fixture"],
+  );
+
+  writeSourceFile(source, "skills/orphan.md", "# Orphan\n");
+  assert.throws(
+    () => inventorySource({ sourceRoot: source }),
+    /unaccounted source file: skills\/orphan\.md/,
   );
 });
 

@@ -7,6 +7,7 @@ import {
   assertInside,
   assertRealInside,
   assertRegistryName,
+  canonicalPath,
   pathIsInside,
   walkFiles,
 } from "./path-safety.mjs";
@@ -281,6 +282,42 @@ function assertKnownTopLevelEntries({ sourceRoot, manifests, skillPaths }) {
   }
 }
 
+function nonComponentCoveragePaths(sourceRoot) {
+  const absoluteRoot = resolve(sourceRoot);
+  const paths = [
+    resolve(absoluteRoot, ".claude-plugin/plugin.json"),
+    resolve(absoluteRoot, ".codex-plugin/plugin.json"),
+    ...[...NON_COMPONENT_RESOURCE_DIRECTORIES]
+      .map((directory) => resolve(absoluteRoot, directory)),
+    ...[...NON_COMPONENT_METADATA_FILES]
+      .map((file) => resolve(absoluteRoot, file)),
+  ];
+  for (const entry of readdirSync(absoluteRoot, { withFileTypes: true })) {
+    if (entry.isFile() && NON_COMPONENT_DOCUMENTATION_FILE.test(entry.name)) {
+      paths.push(resolve(absoluteRoot, entry.name));
+    }
+  }
+  return paths;
+}
+
+function assertInventoryCoverage({ sourceRoot, components, skills }) {
+  const coverageRoots = [
+    ...components
+      .filter(({ sourceFormat }) => sourceFormat === "path")
+      .map(({ sourcePath }) => sourcePath),
+    ...skills.map(({ sourceDirectory }) => sourceDirectory),
+    ...nonComponentCoveragePaths(sourceRoot),
+  ].map(canonicalPath);
+  for (const filePath of walkFiles(resolve(sourceRoot))) {
+    const canonicalFile = canonicalPath(filePath);
+    if (coverageRoots.some((coverageRoot) => pathIsInside(coverageRoot, canonicalFile))) {
+      continue;
+    }
+    const relativePath = relative(resolve(sourceRoot), filePath).replaceAll("\\", "/");
+    throw new Error("unaccounted source file: " + relativePath);
+  }
+}
+
 function componentPath(sourceRoot, type, configuredPath) {
   if (!configuredPath) {
     throw new Error(type + " component path must not be empty");
@@ -411,12 +448,15 @@ export function inventorySource({ sourceRoot, declaredSkills, manifestOverrides 
     addRecord(components, seen, recordFor({ sourceRoot, type, value: path }));
   }
 
+  const skills = discoverSkills({
+    sourceRoot,
+    declaredSkills: skillPaths,
+  });
+  assertInventoryCoverage({ sourceRoot, components, skills });
+
   return {
     manifests,
-    skills: discoverSkills({
-      sourceRoot,
-      declaredSkills: skillPaths,
-    }),
+    skills,
     components: components.sort((left, right) => compareCodePoints(
       left.type + ":" + left.id,
       right.type + ":" + right.id,
