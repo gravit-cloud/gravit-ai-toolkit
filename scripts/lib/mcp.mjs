@@ -122,20 +122,31 @@ function isNpmPackageName(value) {
 }
 
 function assertUnambiguousWindowsCommandPath(command) {
+  const separatorView = command.replaceAll("/", "\\").toLowerCase();
+  const namespaceView = separatorView.startsWith("\\")
+    ? "\\" + separatorView.replace(/^\\+/u, "")
+    : separatorView;
+  const hasDoubleSeparatorPrefix = /^[\\/]{2}/u.test(command);
+  const hasNativeNtPrefix = command.startsWith("\\");
   if (
-    command.startsWith("\\\\?\\") ||
-    command.startsWith("\\\\.\\") ||
-    command.startsWith("//?/") ||
-    command.startsWith("//./")
+    (
+      hasDoubleSeparatorPrefix &&
+      ["\\?\\", "\\.\\", "\\??\\"].some((prefix) => namespaceView.startsWith(prefix))
+    ) ||
+    (
+      hasNativeNtPrefix &&
+      ["\\??\\", "\\device\\", "\\global??\\", "\\dosdevices\\"]
+        .some((prefix) => namespaceView.startsWith(prefix))
+    )
   ) {
     throw new Error("unsupported extended Windows MCP command path: " + command);
   }
 
   const isBareCommand = !command.includes("/") && !command.includes("\\");
   const isWindowsPath = isBareCommand ||
-    command.includes("\\") ||
-    /^[A-Za-z]:\//u.test(command) ||
-    command.startsWith("//");
+    /^[A-Za-z]:/u.test(command) ||
+    hasDoubleSeparatorPrefix ||
+    command.includes("\\");
   if (
     isWindowsPath &&
     command.split(/[\\/]/u).some((segment) => /[. ]$/u.test(segment))
