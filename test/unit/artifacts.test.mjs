@@ -63,6 +63,18 @@ test("treeHash hashes sorted POSIX paths and file hashes", (context) => {
   assert.equal(treeHash(root), "ce575966a7e73b38ca7002f75c0e772c724d058f0d50887bb3287a03af59cfbf");
 });
 
+test("treeHash hashes a file as one basename and content-digest record", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "registry-file-hash-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const filePath = resolve(root, "component.json");
+  writeFileSync(filePath, "{\"fixture\":true}\n");
+
+  assert.equal(
+    treeHash(filePath),
+    sha256("component.json\0" + sha256("{\"fixture\":true}\n")),
+  );
+});
+
 test("withAtomicOutput preserves the old tree when build throws", (context) => {
   const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-"));
   context.after(() => rmSync(parent, { recursive: true, force: true }));

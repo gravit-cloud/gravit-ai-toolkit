@@ -1,0 +1,17 @@
+{
+  "name": "complete",
+  "version": "1.0.0",
+  "description": "Complete component fixture",
+  "skills": "./skills/",
+  "commands": ["./commands/release.md"],
+  "agents": "./agents/",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json",
+  "lspServers": "./.lsp.json",
+  "outputStyles": "./output-styles/",
+  "channels": ["./channels/alerts.json"],
+  "experimental": {
+    "themes": "./themes/",
+    "monitors": "./monitors/monitors.json"
+  }
+}
