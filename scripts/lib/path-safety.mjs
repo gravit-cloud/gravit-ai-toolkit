@@ -1,8 +1,9 @@
-import { existsSync, readdirSync, realpathSync } from "node:fs";
-import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { lstatSync, readlinkSync, readdirSync, realpathSync } from "node:fs";
+import { dirname, isAbsolute, parse, relative, resolve, sep } from "node:path";
 import { compareCodePoints } from "./ordering.mjs";
 
 const REGISTRY_NAME = /^[a-z0-9][a-z0-9-]*$/;
+const MAX_SYMBOLIC_LINKS = 40;
 
 export function assertRegistryName(value, label = "registry name") {
   if (typeof value !== "string" || !REGISTRY_NAME.test(value)) {
@@ -27,17 +28,57 @@ export function pathsOverlap(left, right) {
 }
 
 export function canonicalPath(candidate) {
-  const remainder = [];
-  let existing = resolve(candidate);
-  while (!existsSync(existing)) {
-    const parent = dirname(existing);
-    if (parent === existing) {
-      throw new Error("cannot resolve canonical path: " + candidate);
+  const absoluteCandidate = resolve(candidate);
+  const candidateRoot = parse(absoluteCandidate).root;
+  let current = candidateRoot;
+  let pending = absoluteCandidate
+    .slice(candidateRoot.length)
+    .split(sep)
+    .filter(Boolean);
+  let followedLinks = 0;
+
+  while (pending.length > 0) {
+    const segment = pending.shift();
+    const next = resolve(current, segment);
+    let stats;
+    try {
+      stats = lstatSync(next);
+    } catch (error) {
+      if (error.code === "ENOENT") return resolve(next, ...pending);
+      throw new Error(
+        "cannot resolve canonical path: " + candidate + " (" + error.code + ")",
+        { cause: error },
+      );
     }
-    remainder.unshift(basename(existing));
-    existing = parent;
+    if (!stats.isSymbolicLink()) {
+      current = next;
+      continue;
+    }
+
+    followedLinks += 1;
+    if (followedLinks > MAX_SYMBOLIC_LINKS) {
+      throw new Error(
+        "cannot resolve canonical path: " + candidate + " (symbolic link loop)",
+      );
+    }
+    let target;
+    try {
+      target = readlinkSync(next);
+    } catch (error) {
+      throw new Error(
+        "cannot resolve canonical path: " + candidate + " (" + error.code + ")",
+        { cause: error },
+      );
+    }
+    const absoluteTarget = resolve(dirname(next), target);
+    const targetRoot = parse(absoluteTarget).root;
+    current = targetRoot;
+    pending = [
+      ...absoluteTarget.slice(targetRoot.length).split(sep).filter(Boolean),
+      ...pending,
+    ];
   }
-  return resolve(realpathSync(existing), ...remainder);
+  return current;
 }
 
 export function assertInside(root, candidate, label) {

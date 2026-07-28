@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildRegistry } from "../../scripts/build-registry.mjs";
 import { parseFrontmatter } from "../../scripts/lib/frontmatter.mjs";
@@ -330,6 +330,78 @@ test("rejects ancestor and descendant overlap with canonical production roots", 
     assert.match(error?.message ?? "", /unsafe registry output/, label);
     assert.equal(readFileSync(sentinel, "utf8"), "keep\n", label);
   }
+});
+
+test("rejects every dangling production-root overlap before manifest exposure", (context) => {
+  const failures = [];
+  const productionNames = [".claude-plugin", ".agents", "plugins"];
+  const locations = ["internal", "external"];
+  const relations = ["ancestor", "descendant", "equality"];
+
+  for (const productionName of productionNames) {
+    for (const location of locations) {
+      for (const relation of relations) {
+        const input = sandboxRegistry(context);
+        const anchor = location === "internal"
+          ? resolve(input.repositoryRoot, ".tmp", "dangling-production")
+          : resolve(input.repositoryParent, "..", "dangling-production");
+        const outputRoot = resolve(anchor, "output");
+        const productionTarget = relation === "ancestor"
+          ? resolve(outputRoot, "production-target")
+          : resolve(anchor, "production-target");
+        const effectiveOutput = relation === "equality"
+          ? productionTarget
+          : relation === "descendant"
+            ? resolve(productionTarget, "generated")
+            : outputRoot;
+        const sentinelRoot = relation === "ancestor" ? effectiveOutput : anchor;
+        mkdirSync(sentinelRoot, { recursive: true });
+        const sentinel = resolve(sentinelRoot, "production-sentinel.txt");
+        writeFileSync(sentinel, "keep\n");
+        const productionLink = resolve(input.repositoryRoot, productionName);
+        const linkTarget = location === "internal"
+          ? relative(dirname(productionLink), productionTarget)
+          : productionTarget;
+        symlinkSync(linkTarget, productionLink);
+        const outputManifest = resolve(
+          effectiveOutput,
+          "plugins/safe-plugin/.agent-plugin/plugin.json",
+        );
+        const productionManifest = relation === "ancestor"
+          ? undefined
+          : resolve(productionLink, relative(productionTarget, outputManifest));
+
+        const error = captureBuildError({ ...input, outputRoot: effectiveOutput });
+        const errorMessage = error?.message ?? "";
+        const sentinelContents = existsSync(sentinel)
+          ? readFileSync(sentinel, "utf8")
+          : "<missing>";
+        const observed = {
+          error: errorMessage,
+          outputManifest: existsSync(outputManifest),
+          productionLinkActive: existsSync(productionLink),
+          productionManifest: productionManifest
+            ? existsSync(productionManifest)
+            : false,
+          sentinel: sentinelContents,
+        };
+        if (
+          !/unsafe registry output/.test(errorMessage)
+          || sentinelContents !== "keep\n"
+          || observed.outputManifest
+          || observed.productionLinkActive
+          || observed.productionManifest
+        ) {
+          failures.push({
+            case: [productionName, location, relation].join("/"),
+            ...observed,
+          });
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(failures, []);
 });
 
 test("allows a disjoint foundation output below the real .tmp root", (context) => {
