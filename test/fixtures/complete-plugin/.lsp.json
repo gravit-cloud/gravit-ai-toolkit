@@ -1,0 +1,6 @@
+{
+  "fixture-lsp": {
+    "command": "fixture-language-server",
+    "args": ["--stdio"]
+  }
+}
