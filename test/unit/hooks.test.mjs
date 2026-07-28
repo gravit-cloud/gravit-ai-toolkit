@@ -221,6 +221,44 @@ test("rejects absolute source paths in any command token or option value", () =>
   }
 });
 
+test("rejects blocked shell launchers without inspecting their embedded payloads", () => {
+  for (const command of [
+    'bash -c "node /tmp/run.mjs"',
+    'tools/SH.EXE.CMD -c "exec /tmp/run.sh"',
+    'PowerShell.PS1.EXE -Command "Get-Content /tmp/input.json"',
+    'cmd.exe /C "node /tmp/run.mjs"',
+  ]) {
+    assert.throws(
+      () => normalizeHooks(inlineRecord({
+        SessionStart: [{ hooks: [{ type: "command", command }] }],
+      })),
+      /blocked hook command runtime/,
+      command,
+    );
+  }
+});
+
+test("rejects dynamic interpreter evaluation modes across path and suffix spellings", () => {
+  for (const command of [
+    'node -e "import(\'/tmp/run.mjs\')"',
+    'tools/NODE.EXE.CMD --eval="process.exit()"',
+    'bun -e "await import(\'./run.mjs\')"',
+    'tools/DENO.SH.EXE eval "Deno.exit()"',
+    'python3.13.exe -c "open(\'/tmp/input\')"',
+    'ruby.rb.exe -e "load \'/tmp/run.rb\'"',
+    'perl5.40.pl.exe -E "require \'/tmp/run.pl\'"',
+    'php8.4.exe -r "include \'/tmp/run.php\';"',
+  ]) {
+    assert.throws(
+      () => normalizeHooks(inlineRecord({
+        SessionStart: [{ hooks: [{ type: "command", command }] }],
+      })),
+      /dynamic hook command evaluation/,
+      command,
+    );
+  }
+});
+
 test("allows plugin-root paths, relative commands, flags, and HTTP URLs", () => {
   for (const command of [
     "node \"${CLAUDE_PLUGIN_ROOT}/bin/helper\"",
@@ -230,6 +268,8 @@ test("allows plugin-root paths, relative commands, flags, and HTTP URLs", () => 
     "node scripts/run.mjs --endpoint=https://example.test/path?next=/tmp/file",
     "node scripts/run.mjs https://example.test/resource",
     "node scripts/run.mjs 'https://example.test/resource?next=/tmp/file'",
+    "node scripts/run.mjs 'https://example.test/resource?from=hook&next=/tmp/file'",
+    "node scripts/run.mjs https://example.test/resource?from=hook\\&next=/tmp/file",
     "node 'literal;/tmp/run.mjs' \"literal&&/tmp/run.mjs\"",
     "node literal\\;/tmp/run.mjs literal\\|/tmp/run.mjs",
   ]) {
@@ -240,6 +280,17 @@ test("allows plugin-root paths, relative commands, flags, and HTTP URLs", () => 
       command,
     );
   }
+});
+
+test("rejects an unquoted URL ampersand as a shell operator before an absolute path", () => {
+  const command =
+    "node scripts/run.mjs https://example.test/resource?from=hook&next=/tmp/file";
+  assert.throws(
+    () => normalizeHooks(inlineRecord({
+      SessionStart: [{ hooks: [{ type: "command", command }] }],
+    })),
+    /absolute hook command path/,
+  );
 });
 
 test("rejects controls, null bytes, and malformed quoting in command hooks", () => {
