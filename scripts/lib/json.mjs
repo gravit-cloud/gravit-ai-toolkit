@@ -1,11 +1,12 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { compareCodePoints } from "./ordering.mjs";
 
 function sortValue(value) {
   if (Array.isArray(value)) return value.map(sortValue);
   if (!value || typeof value !== "object") return value;
   return Object.fromEntries(
-    Object.keys(value).sort().map((key) => [key, sortValue(value[key])]),
+    Object.keys(value).sort(compareCodePoints).map((key) => [key, sortValue(value[key])]),
   );
 }
 

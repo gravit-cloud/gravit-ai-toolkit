@@ -43,6 +43,44 @@ test("honors declared skill paths and rejects paths outside the source", () => {
   );
 });
 
+test("recursively inventories declared roots and deduplicates overlapping declarations", () => {
+  assert.deepEqual(
+    discoverSkills({
+      sourceRoot,
+      declaredSkills: "./skills/parent",
+    }).map(({ name, relativeDirectory }) => ({ name, relativeDirectory })),
+    [
+      { name: "parent", relativeDirectory: "skills/parent" },
+      { name: "child", relativeDirectory: "skills/parent/child" },
+    ],
+  );
+
+  assert.deepEqual(
+    discoverSkills({
+      sourceRoot,
+      declaredSkills: ["./skills/parent", "./skills/parent/child"],
+    }).map((skill) => skill.name),
+    ["parent", "child"],
+  );
+});
+
+test("orders discovered source paths by code point instead of locale collation", (context) => {
+  const root = mkdtempSync(join(tmpdir(), "skills-ordering-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  for (const [directory, name] of [["a", "lower-path"], ["B", "upper-path"]]) {
+    mkdirSync(join(root, "skills", directory), { recursive: true });
+    writeFileSync(
+      join(root, "skills", directory, "SKILL.md"),
+      `---\nname: ${name}\ndescription: Ordering fixture\n---\n`,
+    );
+  }
+
+  assert.deepEqual(
+    discoverSkills({ sourceRoot: root }).map((skill) => skill.name),
+    ["upper-path", "lower-path"],
+  );
+});
+
 test("rejects a declared symlink root that resolves outside the source", () => {
   const root = mkdtempSync(join(tmpdir(), "skills-discovery-"));
   const source = join(root, "source");

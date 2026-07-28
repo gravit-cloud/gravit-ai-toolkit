@@ -60,6 +60,30 @@ test("parent and child render exactly once per target", (context) => {
   );
 });
 
+test("rejects recursive frontmatter name duplicates after projection", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const sourceDirectory = resolve(temporaryRoot, "source", "parent");
+  mkdirSync(resolve(sourceDirectory, "nested"), { recursive: true });
+  writeFileSync(
+    resolve(sourceDirectory, "SKILL.md"),
+    "---\nname: parent\ndescription: Parent\n---\n",
+  );
+  writeFileSync(
+    resolve(sourceDirectory, "nested/SKILL.md"),
+    "---\nname: parent\ndescription: Duplicate parent\n---\n",
+  );
+
+  assert.throws(
+    () => renderSkills({
+      skills: [{ id: "parent", name: "parent", sourceDirectory }],
+      destinationRoot: resolve(temporaryRoot, "neutral"),
+      target: "neutral",
+    }),
+    /duplicate rendered skill name: parent/,
+  );
+});
+
 test("Codex removes every true-like disable-model-invocation spelling", (context) => {
   const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
   context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
@@ -253,6 +277,85 @@ test("rendering parses rich inline links and skips code", (context) => {
     /\[multiline-link\]\(\n  \.\.\/child\/SKILL\.md\n  "Multiline title"\)/,
   );
   assert.match(rendered, /```md\n\[fenced\]\(\.\/child\/SKILL\.md\)\n```/);
+});
+
+test("rewrites links in copied Markdown resources but not CommonMark indented code", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const parentDirectory = resolve(temporaryRoot, "source", "parent");
+  const childDirectory = resolve(parentDirectory, "child");
+  mkdirSync(childDirectory, { recursive: true });
+  writeFileSync(
+    resolve(parentDirectory, "SKILL.md"),
+    "---\nname: parent\ndescription: Parent\n---\n\nRead [the guide](./guide.md).\n",
+  );
+  writeFileSync(
+    resolve(parentDirectory, "guide.md"),
+    [
+      "[inline child](./child/SKILL.md)",
+      "[reference child][child-reference]",
+      "![child image](./child/diagram.png)",
+      "",
+      "[child-reference]: ./child/reference.md",
+      "",
+      "    [indented code](./child/SKILL.md)",
+      "",
+    ].join("\n"),
+  );
+  writeFileSync(
+    resolve(childDirectory, "SKILL.md"),
+    "---\nname: child\ndescription: Child\n---\n",
+  );
+  writeFileSync(resolve(childDirectory, "reference.md"), "# Reference\n");
+  writeFileSync(resolve(childDirectory, "diagram.png"), "image fixture\n");
+
+  const destinationRoot = resolve(temporaryRoot, "neutral");
+  renderSkills({
+    skills: [
+      { id: "parent", name: "parent", sourceDirectory: parentDirectory },
+      { id: "child", name: "child", sourceDirectory: childDirectory },
+    ],
+    destinationRoot,
+    target: "neutral",
+  });
+
+  assert.equal(
+    readFileSync(resolve(destinationRoot, "parent/guide.md"), "utf8"),
+    [
+      "[inline child](../child/SKILL.md)",
+      "[reference child][child-reference]",
+      "![child image](../child/diagram.png)",
+      "",
+      "[child-reference]: ../child/reference.md",
+      "",
+      "    [indented code](./child/SKILL.md)",
+      "",
+    ].join("\n"),
+  );
+});
+
+test("rejects unresolved local links in copied Markdown resources", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const sourceDirectory = resolve(temporaryRoot, "source", "parent");
+  mkdirSync(sourceDirectory, { recursive: true });
+  writeFileSync(
+    resolve(sourceDirectory, "SKILL.md"),
+    "---\nname: parent\ndescription: Parent\n---\n\nRead [the guide](./guide.md).\n",
+  );
+  writeFileSync(
+    resolve(sourceDirectory, "guide.md"),
+    "Read [the missing resource](./missing.md).\n",
+  );
+
+  assert.throws(
+    () => renderSkills({
+      skills: [{ id: "parent", name: "parent", sourceDirectory }],
+      destinationRoot: resolve(temporaryRoot, "neutral"),
+      target: "neutral",
+    }),
+    /unresolved local Markdown link: .*guide\.md -> \.\/missing\.md/,
+  );
 });
 
 test("rejects Windows-style skill names before creating a target tree", (context) => {

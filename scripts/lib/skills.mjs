@@ -8,13 +8,16 @@ import {
   realpathSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, isAbsolute, relative, resolve, win32 } from "node:path";
+import { basename, dirname, extname, isAbsolute, relative, resolve, win32 } from "node:path";
+import { parse as parseMarkdown, postprocess, preprocess } from "micromark";
 import { isTrueLike, parseFrontmatter } from "./frontmatter.mjs";
 import {
   assertInside,
   assertRealInside,
   assertRegistryName,
+  walkFiles,
 } from "./path-safety.mjs";
+import { compareCodePoints } from "./ordering.mjs";
 
 function rejectSymbolicLink(path) {
   if (lstatSync(path).isSymbolicLink()) {
@@ -81,9 +84,7 @@ export function discoverSkills({ sourceRoot, declaredSkills }) {
       );
       const realDirectory = assertRealInside(absoluteRoot, directory, "declared skill");
       rejectSymbolicLink(directory);
-      const skill = standaloneSkill(realDirectory);
-      if (skill) result.push(skill);
-      else recurse(realDirectory, result);
+      recurse(realDirectory, result);
     }
   } else {
     const defaultRoot = resolve(absoluteRoot, "skills");
@@ -106,7 +107,7 @@ export function discoverSkills({ sourceRoot, declaredSkills }) {
       ...skill,
       relativeDirectory: relative(absoluteRoot, skill.sourceDirectory).replaceAll("\\", "/"),
     }))
-    .sort((left, right) => left.sourceDirectory.localeCompare(right.sourceDirectory))
+    .sort((left, right) => compareCodePoints(left.sourceDirectory, right.sourceDirectory))
     .map((skill) => {
       if (names.has(skill.name)) throw new Error("duplicate skill name: " + skill.name);
       names.add(skill.name);
@@ -117,6 +118,22 @@ export function discoverSkills({ sourceRoot, declaredSkills }) {
 function nestedWithin(parent, candidate) {
   const nested = relative(parent, candidate);
   return nested !== "" && !nested.startsWith("..") && !isAbsolute(nested);
+}
+
+function projectedSourceFiles(directory, excludedRoots, result = []) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = resolve(directory, entry.name);
+    if (
+      excludedRoots.some(
+        (excluded) => path === excluded || nestedWithin(excluded, path),
+      )
+    ) {
+      continue;
+    }
+    if (entry.isDirectory()) projectedSourceFiles(path, excludedRoots, result);
+    else if (entry.isFile()) result.push(path);
+  }
+  return result.sort(compareCodePoints);
 }
 
 function codexMarkdown(markdown) {
@@ -134,218 +151,35 @@ function renderedOwner(skillRoots, absoluteTarget) {
     .sort((left, right) => right.sourceDirectory.length - left.sourceDirectory.length)[0];
 }
 
-function fenceMarker(line) {
-  const match = /^( {0,3})(`{3,}|~{3,})(.*)$/.exec(line);
-  if (!match) return undefined;
-  return { character: match[2][0], length: match[2].length, rest: match[3] };
-}
+const LINK_DESTINATION_TYPES = new Set([
+  "definitionDestinationString",
+  "resourceDestinationString",
+]);
 
-function escapedAt(markdown, index) {
-  let backslashes = 0;
-  for (let cursor = index - 1; cursor >= 0 && markdown[cursor] === "\\"; cursor -= 1) {
-    backslashes += 1;
-  }
-  return backslashes % 2 === 1;
-}
-
-function markdownWhitespace(character) {
-  return character === " " || character === "\t" || character === "\n" || character === "\r";
-}
-
-function closingBracket(markdown, start) {
-  let depth = 1;
-  for (let index = start + 1; index < markdown.length; index += 1) {
-    if (markdown[index] === "\\") {
-      index += 1;
-    } else if (markdown[index] === "[") {
-      depth += 1;
-    } else if (markdown[index] === "]") {
-      depth -= 1;
-      if (depth === 0) return index;
-    }
-  }
-  return undefined;
-}
-
-function closingTitle(markdown, start, opener) {
-  const closer = opener === "(" ? ")" : opener;
-  for (let index = start + 1; index < markdown.length; index += 1) {
-    if (markdown[index] === "\\") index += 1;
-    else if (markdown[index] === closer) return index + 1;
-  }
-  return undefined;
-}
-
-function inlineLink(markdown, labelStart) {
-  const labelEnd = closingBracket(markdown, labelStart);
-  if (labelEnd === undefined || markdown[labelEnd + 1] !== "(") return undefined;
-  let cursor = labelEnd + 2;
-  while (markdownWhitespace(markdown[cursor])) cursor += 1;
-
-  let replacementStart = cursor;
-  let destinationStart = cursor;
-  let destinationEnd;
-  let replacementEnd;
-  if (markdown[cursor] === "<") {
-    replacementStart = cursor;
-    destinationStart = cursor + 1;
-    cursor += 1;
-    while (cursor < markdown.length && markdown[cursor] !== "\n" && markdown[cursor] !== "\r") {
-      if (markdown[cursor] === "\\") cursor += 2;
-      else if (markdown[cursor] === ">") break;
-      else cursor += 1;
-    }
-    if (markdown[cursor] !== ">") return undefined;
-    destinationEnd = cursor;
-    replacementEnd = cursor + 1;
-    cursor += 1;
-  } else {
-    let depth = 0;
-    while (cursor < markdown.length) {
-      if (markdown[cursor] === "\\") {
-        cursor += 2;
-      } else if (markdown[cursor] === "(") {
-        depth += 1;
-        cursor += 1;
-      } else if (markdown[cursor] === ")") {
-        if (depth === 0) break;
-        depth -= 1;
-        cursor += 1;
-      } else if (markdownWhitespace(markdown[cursor]) && depth === 0) {
-        break;
-      } else {
-        cursor += 1;
-      }
-    }
-    destinationEnd = cursor;
-    replacementEnd = cursor;
-  }
-  if (destinationStart === destinationEnd) return undefined;
-
-  while (markdownWhitespace(markdown[cursor])) cursor += 1;
-  if (markdown[cursor] !== ")") {
-    if (!["\"", "'", "("].includes(markdown[cursor])) return undefined;
-    cursor = closingTitle(markdown, cursor, markdown[cursor]);
-    if (cursor === undefined) return undefined;
-    while (markdownWhitespace(markdown[cursor])) cursor += 1;
-    if (markdown[cursor] !== ")") return undefined;
-  }
-
-  return {
-    destination: markdown.slice(destinationStart, destinationEnd),
-    end: cursor + 1,
-    replacementEnd,
-    replacementStart,
-    wrapped: replacementStart !== destinationStart,
-  };
-}
-
-function fencedCodeRanges(markdown) {
-  const ranges = [];
-  let fence;
-  for (let start = 0; start < markdown.length;) {
-    const newline = markdown.indexOf("\n", start);
-    const end = newline === -1 ? markdown.length : newline + 1;
-    const line = markdown.slice(start, newline === -1 ? end : newline).replace(/\r$/, "");
-    const marker = fenceMarker(line);
-    if (fence) {
-      if (
-        marker &&
-        marker.character === fence.character &&
-        marker.length >= fence.length &&
-        marker.rest.trim() === ""
-      ) {
-        ranges.push({ start: fence.start, end });
-        fence = undefined;
-      }
-    } else if (marker) {
-      fence = { ...marker, start };
-    }
-    start = end;
-  }
-  if (fence) ranges.push({ start: fence.start, end: markdown.length });
-  return ranges;
-}
-
-function backtickRunEnd(markdown, start) {
-  let end = start + 1;
-  while (markdown[end] === "`") end += 1;
-  return end;
-}
-
-function markdownCodeRanges(markdown) {
-  const fenced = fencedCodeRanges(markdown);
-  const inline = [];
-  let fenceIndex = 0;
-  for (let index = 0; index < markdown.length;) {
-    while (fenced[fenceIndex] && fenced[fenceIndex].end <= index) fenceIndex += 1;
-    const nextFence = fenced[fenceIndex];
-    if (nextFence && nextFence.start <= index) {
-      index = nextFence.end;
-      continue;
-    }
-    if (markdown[index] !== "`" || escapedAt(markdown, index)) {
-      index += 1;
-      continue;
-    }
-
-    const openerEnd = backtickRunEnd(markdown, index);
-    const openerLength = openerEnd - index;
-    const searchEnd = nextFence ? nextFence.start : markdown.length;
-    let cursor = openerEnd;
-    let closingEnd;
-    while (cursor < searchEnd) {
-      const candidate = markdown.indexOf("`", cursor);
-      if (candidate === -1 || candidate >= searchEnd) break;
-      const candidateEnd = backtickRunEnd(markdown, candidate);
-      if (candidateEnd - candidate === openerLength) {
-        closingEnd = candidateEnd;
-        break;
-      }
-      cursor = candidateEnd;
-    }
-    if (closingEnd === undefined) {
-      index = openerEnd;
-    } else {
-      inline.push({ start: index, end: closingEnd });
-      index = closingEnd;
-    }
-  }
-  return [...fenced, ...inline].sort((left, right) => left.start - right.start);
+function markdownLinkDestinations(markdown) {
+  const events = postprocess(
+    parseMarkdown().document().write(preprocess()(markdown, "utf8", true)),
+  );
+  return events
+    .filter(([kind, token]) => kind === "exit" && LINK_DESTINATION_TYPES.has(token.type))
+    .map(([, token]) => ({
+      end: token.end.offset,
+      start: token.start.offset,
+      wrapped: markdown[token.start.offset - 1] === "<",
+    }))
+    .sort((left, right) => right.start - left.start);
 }
 
 function rewriteMarkdownLinks(markdown, rewriteDestination) {
-  const codeRanges = markdownCodeRanges(markdown);
-  let codeRangeIndex = 0;
-  let result = "";
-  let copiedThrough = 0;
-  for (let index = 0; index < markdown.length;) {
-    while (codeRanges[codeRangeIndex] && codeRanges[codeRangeIndex].end <= index) {
-      codeRangeIndex += 1;
-    }
-    const codeRange = codeRanges[codeRangeIndex];
-    if (codeRange && codeRange.start <= index) {
-      index = codeRange.end;
-      continue;
-    }
-    if (markdown[index] !== "[" || escapedAt(markdown, index)) {
-      index += 1;
-      continue;
-    }
-
-    const link = inlineLink(markdown, index);
-    if (!link || (codeRange && codeRange.start < link.end)) {
-      index += 1;
-      continue;
-    }
-    const replacement = rewriteDestination(link.destination, link.wrapped);
+  let result = markdown;
+  for (const destination of markdownLinkDestinations(markdown)) {
+    const rawTarget = markdown.slice(destination.start, destination.end);
+    const replacement = rewriteDestination(rawTarget, destination.wrapped);
     if (replacement !== undefined) {
-      result += markdown.slice(copiedThrough, link.replacementStart) + replacement;
-      copiedThrough = link.replacementEnd;
+      result = result.slice(0, destination.start) + replacement + result.slice(destination.end);
     }
-    index = link.end;
   }
-  return result + markdown.slice(copiedThrough);
+  return result;
 }
 
 function unescapeMarkdownDestination(destination) {
@@ -362,22 +196,29 @@ function absoluteLinkTarget(rawTarget, targetPath) {
   );
 }
 
-function rewriteLinks({ markdown, sourceSkillFile, destinationSkillFile, skills, destinationRoot }) {
+function localLink(rawTarget) {
+  if (!rawTarget || /^(?:[a-z][a-z\d+.-]*:|#)/i.test(rawTarget)) return undefined;
+  const hashIndex = rawTarget.indexOf("#");
+  const rawTargetPath = hashIndex === -1 ? rawTarget : rawTarget.slice(0, hashIndex);
+  const anchor = hashIndex === -1 ? "" : rawTarget.slice(hashIndex);
+  if (!rawTargetPath) return undefined;
+  const targetPath = unescapeMarkdownDestination(rawTargetPath);
+  if (absoluteLinkTarget(rawTargetPath, targetPath)) return undefined;
+  return { anchor, rawTargetPath, targetPath };
+}
+
+function rewriteLinks({ markdown, sourceMarkdownFile, destinationMarkdownFile, skills, destinationRoot }) {
   const skillRoots = skills.map((skill) => ({
     skill,
     sourceDirectory: realpathSync(skill.sourceDirectory),
   }));
-  const source = renderedOwner(skillRoots, realpathSync(sourceSkillFile));
+  const source = renderedOwner(skillRoots, realpathSync(sourceMarkdownFile));
   return rewriteMarkdownLinks(markdown, (rawTarget, wrapped) => {
-    if (!rawTarget || /^(?:[a-z][a-z\d+.-]*:|#)/i.test(rawTarget)) return undefined;
-    const hashIndex = rawTarget.indexOf("#");
-    const rawTargetPath = hashIndex === -1 ? rawTarget : rawTarget.slice(0, hashIndex);
-    const anchor = hashIndex === -1 ? "" : rawTarget.slice(hashIndex);
-    if (!rawTargetPath) return undefined;
-    const targetPath = unescapeMarkdownDestination(rawTargetPath);
-    if (absoluteLinkTarget(rawTargetPath, targetPath)) return undefined;
+    const link = localLink(rawTarget);
+    if (!link) return undefined;
+    const { anchor, rawTargetPath, targetPath } = link;
 
-    const absoluteTarget = resolve(dirname(sourceSkillFile), targetPath);
+    const absoluteTarget = resolve(dirname(sourceMarkdownFile), targetPath);
     const exists = existsSync(absoluteTarget);
     const ownershipTarget = exists ? realpathSync(absoluteTarget) : absoluteTarget;
     const owner = renderedOwner(skillRoots, ownershipTarget);
@@ -400,23 +241,63 @@ function rewriteLinks({ markdown, sourceSkillFile, destinationSkillFile, skills,
       ),
       "rendered skill link target",
     );
-    let rewritten = relative(dirname(destinationSkillFile), mappedTarget).replaceAll("\\", "/");
+    let rewritten = relative(dirname(destinationMarkdownFile), mappedTarget).replaceAll("\\", "/");
     if (!rewritten.startsWith(".")) rewritten = "./" + rewritten;
     rewritten += anchor;
-    if (wrapped || /[ \t]/.test(rewritten)) return "<" + rewritten + ">";
+    if (!wrapped && /[ \t]/.test(rewritten)) return "<" + rewritten + ">";
     if (/\\[()]/.test(rawTargetPath)) rewritten = rewritten.replace(/[()]/g, "\\$&");
     return rewritten;
   });
 }
 
+function validateLocalMarkdownLinks(destinationRoot) {
+  for (const filePath of walkFiles(destinationRoot)) {
+    if (![".md", ".markdown"].includes(extname(filePath).toLowerCase())) continue;
+    const markdown = readFileSync(filePath, "utf8");
+    for (const destination of markdownLinkDestinations(markdown)) {
+      const rawTarget = markdown.slice(destination.start, destination.end);
+      const link = localLink(rawTarget);
+      if (!link) continue;
+      const absoluteTarget = assertInside(
+        destinationRoot,
+        resolve(dirname(filePath), link.targetPath),
+        "rendered local Markdown link",
+      );
+      if (!existsSync(absoluteTarget)) {
+        throw new Error(
+          "unresolved local Markdown link: " + filePath + " -> " + link.targetPath,
+        );
+      }
+      assertRealInside(
+        destinationRoot,
+        absoluteTarget,
+        "rendered local Markdown link",
+      );
+    }
+  }
+}
+
+function validateRenderedSkills(destinationRoot) {
+  const names = new Set();
+  for (const filePath of walkFiles(destinationRoot)) {
+    if (basename(filePath) !== "SKILL.md") continue;
+    const markdown = readFileSync(filePath, "utf8");
+    if (!markdown.startsWith("---\n") && !markdown.startsWith("---\r\n")) continue;
+    const name = parseFrontmatter(markdown).attributes.name;
+    if (names.has(name)) throw new Error("duplicate rendered skill name: " + name);
+    names.add(name);
+  }
+}
+
 export function renderSkills({ skills, destinationRoot, target }) {
-  if (!["claude", "codex"].includes(target)) {
+  if (!["neutral", "claude", "codex"].includes(target)) {
     throw new Error("unsupported skill target: " + target);
   }
   for (const skill of skills) assertRegistryName(skill.name, "skill name");
 
   mkdirSync(destinationRoot, { recursive: true });
   const rendered = [];
+  const copiedFiles = [];
 
   for (const skill of skills) {
     const destination = assertInside(
@@ -436,24 +317,39 @@ export function renderSkills({ skills, destinationRoot, target }) {
         );
       },
     });
+    for (const sourceFile of projectedSourceFiles(skill.sourceDirectory, descendantRoots)) {
+      copiedFiles.push({
+        destinationFile: resolve(
+          destination,
+          relative(skill.sourceDirectory, sourceFile),
+        ),
+        sourceFile,
+      });
+    }
 
     const skillFile = resolve(destination, "SKILL.md");
     rendered.push({ id: skill.id, name: skill.name, directory: destination, skillFile });
   }
 
-  for (const output of rendered) {
-    const source = skills.find((skill) => skill.name === output.name);
-    let markdown = readFileSync(output.skillFile, "utf8");
+  const renderedSkillFiles = new Set(rendered.map((output) => output.skillFile));
+  for (const { destinationFile, sourceFile } of copiedFiles) {
+    if (![".md", ".markdown"].includes(extname(destinationFile).toLowerCase())) continue;
+    let markdown = readFileSync(destinationFile, "utf8");
     markdown = rewriteLinks({
       markdown,
-      sourceSkillFile: resolve(source.sourceDirectory, "SKILL.md"),
-      destinationSkillFile: output.skillFile,
+      sourceMarkdownFile: sourceFile,
+      destinationMarkdownFile: destinationFile,
       skills,
       destinationRoot,
     });
-    if (target === "codex") markdown = codexMarkdown(markdown);
-    writeFileSync(output.skillFile, markdown);
+    if (target === "codex" && renderedSkillFiles.has(destinationFile)) {
+      markdown = codexMarkdown(markdown);
+    }
+    writeFileSync(destinationFile, markdown);
   }
+
+  validateLocalMarkdownLinks(destinationRoot);
+  validateRenderedSkills(destinationRoot);
 
   return rendered;
 }
