@@ -1,4 +1,5 @@
 import { readJson } from "./json.mjs";
+import { classifyRuntimeCommand } from "./runtime-command.mjs";
 
 const PROTOTYPE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const ROOT_REFERENCE = /\$\{(?:CLAUDE_PLUGIN_ROOT|PLUGIN_ROOT)\}/gu;
@@ -146,14 +147,67 @@ function isAbsoluteLike(value) {
   return /^[\\/]/u.test(value);
 }
 
-function assertNoAbsoluteCommandPath(command) {
-  for (const token of commandTokens(command)) {
+function assertNoAbsoluteCommandPath(command, tokens) {
+  for (const token of tokens) {
     const candidates = [token];
     const optionValue = assignedValue(token);
     if (!isHttpUrl(token) && optionValue !== undefined) candidates.push(optionValue);
     if (candidates.some(isAbsoluteLike)) {
       throw new Error("absolute hook command path: " + command);
     }
+  }
+}
+
+function interpreterFamily(stem) {
+  const match = stem.match(
+    /^(nodejs|node|bun|deno|python|ruby|perl|php)(?:\d+(?:\.\d+)*)?$/u,
+  );
+  if (!match) return undefined;
+  return match[1] === "nodejs" ? "node" : match[1];
+}
+
+function hasShortMode(token, mode) {
+  return token === "-" + mode || token.startsWith("-" + mode);
+}
+
+function hasDynamicEvaluationMode(family, args) {
+  const optionArgs = args.slice(0, args.indexOf("--") === -1 ? undefined : args.indexOf("--"));
+  if (family === "deno") return optionArgs.includes("eval");
+  if (family === "node") {
+    return optionArgs.some((token) =>
+      hasShortMode(token, "e") ||
+      hasShortMode(token, "p") ||
+      token === "--eval" ||
+      token.startsWith("--eval=") ||
+      token === "--print" ||
+      token.startsWith("--print="));
+  }
+  if (family === "bun") {
+    return optionArgs.some((token) =>
+      hasShortMode(token, "e") || token === "--eval" || token.startsWith("--eval="));
+  }
+  if (family === "python") return optionArgs.some((token) => hasShortMode(token, "c"));
+  if (family === "ruby") return optionArgs.some((token) => hasShortMode(token, "e"));
+  if (family === "perl") {
+    return optionArgs.some((token) => hasShortMode(token, "e") || hasShortMode(token, "E"));
+  }
+  return optionArgs.some((token) => hasShortMode(token, "r"));
+}
+
+function assertSafeRuntimeCommand(command, tokens) {
+  let runtime;
+  try {
+    runtime = classifyRuntimeCommand(tokens[0]);
+  } catch (error) {
+    assertNoAbsoluteCommandPath(command, tokens);
+    throw error;
+  }
+  if (runtime.runtimeClass === "blocked") {
+    throw new Error("blocked hook command runtime: " + command);
+  }
+  const family = interpreterFamily(runtime.stem);
+  if (family && hasDynamicEvaluationMode(family, tokens.slice(1))) {
+    throw new Error("dynamic hook command evaluation: " + command);
   }
 }
 
@@ -175,7 +229,9 @@ function validateHookMap(hooks) {
         if (typeof hook.command !== "string" || hook.command.trim().length === 0) {
           throw new Error("command hook requires a non-empty string command: " + event);
         }
-        assertNoAbsoluteCommandPath(hook.command);
+        const tokens = commandTokens(hook.command);
+        assertSafeRuntimeCommand(hook.command, tokens);
+        assertNoAbsoluteCommandPath(hook.command, tokens);
       }
     }
   }
