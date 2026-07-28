@@ -30,6 +30,16 @@ export function withAtomicOutput({ finalRoot, build }, fileSystem = {}) {
       if (existsSync(backup)) {
         if (existsSync(outputRoot)) {
           keepBackupRoot = true;
+          const collisionError = new Error(
+            "atomic output path reappeared during promotion: " + outputRoot,
+          );
+          const recoveryError = new AggregateError(
+            [promotionError, collisionError],
+            "could not promote atomic output because the output path was recreated; "
+              + "previous output retained at " + backup,
+          );
+          recoveryError.recoveryPath = backup;
+          throw recoveryError;
         } else {
           try {
             rename(backup, outputRoot);

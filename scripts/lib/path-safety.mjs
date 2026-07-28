@@ -1,5 +1,6 @@
-import { readdirSync, realpathSync } from "node:fs";
-import { isAbsolute, relative, resolve } from "node:path";
+import { existsSync, readdirSync, realpathSync } from "node:fs";
+import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { compareCodePoints } from "./ordering.mjs";
 
 const REGISTRY_NAME = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -12,13 +13,37 @@ export function assertRegistryName(value, label = "registry name") {
   return value;
 }
 
+export function pathIsInside(root, candidate) {
+  const nested = relative(resolve(root), resolve(candidate));
+  return nested === "" || (!nested.startsWith("..") && !isAbsolute(nested));
+}
+
+export function pathIsStrictlyInside(root, candidate) {
+  return resolve(root) !== resolve(candidate) && pathIsInside(root, candidate);
+}
+
+export function pathsOverlap(left, right) {
+  return pathIsInside(left, right) || pathIsInside(right, left);
+}
+
+export function canonicalPath(candidate) {
+  const remainder = [];
+  let existing = resolve(candidate);
+  while (!existsSync(existing)) {
+    const parent = dirname(existing);
+    if (parent === existing) {
+      throw new Error("cannot resolve canonical path: " + candidate);
+    }
+    remainder.unshift(basename(existing));
+    existing = parent;
+  }
+  return resolve(realpathSync(existing), ...remainder);
+}
+
 export function assertInside(root, candidate, label) {
   const absoluteRoot = resolve(root);
   const absoluteCandidate = resolve(candidate);
-  const nested = relative(absoluteRoot, absoluteCandidate);
-  if (nested === "" || (!nested.startsWith("..") && !isAbsolute(nested))) {
-    return absoluteCandidate;
-  }
+  if (pathIsInside(absoluteRoot, absoluteCandidate)) return absoluteCandidate;
   throw new Error(label + " escapes source root: " + candidate);
 }
 
@@ -35,5 +60,5 @@ export function walkFiles(root, result = []) {
     if (entry.isDirectory()) walkFiles(path, result);
     else if (entry.isFile()) result.push(path);
   }
-  return result.sort();
+  return result.sort(compareCodePoints);
 }

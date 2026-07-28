@@ -212,3 +212,39 @@ test("withAtomicOutput retains and reports recovery data when rollback fails", (
   assert.equal(existsSync(finalRoot), false);
   assert.deepEqual(readdirSync(parent), [basename(recoveryRoot)]);
 });
+
+test("withAtomicOutput reports retained backup when output reappears during promotion", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  mkdirSync(finalRoot);
+  writeFileSync(resolve(finalRoot, "old-only.txt"), "old\n");
+  let rename = 0;
+  let error;
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    build(stage) {
+      writeFileSync(resolve(stage, "new-only.txt"), "new\n");
+    },
+  }, {
+    renameSync(source, destination) {
+      rename += 1;
+      if (rename === 2) {
+        mkdirSync(finalRoot);
+        writeFileSync(resolve(finalRoot, "concurrent.txt"), "concurrent\n");
+        throw new Error("synthetic promotion failure");
+      }
+      renameSync(source, destination);
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.equal(error.errors[0].message, "synthetic promotion failure");
+  assert.match(error.errors[1].message, /output path reappeared during promotion/);
+  assert.equal(readFileSync(resolve(finalRoot, "concurrent.txt"), "utf8"), "concurrent\n");
+  assert.equal(readFileSync(resolve(error.recoveryPath, "old-only.txt"), "utf8"), "old\n");
+  assert.equal(dirname(dirname(error.recoveryPath)), parent);
+});

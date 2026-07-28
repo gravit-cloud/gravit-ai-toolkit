@@ -1,10 +1,28 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCatalog, validateCatalog } from "../../scripts/lib/catalog.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+
+function fixtureCatalog(sourcePath = "test/fixtures/source") {
+  return {
+    schemaVersion: 1,
+    name: "boundary-fixture",
+    plugins: [{
+      name: "boundary-plugin",
+      description: "Catalog boundary fixture",
+      category: "development",
+      distributionVersion: "1.0.0",
+      source: { type: "local", path: sourcePath, root: "." },
+      targets: ["codex"],
+      policies: { default: "transform-or-fail", skills: "transform" },
+    }],
+  };
+}
 
 test("loads the checked-in fixture catalog", () => {
   const catalog = loadCatalog({
@@ -21,4 +39,64 @@ test("rejects duplicate plugin names after schema validation", () => {
   });
   catalog.plugins.push(structuredClone(catalog.plugins[0]));
   assert.throws(() => validateCatalog(catalog), /duplicate plugin name: nested-skills/);
+});
+
+test("rejects catalog paths outside the repository lexically and canonically", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-catalog-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const sandboxRepository = resolve(parent, "repository");
+  const outsideCatalog = resolve(parent, "outside-catalog.json");
+  mkdirSync(resolve(sandboxRepository, "test/fixtures/source"), { recursive: true });
+  writeFileSync(outsideCatalog, JSON.stringify(fixtureCatalog()));
+
+  assert.throws(
+    () => loadCatalog({
+      repositoryRoot: sandboxRepository,
+      catalogPath: "../outside-catalog.json",
+    }),
+    /registry catalog escapes source root/,
+  );
+
+  symlinkSync(outsideCatalog, resolve(sandboxRepository, "catalog-link.json"));
+  assert.throws(
+    () => loadCatalog({
+      repositoryRoot: sandboxRepository,
+      catalogPath: "catalog-link.json",
+    }),
+    /registry catalog escapes source root/,
+  );
+});
+
+test("rejects local sources outside the real test fixture root", (context) => {
+  const sandboxRepository = mkdtempSync(resolve(tmpdir(), "registry-catalog-"));
+  context.after(() => rmSync(sandboxRepository, { recursive: true, force: true }));
+  const fixturesRoot = resolve(sandboxRepository, "test/fixtures");
+  const outsideSource = resolve(sandboxRepository, "test/outside-source");
+  mkdirSync(fixturesRoot, { recursive: true });
+  mkdirSync(outsideSource, { recursive: true });
+
+  writeFileSync(
+    resolve(sandboxRepository, "traversal-catalog.json"),
+    JSON.stringify(fixtureCatalog("test/fixtures/../outside-source")),
+  );
+  assert.throws(
+    () => loadCatalog({
+      repositoryRoot: sandboxRepository,
+      catalogPath: "traversal-catalog.json",
+    }),
+    /local catalog source escapes source root/,
+  );
+
+  symlinkSync(outsideSource, resolve(fixturesRoot, "linked-source"));
+  writeFileSync(
+    resolve(sandboxRepository, "symlink-catalog.json"),
+    JSON.stringify(fixtureCatalog("test/fixtures/linked-source")),
+  );
+  assert.throws(
+    () => loadCatalog({
+      repositoryRoot: sandboxRepository,
+      catalogPath: "symlink-catalog.json",
+    }),
+    /local catalog source escapes source root/,
+  );
 });
