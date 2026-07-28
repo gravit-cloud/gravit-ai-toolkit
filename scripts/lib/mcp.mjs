@@ -1,5 +1,6 @@
 import { compareCodePoints } from "./ordering.mjs";
 import { readJson, writeJson } from "./json.mjs";
+import { classifyRuntimeCommand } from "./runtime-command.mjs";
 
 const EXACT_SEMVER_SOURCE = String.raw`(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:(?:0|[1-9]\d*)|(?:\d*[A-Za-z-][0-9A-Za-z-]*))(?:\.(?:(?:0|[1-9]\d*)|(?:\d*[A-Za-z-][0-9A-Za-z-]*)))*)?`;
 const EXACT_SEMVER = new RegExp("^" + EXACT_SEMVER_SOURCE + "$");
@@ -9,7 +10,6 @@ const NPM_PACKAGE = new RegExp("^(" + NPM_PACKAGE_NAME_SOURCE + ")(?:@([^@]+))?$
 const PROTOTYPE_PACKAGE_NAMES = new Set(["__proto__", "constructor", "prototype"]);
 const SERVER_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const CONTAINER_COMMANDS = new Set(["container", "docker", "podman"]);
 const CONTAINER_BOOLEAN_OPTIONS = new Set([
   "-i",
   "-t",
@@ -48,65 +48,6 @@ const NORMALIZED_SERVER_FIELDS = new Set([
   "transport",
   "url",
 ]);
-const DYNAMIC_LAUNCHERS = new Set([
-  "bunx",
-  "corepack",
-  "env",
-  "npm",
-  "pipx",
-  "pnpm",
-  "uvx",
-  "yarn",
-]);
-const KNOWN_SHELL_AND_WRAPPER_LAUNCHERS = new Set([
-  "ash",
-  "bash",
-  "busybox",
-  "cmd",
-  "csh",
-  "dash",
-  "elvish",
-  "fish",
-  "ion",
-  "ksh",
-  "mksh",
-  "nu",
-  "osh",
-  "powershell",
-  "pwsh",
-  "rc",
-  "sh",
-  "tcsh",
-  "toybox",
-  "wsl",
-  "xonsh",
-  "ysh",
-  "zsh",
-]);
-const EXECUTABLE_WRAPPER_SUFFIXES = [
-  ".exe",
-  ".cmd",
-  ".bat",
-  ".com",
-  ".ps1",
-  ".psm1",
-  ".vbs",
-  ".vbe",
-  ".wsf",
-  ".wsh",
-  ".js",
-  ".mjs",
-  ".cjs",
-  ".sh",
-  ".py",
-  ".rb",
-  ".pl",
-];
-const EXECUTABLE_ALIASES = new Map([
-  ["pnpx", "pnpm"],
-  ["yarnpkg", "yarn"],
-]);
-
 function isObject(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
@@ -119,71 +60,6 @@ function hasOwn(value, key) {
 
 function isNpmPackageName(value) {
   return NPM_PACKAGE_NAME.test(value) && !PROTOTYPE_PACKAGE_NAMES.has(value);
-}
-
-function assertUnambiguousWindowsCommandPath(command) {
-  const separatorView = command.replaceAll("/", "\\").toLowerCase();
-  const namespaceView = separatorView.startsWith("\\")
-    ? "\\" + separatorView.replace(/^\\+/u, "")
-    : separatorView;
-  const hasDoubleSeparatorPrefix = /^[\\/]{2}/u.test(command);
-  const hasBackslash = command.includes("\\");
-  const hasWindowsNamespaceSemantics = hasBackslash || hasDoubleSeparatorPrefix;
-  if (
-    (
-      hasDoubleSeparatorPrefix &&
-      ["\\?\\", "\\.\\", "\\??\\"].some((prefix) => namespaceView.startsWith(prefix))
-    ) ||
-    (
-      hasWindowsNamespaceSemantics &&
-      ["\\??\\", "\\device\\", "\\global??\\", "\\dosdevices\\"]
-        .some((prefix) => namespaceView.startsWith(prefix))
-    )
-  ) {
-    throw new Error("unsupported extended Windows MCP command path: " + command);
-  }
-
-  const isBareCommand = !command.includes("/") && !command.includes("\\");
-  const isWindowsPath = isBareCommand ||
-    /^[A-Za-z]:/u.test(command) ||
-    hasDoubleSeparatorPrefix ||
-    hasBackslash;
-  if (
-    isWindowsPath &&
-    command.split(/[\\/]/u).some((segment) => /[. ]$/u.test(segment))
-  ) {
-    throw new Error("ambiguous Windows MCP command path: " + command);
-  }
-}
-
-// Conservative known-launcher classification: portable basename and wrapper
-// normalization identifies only policy-listed runtimes; unknown stems stay static.
-function executableStem(command) {
-  assertUnambiguousWindowsCommandPath(command);
-  if (command !== command.trim()) {
-    throw new Error("MCP command must not embed arguments: " + command);
-  }
-  const basename = command.split(/[\\/]/).at(-1);
-  if (!basename || /\s/u.test(basename)) {
-    throw new Error("MCP command must not embed arguments: " + command);
-  }
-  let stem = basename.toLowerCase();
-  let suffix;
-  do {
-    suffix = EXECUTABLE_WRAPPER_SUFFIXES.find((candidate) => stem.endsWith(candidate));
-    if (suffix) stem = stem.slice(0, -suffix.length);
-  } while (suffix);
-  return EXECUTABLE_ALIASES.get(stem) || stem;
-}
-
-function runtimeKind(command) {
-  const stem = executableStem(command);
-  if (stem === "npx") return { kind: "npx", stem };
-  if (CONTAINER_COMMANDS.has(stem)) return { kind: "container", stem };
-  if (DYNAMIC_LAUNCHERS.has(stem) || KNOWN_SHELL_AND_WRAPPER_LAUNCHERS.has(stem)) {
-    return { kind: "blocked", stem };
-  }
-  return { kind: "static", stem };
 }
 
 function sourceObject(record) {
@@ -366,18 +242,18 @@ function assertPinnedContainerImage(image) {
 
 function assertNoNestedContainerRuntime(command) {
   if (command === undefined) return;
-  if (runtimeKind(command).kind !== "static") {
+  if (classifyRuntimeCommand(command).runtimeClass !== "static") {
     throw new Error("container MCP must not launch nested runtime: " + command);
   }
 }
 
 function pinArgs(command, args, runtimePins, { allowLatest }) {
-  const runtime = runtimeKind(command);
-  if (runtime.kind === "npx") return pinNpxArgs(args, runtimePins, { allowLatest });
-  if (runtime.kind === "blocked") {
+  const runtime = classifyRuntimeCommand(command);
+  if (runtime.runtimeClass === "npx") return pinNpxArgs(args, runtimePins, { allowLatest });
+  if (runtime.runtimeClass === "blocked") {
     throw new Error("unsupported dynamic MCP launcher: " + runtime.stem);
   }
-  if (runtime.kind === "container") {
+  if (runtime.runtimeClass === "container") {
     const invocation = containerInvocation(args);
     assertPinnedContainerImage(invocation.image);
     assertNoNestedContainerRuntime(invocation.entrypoint);
