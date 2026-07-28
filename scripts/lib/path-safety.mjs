@@ -3,9 +3,13 @@ import { dirname, isAbsolute, parse, relative, resolve, sep } from "node:path";
 import { compareCodePoints } from "./ordering.mjs";
 
 const REGISTRY_NAME = /^[a-z0-9][a-z0-9-]*$/;
+const PROTOTYPE_REGISTRY_NAMES = new Set(["__proto__", "constructor", "prototype"]);
 const MAX_SYMBOLIC_LINKS = 40;
 
 export function assertRegistryName(value, label = "registry name") {
+  if (PROTOTYPE_REGISTRY_NAMES.has(value)) {
+    throw new Error("prototype registry name is not allowed: " + value);
+  }
   if (typeof value !== "string" || !REGISTRY_NAME.test(value)) {
     throw new Error(
       label + " must match ^[a-z0-9][a-z0-9-]*$: " + String(value),

@@ -518,3 +518,27 @@ test("rejects Windows-style skill names before creating a target tree", (context
     assert.equal(existsSync(destinationRoot), false);
   }
 });
+
+test("rejects prototype-like skill names before creating a target tree", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const sourceDirectory = resolve(temporaryRoot, "source", "safe");
+  mkdirSync(sourceDirectory, { recursive: true });
+  writeFileSync(
+    resolve(sourceDirectory, "SKILL.md"),
+    "---\nname: safe\ndescription: Safe source\n---\n",
+  );
+
+  for (const name of ["__proto__", "constructor", "prototype"]) {
+    const destinationRoot = resolve(temporaryRoot, "target-" + name);
+    assert.throws(
+      () => renderSkills({
+        skills: [{ id: name, name, sourceDirectory }],
+        destinationRoot,
+        target: "codex",
+      }),
+      new RegExp("prototype registry name is not allowed: " + name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")),
+    );
+    assert.equal(existsSync(destinationRoot), false);
+  }
+});

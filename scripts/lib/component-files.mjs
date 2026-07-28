@@ -186,11 +186,6 @@ function validateComponent(component) {
   }
   assertRegistryName(component.id, "component id");
   assertRegistryName(component.type, "component type");
-  for (const value of [component.id, component.type]) {
-    if (PROTOTYPE_KEYS.has(value)) {
-      throw new Error("prototype registry name is not allowed: " + value);
-    }
-  }
   if (component.sourceFormat !== "path" && component.sourceFormat !== "inline") {
     throw new Error("component sourceFormat must be path or inline");
   }
