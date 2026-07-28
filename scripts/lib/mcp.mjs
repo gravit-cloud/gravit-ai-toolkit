@@ -58,16 +58,29 @@ const DYNAMIC_LAUNCHERS = new Set([
   "uvx",
   "yarn",
 ]);
-const SHELL_LAUNCHERS = new Set([
+const KNOWN_SHELL_AND_WRAPPER_LAUNCHERS = new Set([
+  "ash",
   "bash",
+  "busybox",
   "cmd",
+  "csh",
   "dash",
+  "elvish",
   "fish",
+  "ion",
   "ksh",
+  "mksh",
+  "nu",
+  "osh",
   "powershell",
   "pwsh",
+  "rc",
   "sh",
+  "tcsh",
+  "toybox",
   "wsl",
+  "xonsh",
+  "ysh",
   "zsh",
 ]);
 const EXECUTABLE_WRAPPER_SUFFIXES = [
@@ -84,6 +97,10 @@ const EXECUTABLE_WRAPPER_SUFFIXES = [
   ".js",
   ".mjs",
   ".cjs",
+  ".sh",
+  ".py",
+  ".rb",
+  ".pl",
 ];
 const EXECUTABLE_ALIASES = new Map([
   ["pnpx", "pnpm"],
@@ -104,7 +121,33 @@ function isNpmPackageName(value) {
   return NPM_PACKAGE_NAME.test(value) && !PROTOTYPE_PACKAGE_NAMES.has(value);
 }
 
+function assertUnambiguousWindowsCommandPath(command) {
+  if (
+    command.startsWith("\\\\?\\") ||
+    command.startsWith("\\\\.\\") ||
+    command.startsWith("//?/") ||
+    command.startsWith("//./")
+  ) {
+    throw new Error("unsupported extended Windows MCP command path: " + command);
+  }
+
+  const isBareCommand = !command.includes("/") && !command.includes("\\");
+  const isWindowsPath = isBareCommand ||
+    command.includes("\\") ||
+    /^[A-Za-z]:\//u.test(command) ||
+    command.startsWith("//");
+  if (
+    isWindowsPath &&
+    command.split(/[\\/]/u).some((segment) => /[. ]$/u.test(segment))
+  ) {
+    throw new Error("ambiguous Windows MCP command path: " + command);
+  }
+}
+
+// Conservative known-launcher classification: portable basename and wrapper
+// normalization identifies only policy-listed runtimes; unknown stems stay static.
 function executableStem(command) {
+  assertUnambiguousWindowsCommandPath(command);
   if (command !== command.trim()) {
     throw new Error("MCP command must not embed arguments: " + command);
   }
@@ -125,7 +168,7 @@ function runtimeKind(command) {
   const stem = executableStem(command);
   if (stem === "npx") return { kind: "npx", stem };
   if (CONTAINER_COMMANDS.has(stem)) return { kind: "container", stem };
-  if (DYNAMIC_LAUNCHERS.has(stem) || SHELL_LAUNCHERS.has(stem)) {
+  if (DYNAMIC_LAUNCHERS.has(stem) || KNOWN_SHELL_AND_WRAPPER_LAUNCHERS.has(stem)) {
     return { kind: "blocked", stem };
   }
   return { kind: "static", stem };

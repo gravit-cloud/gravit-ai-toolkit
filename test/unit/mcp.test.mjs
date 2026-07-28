@@ -14,6 +14,35 @@ import { normalizeMcp, writeMcpConfig } from "../../scripts/lib/mcp.mjs";
 
 const fixture = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/complete-plugin");
 const exactPin = { "@fixture/mcp": "1.4.2" };
+const knownShellAndWrapperCommands = [
+  "/bin/ash",
+  "/bin/bash",
+  "/bin/csh",
+  "/bin/dash",
+  "/usr/bin/elvish",
+  "/usr/bin/fish",
+  "/usr/bin/ion",
+  "/bin/ksh",
+  "/bin/mksh",
+  "/usr/bin/nu",
+  "/usr/bin/osh",
+  "/bin/rc",
+  "/bin/sh",
+  "/bin/tcsh",
+  "/usr/bin/xonsh",
+  "/usr/bin/ysh",
+  "/bin/zsh",
+  "busybox",
+  "cmd.exe",
+  "powershell.exe",
+  "pwsh",
+  "toybox",
+  "wsl.exe",
+  "/opt/wrappers/ASH.SH",
+  "/opt/wrappers/XONSH.PY",
+  "/opt/wrappers/YSH.RB",
+  "/opt/wrappers/BUSYBOX.PL",
+];
 
 function inlineRecord(inline) {
   return { sourceFormat: "inline", inline };
@@ -186,6 +215,103 @@ test("normalizes executable suffixes and aliases before blocking dynamic launche
       }),
       /unsupported dynamic MCP launcher/,
     );
+  }
+});
+
+test("rejects ambiguous Win32 aliases and device paths in normalizer and writer", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "mcp-windows-paths-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const commands = [
+    "npx.cmd.",
+    "npm.exe.",
+    "docker.exe.",
+    "C:\\tools.\\fixture-server.exe",
+    "C:\\tools. \\fixture-server.exe",
+    "C:/tools/npm.exe.",
+    "\\\\server\\share\\docker.exe.",
+    "//server/share/npx.cmd.",
+    "\\\\?\\C:\\tools\\npx.cmd",
+    "\\\\.\\C:\\tools\\docker.exe",
+  ];
+
+  for (const [index, command] of commands.entries()) {
+    assert.throws(
+      () => normalizeMcp({ record: wrappedServer({ command }) }),
+      /Windows MCP command path/,
+    );
+
+    const filePath = resolve(root, String(index), ".mcp.json");
+    assert.throws(
+      () => writeMcpConfig({
+        servers: [{
+          id: "fixture",
+          transport: "stdio",
+          command,
+          args: [],
+          env: {},
+          runtimeDependencies: {},
+        }],
+        target: "claude",
+        filePath,
+      }),
+      /Windows MCP command path/,
+    );
+    assert.equal(existsSync(filePath), false);
+  }
+});
+
+test("keeps POSIX trailing-dot paths and unknown static wrapper scripts usable", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "mcp-posix-paths-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const commands = [
+    "/opt/tools/npx.cmd.",
+    "/opt/tools/npm.exe.",
+    "/opt/tools/docker.exe.",
+    "/opt/tools/fixture-server.",
+    "/opt/tools/fixture-server.sh",
+    "/opt/tools/fixture-server.py",
+  ];
+
+  for (const [index, command] of commands.entries()) {
+    const server = normalizeMcp({
+      record: wrappedServer({ command, args: ["serve"] }),
+    })[0];
+    assert.equal(server.command, command);
+    assert.deepEqual(server.runtimeDependencies, {});
+
+    const filePath = resolve(root, String(index), ".mcp.json");
+    writeMcpConfig({ servers: [server], target: "claude", filePath });
+    assert.equal(JSON.parse(readFileSync(filePath, "utf8")).mcpServers.fixture.command, command);
+  }
+});
+
+test("rejects the known shell and wrapper policy in normalizer and writer", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "mcp-shell-policy-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  for (const [index, command] of knownShellAndWrapperCommands.entries()) {
+    assert.throws(
+      () => normalizeMcp({ record: wrappedServer({ command }) }),
+      /unsupported dynamic MCP launcher/,
+    );
+
+    const filePath = resolve(root, String(index), ".mcp.json");
+    assert.throws(
+      () => writeMcpConfig({
+        servers: [{
+          id: "fixture",
+          transport: "stdio",
+          command,
+          args: [],
+          env: {},
+          runtimeDependencies: {},
+        }],
+        target: "claude",
+        filePath,
+      }),
+      /unsupported dynamic MCP launcher/,
+    );
+    assert.equal(existsSync(filePath), false);
   }
 });
 
@@ -529,6 +655,60 @@ test("rejects nested dynamic launchers in container commands and entrypoints", (
       () => normalizeMcp({ record: wrappedServer({ command: "docker", args }) }),
       /container MCP must not launch nested runtime/,
     );
+  }
+});
+
+test("rejects ambiguous Win32 aliases in nested container commands and entrypoints", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "mcp-nested-windows-paths-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const image = "ghcr.io/fixture/mcp@sha256:" + "f".repeat(64);
+  const invocations = [
+    ["run", "--entrypoint", "npx.cmd.", image],
+    ["run", image, "npm.exe."],
+    ["run", image, "docker.exe."],
+    ["run", "--entrypoint", "\\\\server\\share\\npx.cmd.", image],
+    ["run", image, "\\\\?\\C:\\tools\\npx.cmd"],
+  ];
+
+  for (const [index, args] of invocations.entries()) {
+    assert.throws(
+      () => normalizeMcp({ record: wrappedServer({ command: "docker", args }) }),
+      /Windows MCP command path/,
+    );
+
+    const filePath = resolve(root, String(index), ".mcp.json");
+    assert.throws(
+      () => writeMcpConfig({
+        servers: [{
+          id: "fixture",
+          transport: "stdio",
+          command: "docker",
+          args,
+          env: {},
+          runtimeDependencies: {},
+        }],
+        target: "codex",
+        filePath,
+      }),
+      /Windows MCP command path/,
+    );
+    assert.equal(existsSync(filePath), false);
+  }
+});
+
+test("rejects every known shell and wrapper in nested container positions", () => {
+  const image = "ghcr.io/fixture/mcp@sha256:" + "9".repeat(64);
+
+  for (const command of knownShellAndWrapperCommands) {
+    for (const args of [
+      ["run", "--entrypoint", command, image],
+      ["run", image, command],
+    ]) {
+      assert.throws(
+        () => normalizeMcp({ record: wrappedServer({ command: "docker", args }) }),
+        /container MCP must not launch nested runtime/,
+      );
+    }
   }
 });
 
