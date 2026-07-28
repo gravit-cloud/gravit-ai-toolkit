@@ -249,6 +249,14 @@ test("rejects ambiguous Win32 aliases and device paths in normalizer and writer"
     "\\Device\\HarddiskVolume1\\tools\\fixture.exe",
     "\\Global??\\C:\\tools\\fixture.exe",
     "\\DosDevices\\C:\\tools\\fixture.exe",
+    "/??\\C:\\tools\\fixture.exe",
+    "/dEvIcE\\HarddiskVolume1\\tools\\fixture.exe",
+    "/Global??\\C:/tools/fixture.exe",
+    "/DosDevices\\C:\\tools\\fixture.exe",
+    "//Device\\HarddiskVolume1\\tools\\fixture.exe",
+    "//Device/HarddiskVolume1/tools/fixture.exe",
+    "////dEvIcE\\\\HarddiskVolume1//tools\\fixture.exe",
+    "/\\/GLOBAL??\\\\C:\\tools\\fixture.exe",
   ];
 
   for (const [index, command] of commands.entries()) {
@@ -292,7 +300,9 @@ test("keeps true POSIX paths and unambiguous static Windows commands usable", (c
     "/opt/C:tools/fixture.exe.",
     "/??/fixture.exe.",
     "/Device/fixture.exe.",
+    "/device/fixture.exe.",
     "/Global??/fixture.exe.",
+    "/DosDevices/fixture.exe.",
     "C:tools/fixture-server.exe",
     "d:/tools/fixture-server.exe",
     "E:\\tools/fixture-server.exe",
@@ -701,6 +711,10 @@ test("rejects ambiguous Win32 aliases in nested container commands and entrypoin
     ["run", "--entrypoint", "\\\\?/C:\\tools\\fixture.exe", image],
     ["run", image, "//?\\C:\\tools\\fixture.exe"],
     ["run", "--entrypoint", "\\Global??\\C:\\tools\\fixture.exe", image],
+    ["run", "--entrypoint", "/??\\C:\\tools\\fixture.exe", image],
+    ["run", image, "/Device\\HarddiskVolume1\\tools\\fixture.exe"],
+    ["run", "--entrypoint=/Global??\\C:\\tools\\fixture.exe", image],
+    ["run", image, "//dOsDeViCeS\\C:\\tools\\fixture.exe"],
   ];
 
   for (const [index, args] of invocations.entries()) {
@@ -726,6 +740,68 @@ test("rejects ambiguous Win32 aliases in nested container commands and entrypoin
       /Windows MCP command path/,
     );
     assert.equal(existsSync(filePath), false);
+  }
+});
+
+test("validates hyphen-leading nested executable paths in every container position", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "mcp-hyphen-nested-invalid-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const image = "ghcr.io/fixture/mcp@sha256:" + "8".repeat(64);
+  const command = "-tools\\npx.cmd.";
+  const invocations = [
+    ["run", "--entrypoint", command, image],
+    ["run", "--entrypoint=" + command, image],
+    ["run", image, command],
+  ];
+
+  for (const [index, args] of invocations.entries()) {
+    assert.throws(
+      () => normalizeMcp({ record: wrappedServer({ command: "docker", args }) }),
+      /Windows MCP command path/,
+    );
+
+    const filePath = resolve(root, String(index), ".mcp.json");
+    assert.throws(
+      () => writeMcpConfig({
+        servers: [{
+          id: "fixture",
+          transport: "stdio",
+          command: "docker",
+          args,
+          env: {},
+          runtimeDependencies: {},
+        }],
+        target: "claude",
+        filePath,
+      }),
+      /Windows MCP command path/,
+    );
+    assert.equal(existsSync(filePath), false);
+  }
+});
+
+test("allows a hyphen-leading static executable in every nested container position", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "mcp-hyphen-nested-static-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const image = "ghcr.io/fixture/mcp@sha256:" + "7".repeat(64);
+  const invocations = [
+    ["run", "--entrypoint", "-c", image],
+    ["run", "--entrypoint=-c", image],
+    ["run", image, "-c"],
+  ];
+
+  for (const [index, args] of invocations.entries()) {
+    const server = normalizeMcp({
+      record: wrappedServer({ command: "docker", args }),
+    })[0];
+    assert.deepEqual(server.args, args);
+
+    const filePath = resolve(root, String(index), ".mcp.json");
+    writeMcpConfig({ servers: [server], target: "codex", filePath });
+    assert.deepEqual(
+      JSON.parse(readFileSync(filePath, "utf8")).mcp_servers.fixture.args,
+      args,
+    );
   }
 });
 
