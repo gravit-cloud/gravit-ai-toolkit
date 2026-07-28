@@ -88,6 +88,46 @@ test("rejects duplicate plugin names after schema validation", () => {
   assert.throws(() => validateCatalog(catalog), /duplicate plugin name: nested-skills/);
 });
 
+test("accepts optional target policies with known targets, component types, and stable reasons", () => {
+  const catalog = fixtureCatalog();
+  catalog.plugins[0].targetPolicies = {
+    claude: { unsupported: { app: "host-does-not-load-apps" } },
+    codex: {
+      unsupported: {
+        agent: "host-does-not-load-agents",
+        lsp: "host-does-not-load-lsp",
+        "output-style": "host-does-not-load-output-styles",
+        monitor: "host-does-not-load-monitors",
+        theme: "host-does-not-load-themes",
+        channel: "host-does-not-load-channels",
+        settings: "host-does-not-load-settings",
+      },
+    },
+  };
+
+  assert.doesNotThrow(() => validateCatalog(catalog));
+});
+
+test("rejects malformed target policies and prototype-like keys", () => {
+  const cases = [
+    { future: { unsupported: {} } },
+    { codex: {} },
+    { codex: { unsupported: {}, extra: true } },
+    { codex: { unsupported: { daemon: "host-does-not-load-daemons" } } },
+    { codex: { unsupported: { agent: "Host does not load agents" } } },
+    JSON.parse('{"__proto__":{"unsupported":{}}}'),
+    { codex: { unsupported: JSON.parse('{"constructor":"not-loaded"}') } },
+  ];
+  for (const targetPolicies of cases) {
+    const catalog = fixtureCatalog();
+    catalog.plugins[0].targetPolicies = targetPolicies;
+    assert.throws(
+      () => validateCatalog(catalog),
+      /invalid registry catalog/,
+    );
+  }
+});
+
 test("rejects catalog paths outside the repository lexically and canonically", (context) => {
   const parent = mkdtempSync(resolve(tmpdir(), "registry-catalog-"));
   context.after(() => rmSync(parent, { recursive: true, force: true }));
