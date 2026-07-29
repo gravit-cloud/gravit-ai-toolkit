@@ -1,0 +1,1075 @@
+import { spawnSync } from "node:child_process";
+import {
+  existsSync,
+  lstatSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+} from "node:fs";
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  relative,
+  resolve,
+  win32,
+} from "node:path";
+import Ajv from "ajv/dist/2020.js";
+import { parse as parseMarkdown, postprocess, preprocess } from "micromark";
+import { isTrueLike, parseFrontmatter } from "./frontmatter.mjs";
+import { treeHash } from "./hash.mjs";
+import { stableJson } from "./json.mjs";
+import { compareCodePoints } from "./ordering.mjs";
+import {
+  canonicalPath,
+  pathIsInside,
+  walkFiles,
+} from "./path-safety.mjs";
+import { assertVersionChange } from "./provenance.mjs";
+
+const PROTOTYPE_NAMES = new Set(["__proto__", "constructor", "prototype"]);
+const TARGETS = new Set(["claude", "codex"]);
+const SUPPORTED_SCRIPT_EXTENSIONS = new Set([".cjs", ".js", ".mjs", ".sh"]);
+const CONTAINER_BOOLEAN_OPTIONS = new Set([
+  "-i", "-t", "--init", "--interactive", "--read-only", "--rm", "--tty",
+]);
+const CONTAINER_VALUE_OPTIONS = new Set([
+  "-e", "-p", "-u", "-v", "-w", "--entrypoint", "--env", "--hostname",
+  "--mount", "--name", "--network", "--platform", "--publish", "--pull",
+  "--user", "--volume", "--workdir",
+]);
+const LINK_DESTINATION_TYPES = new Set([
+  "definitionDestinationString",
+  "resourceDestinationString",
+]);
+
+function loadSchema(name) {
+  return JSON.parse(readFileSync(
+    new URL(`../../registry/schemas/${name}.schema.json`, import.meta.url),
+    "utf8",
+  ));
+}
+
+const ajv = new Ajv({ allErrors: true, strict: true });
+const schemaValidators = {
+  catalog: ajv.compile(loadSchema("catalog")),
+  lock: ajv.compile(loadSchema("lock")),
+  plugin: ajv.compile(loadSchema("agent-plugin")),
+};
+
+function messageOf(error) {
+  return String(error instanceof Error ? error.message : error)
+    .replace(/\s*\r?\n\s*/gu, " ")
+    .trim();
+}
+
+function normalizedRelative(root, path) {
+  const value = relative(root, path).replaceAll("\\", "/");
+  return value || ".";
+}
+
+function addCaught(errors, label, operation) {
+  try {
+    return operation();
+  } catch (error) {
+    errors.push(`${label}: ${messageOf(error)}`);
+    return undefined;
+  }
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function sortedUnique(values) {
+  return [...new Set(values)].sort(compareCodePoints);
+}
+
+function sameValues(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function readJsonFile(path, label, errors) {
+  return addCaught(errors, label, () => JSON.parse(readFileSync(path, "utf8")));
+}
+
+function readRepositoryJson(repositoryRoot, relativePath, errors) {
+  const path = safeExistingPath({
+    boundary: repositoryRoot,
+    candidate: resolve(repositoryRoot, relativePath),
+    label: relativePath,
+    errors,
+    type: "file",
+  });
+  return path ? readJsonFile(path, relativePath, errors) : undefined;
+}
+
+function applySchema(kind, value, label, errors) {
+  if (value === undefined) return false;
+  const validate = schemaValidators[kind];
+  if (validate(value)) return true;
+  for (const error of validate.errors || []) {
+    errors.push(
+      `${label}: schema ${error.instancePath || "/"} ${error.message}`,
+    );
+  }
+  return false;
+}
+
+function rejectPrototypeNames(names, label, errors) {
+  for (const name of names) {
+    if (PROTOTYPE_NAMES.has(name)) errors.push(`${label}: prototype-like name ${name}`);
+  }
+}
+
+function rejectDuplicateNames(names, label, errors) {
+  const counts = new Map();
+  for (const name of names) counts.set(name, (counts.get(name) || 0) + 1);
+  for (const [name, count] of counts) {
+    if (count > 1) errors.push(`${label}: duplicate plugin name ${name}`);
+  }
+}
+
+function statEntry(path) {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
+function safeExistingPath({ boundary, candidate, label, errors, type }) {
+  const lexicalBoundary = resolve(boundary);
+  const lexicalCandidate = resolve(candidate);
+  if (!pathIsInside(lexicalBoundary, lexicalCandidate)) {
+    errors.push(`${label}: path escapes expected root`);
+    return undefined;
+  }
+  const boundaryStats = statEntry(lexicalBoundary);
+  if (!boundaryStats || boundaryStats.isSymbolicLink() || !boundaryStats.isDirectory()) {
+    errors.push(`${label}: expected root must be a real directory`);
+    return undefined;
+  }
+  const stats = statEntry(lexicalCandidate);
+  if (!stats) {
+    errors.push(`${label}: path does not exist`);
+    return undefined;
+  }
+  const expectedCanonical = resolve(
+    realpathSync(lexicalBoundary),
+    relative(lexicalBoundary, lexicalCandidate),
+  );
+  let actualCanonical;
+  try {
+    actualCanonical = canonicalPath(lexicalCandidate);
+  } catch (error) {
+    errors.push(`${label}: ${messageOf(error)}`);
+    return undefined;
+  }
+  if (stats.isSymbolicLink() || actualCanonical !== expectedCanonical) {
+    errors.push(`${label}: symbolic path is not allowed`);
+    return undefined;
+  }
+  if (type === "file" && !stats.isFile()) {
+    errors.push(`${label}: expected a regular file`);
+    return undefined;
+  }
+  if (type === "directory" && !stats.isDirectory()) {
+    errors.push(`${label}: expected a directory`);
+    return undefined;
+  }
+  if (!stats.isFile() && !stats.isDirectory()) {
+    errors.push(`${label}: special filesystem entries are not allowed`);
+    return undefined;
+  }
+  return lexicalCandidate;
+}
+
+function safeRelativePath({ boundary, configuredPath, label, errors, type }) {
+  if (typeof configuredPath !== "string" || configuredPath.length === 0) {
+    errors.push(`${label}: expected a non-empty relative path`);
+    return undefined;
+  }
+  if (isAbsolute(configuredPath) || win32.isAbsolute(configuredPath)) {
+    errors.push(`${label}: absolute path is not allowed`);
+    return undefined;
+  }
+  return safeExistingPath({
+    boundary,
+    candidate: resolve(boundary, configuredPath),
+    label,
+    errors,
+    type,
+  });
+}
+
+function strictWalk(root) {
+  const files = walkFiles(root);
+  const visit = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = resolve(directory, entry.name);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`symbolic links are not allowed in staged components: ${path}`);
+      }
+      if (entry.isDirectory()) visit(path);
+      else if (!entry.isFile()) {
+        throw new Error(`special filesystem entries are not allowed in staged components: ${path}`);
+      }
+    }
+  };
+  visit(root);
+  return files;
+}
+
+function markdownDestinations(markdown) {
+  const events = postprocess(
+    parseMarkdown().document().write(preprocess()(markdown, "utf8", true)),
+  );
+  return events
+    .filter(([kind, token]) => kind === "exit" && LINK_DESTINATION_TYPES.has(token.type))
+    .map(([, token]) => markdown.slice(token.start.offset, token.end.offset));
+}
+
+function localMarkdownPath(rawTarget) {
+  if (!rawTarget || /^(?:[a-z][a-z\d+.-]*:|#)/i.test(rawTarget)) return undefined;
+  const suffix = rawTarget.search(/[?#]/);
+  const rawPath = suffix === -1 ? rawTarget : rawTarget.slice(0, suffix);
+  if (!rawPath) return undefined;
+  const unescaped = rawPath.replace(/\\(.)/g, "$1");
+  try {
+    return decodeURIComponent(unescaped);
+  } catch {
+    throw new Error(`invalid percent encoding in local Markdown link: ${rawPath}`);
+  }
+}
+
+function validateMarkdownLinks({ root, file, errors }) {
+  const relativeFile = normalizedRelative(root, file);
+  const markdown = readFileSync(file, "utf8");
+  let destinations;
+  try {
+    destinations = markdownDestinations(markdown);
+  } catch (error) {
+    errors.push(`${relativeFile}: invalid Markdown (${messageOf(error)})`);
+    return;
+  }
+  for (const rawTarget of destinations) {
+    let target;
+    try {
+      target = localMarkdownPath(rawTarget);
+    } catch (error) {
+      errors.push(`${relativeFile}: ${messageOf(error)}`);
+      continue;
+    }
+    if (target === undefined) continue;
+    if (isAbsolute(target) || win32.isAbsolute(target)) {
+      errors.push(`${relativeFile}: absolute local Markdown link -> ${target}`);
+      continue;
+    }
+    const absoluteTarget = resolve(dirname(file), target);
+    if (!pathIsInside(root, absoluteTarget)) {
+      errors.push(`${relativeFile}: local Markdown link escapes skill tree -> ${target}`);
+      continue;
+    }
+    const stats = statEntry(absoluteTarget);
+    if (!stats) {
+      errors.push(`${relativeFile}: broken local Markdown link -> ${target}`);
+      continue;
+    }
+    const expectedCanonical = resolve(realpathSync(root), relative(root, absoluteTarget));
+    if (
+      stats.isSymbolicLink()
+      || canonicalPath(absoluteTarget) !== expectedCanonical
+      || (!stats.isFile() && !stats.isDirectory())
+    ) {
+      errors.push(`${relativeFile}: unsafe local Markdown link -> ${target}`);
+    }
+  }
+}
+
+export function validateRecursiveSkills(targetSkillsRoot) {
+  const errors = [];
+  const root = resolve(targetSkillsRoot);
+  const rootStats = statEntry(root);
+  if (!rootStats || rootStats.isSymbolicLink() || !rootStats.isDirectory()) {
+    return [`${root}: skills root must be a real directory`];
+  }
+  let files;
+  try {
+    files = strictWalk(root);
+  } catch (error) {
+    return [messageOf(error).replaceAll(root, ".")];
+  }
+  const isCodex = root.replaceAll("\\", "/").includes("/targets/codex/skills");
+  const names = new Map();
+  for (const file of files) {
+    if ([".md", ".markdown"].includes(extname(file).toLowerCase())) {
+      validateMarkdownLinks({ root, file, errors });
+    }
+    if (basename(file) !== "SKILL.md") continue;
+    const relativeFile = normalizedRelative(root, file);
+    let attributes;
+    try {
+      ({ attributes } = parseFrontmatter(readFileSync(file, "utf8")));
+    } catch (error) {
+      errors.push(`${relativeFile}: invalid frontmatter (${messageOf(error)})`);
+      continue;
+    }
+    if (!attributes.name) errors.push(`${relativeFile}: missing frontmatter name`);
+    if (!attributes.description) errors.push(`${relativeFile}: missing frontmatter description`);
+    if (attributes.name) {
+      if (PROTOTYPE_NAMES.has(attributes.name)) {
+        errors.push(`${relativeFile}: prototype-like skill name ${attributes.name}`);
+      } else if (!/^[a-z0-9][a-z0-9-]*$/.test(attributes.name)) {
+        errors.push(
+          `${relativeFile}: skill name must match ^[a-z0-9][a-z0-9-]*$: ${attributes.name}`,
+        );
+      }
+      const paths = names.get(attributes.name) || [];
+      paths.push(relativeFile);
+      names.set(attributes.name, paths);
+    }
+    if (isCodex && isTrueLike(attributes["disable-model-invocation"])) {
+      errors.push(`${relativeFile}: disable-model-invocation must not be true-like in Codex`);
+    }
+  }
+  for (const [name, paths] of names) {
+    if (paths.length > 1) {
+      errors.push(`duplicate skill name ${name}: ${paths.sort(compareCodePoints).join(", ")}`);
+    }
+  }
+  return errors.sort(compareCodePoints);
+}
+
+function marketplaceNames(marketplace, label, errors) {
+  if (!isPlainObject(marketplace) || !Array.isArray(marketplace.plugins)) {
+    errors.push(`${label}: plugins must be an array`);
+    return [];
+  }
+  const names = marketplace.plugins
+    .map((entry) => entry?.name)
+    .filter((name) => typeof name === "string");
+  rejectPrototypeNames(names, label, errors);
+  rejectDuplicateNames(names, label, errors);
+  return sortedUnique(names);
+}
+
+function exactNameAgreement(groups, errors) {
+  const entries = Object.entries(groups);
+  const baseline = entries[0]?.[1] || [];
+  if (entries.every(([, names]) => sameValues(names, baseline))) return;
+  errors.push("registry plugin names disagree: " + entries.map(([label, names]) => (
+    `${label}=[${names.join(", ")}]`
+  )).join("; "));
+}
+
+function pluginDirectories(repositoryRoot, errors) {
+  const pluginsRoot = safeExistingPath({
+    boundary: repositoryRoot,
+    candidate: resolve(repositoryRoot, "plugins"),
+    label: "plugins",
+    errors,
+    type: "directory",
+  });
+  if (!pluginsRoot) return [];
+  const result = [];
+  for (const entry of readdirSync(pluginsRoot, { withFileTypes: true })) {
+    const path = resolve(pluginsRoot, entry.name);
+    if (entry.isSymbolicLink() || !entry.isDirectory()) {
+      errors.push(`plugins/${entry.name}: plugin entry must be a real directory`);
+      continue;
+    }
+    result.push(entry.name);
+  }
+  rejectPrototypeNames(result, "plugins", errors);
+  return sortedUnique(result);
+}
+
+function validateMarketplaceEntries({ repositoryRoot, marketplace, target, errors }) {
+  if (!Array.isArray(marketplace?.plugins)) return;
+  for (const entry of marketplace.plugins) {
+    if (!isPlainObject(entry) || typeof entry.name !== "string") continue;
+    const expected = `./plugins/${entry.name}/targets/${target}`;
+    const actual = target === "claude" ? entry.source : entry.source?.path;
+    if (actual !== expected) {
+      errors.push(`${target} marketplace ${entry.name}: expected local source ${expected}`);
+      continue;
+    }
+    if (target === "codex" && entry.source?.source !== "local") {
+      errors.push(`codex marketplace ${entry.name}: source must be local`);
+    }
+    const expectedRoot = resolve(repositoryRoot, `plugins/${entry.name}`);
+    const resolvedTarget = safeRelativePath({
+      boundary: repositoryRoot,
+      configuredPath: actual,
+      label: `${target} marketplace ${entry.name}`,
+      errors,
+      type: "directory",
+    });
+    if (resolvedTarget && !pathIsInside(expectedRoot, resolvedTarget)) {
+      errors.push(`${target} marketplace ${entry.name}: source escapes plugin bundle`);
+    }
+  }
+}
+
+function mapById(components, label, errors) {
+  const result = new Map();
+  if (!Array.isArray(components)) return result;
+  for (const component of components) {
+    if (!isPlainObject(component) || typeof component.id !== "string") continue;
+    if (PROTOTYPE_NAMES.has(component.id)) {
+      errors.push(`${label}: prototype-like component id ${component.id}`);
+    }
+    if (result.has(component.id)) errors.push(`${label}: duplicate component id ${component.id}`);
+    else result.set(component.id, component);
+  }
+  return result;
+}
+
+function compareObject(left, right) {
+  return stableJson(left) === stableJson(right);
+}
+
+function values(value) {
+  if (value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+const HOST_REFERENCES = {
+  claude: [
+    ["skills", "skill", "directory"],
+    ["commands", "command", "file"],
+    ["agents", "agent", "file"],
+    ["hooks", "hook", "file"],
+    ["mcpServers", "mcp", "file"],
+    ["lspServers", "lsp", "file"],
+    ["outputStyles", "output-style", "file"],
+    ["channels", "channel", "file"],
+  ],
+  codex: [
+    ["skills", "skill", "directory"],
+    ["hooks", "hook", "file"],
+    ["mcpServers", "mcp", "file"],
+    ["apps", "app", "file"],
+  ],
+};
+
+function dispositionPaths({ manifest, target, type }) {
+  return (manifest.components || [])
+    .filter((component) => component.type === type)
+    .map((component) => component.targets?.[target]?.path)
+    .filter((path) => typeof path === "string");
+}
+
+function pathsOverlap(left, right) {
+  return pathIsInside(left, right) || pathIsInside(right, left);
+}
+
+function validateHostManifest({ pluginRoot, plugin, manifest, target, errors }) {
+  const targetRoot = resolve(pluginRoot, `targets/${target}`);
+  const hostRelative = target === "claude"
+    ? ".claude-plugin/plugin.json"
+    : ".codex-plugin/plugin.json";
+  const hostPath = safeExistingPath({
+    boundary: targetRoot,
+    candidate: resolve(targetRoot, hostRelative),
+    label: `${plugin.name} ${target} host manifest`,
+    errors,
+    type: "file",
+  });
+  if (!hostPath) return;
+  const host = readJsonFile(hostPath, `${plugin.name} ${target} host manifest`, errors);
+  if (!isPlainObject(host)) return;
+  if (host.name !== plugin.name) errors.push(`${plugin.name} ${target}: host manifest name mismatch`);
+  if (host.version !== plugin.distributionVersion) {
+    errors.push(`${plugin.name} ${target}: host manifest version mismatch`);
+  }
+  const referenceSpecs = [...HOST_REFERENCES[target]];
+  if (target === "claude") {
+    referenceSpecs.push(["experimental.themes", "theme", "directory"]);
+    referenceSpecs.push(["experimental.monitors", "monitor", "file"]);
+  }
+  for (const [field, type, expectedType] of referenceSpecs) {
+    const configured = field.startsWith("experimental.")
+      ? host.experimental?.[field.split(".")[1]]
+      : host[field];
+    for (const configuredPath of values(configured)) {
+      const referenceLabel = `${plugin.name} ${target} manifest ${field}`;
+      const resolvedPath = safeRelativePath({
+        boundary: targetRoot,
+        configuredPath,
+        label: referenceLabel,
+        errors,
+        type: expectedType,
+      });
+      if (!resolvedPath) continue;
+      const declared = dispositionPaths({ manifest, target, type })
+        .map((path) => resolve(pluginRoot, path));
+      if (!declared.some((path) => pathsOverlap(path, resolvedPath))) {
+        errors.push(`${referenceLabel}: path is not declared by a ${type} disposition`);
+      }
+    }
+  }
+  return host;
+}
+
+function validateComponent({
+  pluginRoot,
+  plugin,
+  manifest,
+  lockComponents,
+  component,
+  errors,
+}) {
+  const label = `${plugin.name} component ${component.id}`;
+  const lockComponent = lockComponents.get(component.id);
+  if (!lockComponent) {
+    errors.push(`${label}: missing from lock`);
+    return;
+  }
+  if (lockComponent.type !== component.type) errors.push(`${label}: type mismatch with lock`);
+  if (lockComponent.digest !== component.digest) errors.push(`${label}: digest mismatch with lock`);
+  if (!compareObject(lockComponent.targets, component.targets)) {
+    errors.push(`${label}: target dispositions mismatch with lock`);
+  }
+  const componentPath = safeRelativePath({
+    boundary: pluginRoot,
+    configuredPath: component.path,
+    label,
+    errors,
+  });
+  if (componentPath) {
+    if (!pathIsInside(resolve(pluginRoot, "components"), componentPath)) {
+      errors.push(`${label}: neutral component path escapes components root`);
+    }
+    const actualDigest = addCaught(errors, label, () => treeHash(componentPath));
+    if (actualDigest && actualDigest !== component.digest) {
+      errors.push(`${label}: component digest mismatch`);
+    }
+  }
+  const configuredTargets = sortedUnique(plugin.targets || []);
+  const dispositionTargets = isPlainObject(component.targets)
+    ? Object.keys(component.targets).sort(compareCodePoints)
+    : [];
+  if (!sameValues(configuredTargets, dispositionTargets)) {
+    errors.push(`${label}: target disposition coverage mismatch`);
+  }
+  for (const target of configuredTargets) {
+    const disposition = component.targets?.[target];
+    const targetDisposition = manifest.targets?.[target]?.components?.[component.id];
+    if (!disposition) errors.push(`${label}: missing ${target} disposition`);
+    if (!targetDisposition) errors.push(`${label}: missing ${target} target accounting`);
+    if (disposition && targetDisposition && !compareObject(disposition, targetDisposition)) {
+      errors.push(`${label}: ${target} disposition disagrees with target accounting`);
+    }
+    if (typeof disposition?.path === "string") {
+      const expectedTargetRoot = resolve(pluginRoot, `targets/${target}`);
+      const path = safeRelativePath({
+        boundary: pluginRoot,
+        configuredPath: disposition.path,
+        label: `${label} ${target} disposition`,
+        errors,
+      });
+      if (path && !pathIsInside(expectedTargetRoot, path)) {
+        errors.push(`${label}: ${target} disposition escapes target projection`);
+      }
+    } else if (["preserved", "transformed"].includes(disposition?.status)) {
+      errors.push(`${label}: ${target} supported disposition is missing path`);
+    }
+  }
+}
+
+function validateTarget({ pluginRoot, plugin, manifest, lockEntry, target, errors }) {
+  const label = `${plugin.name} target ${target}`;
+  const targetData = manifest.targets?.[target];
+  if (!isPlainObject(targetData)) return;
+  if (targetData.path !== `targets/${target}`) errors.push(`${label}: non-canonical target path`);
+  const targetRoot = safeRelativePath({
+    boundary: pluginRoot,
+    configuredPath: targetData.path,
+    label,
+    errors,
+    type: "directory",
+  });
+  if (!targetRoot) return;
+  const componentIds = sortedUnique((manifest.components || [])
+    .map((component) => component?.id)
+    .filter((id) => typeof id === "string"));
+  const targetComponentIds = isPlainObject(targetData.components)
+    ? Object.keys(targetData.components).sort(compareCodePoints)
+    : [];
+  if (!sameValues(componentIds, targetComponentIds)) {
+    errors.push(`${label}: ${target} target component set mismatch`);
+  }
+  const actualDigest = addCaught(errors, label, () => treeHash(targetRoot));
+  if (actualDigest && actualDigest !== targetData.digest) errors.push(`${label}: target digest mismatch`);
+  if (targetData.digest !== lockEntry.targets?.[target]) {
+    errors.push(`${label}: target digest mismatch with lock`);
+  }
+  validateHostManifest({ pluginRoot, plugin, manifest, target, errors });
+  const skillsRoot = resolve(targetRoot, "skills");
+  if (existsSync(skillsRoot)) {
+    for (const error of validateRecursiveSkills(skillsRoot)) {
+      errors.push(`${plugin.name} ${target}: ${error}`);
+    }
+  }
+}
+
+function validateLocalSource({ repositoryRoot, plugin, errors }) {
+  if (plugin.source?.type !== "local") return;
+  const sourcePath = plugin.source.path;
+  if (
+    typeof sourcePath !== "string"
+    || (!sourcePath.startsWith("sources/") && !sourcePath.startsWith("test/fixtures/"))
+  ) {
+    errors.push(`${plugin.name}: local source must be below sources/ or test/fixtures/`);
+    return;
+  }
+  const boundaryName = sourcePath.startsWith("sources/") ? "sources" : "test/fixtures";
+  const boundary = resolve(repositoryRoot, boundaryName);
+  const source = safeRelativePath({
+    boundary,
+    configuredPath: relative(boundaryName, sourcePath),
+    label: `${plugin.name} local source`,
+    errors,
+    type: "directory",
+  });
+  if (!source) return;
+  const sourceRoot = plugin.source.root || ".";
+  safeRelativePath({
+    boundary: source,
+    configuredPath: sourceRoot,
+    label: `${plugin.name} local source root`,
+    errors,
+    type: "directory",
+  });
+}
+
+function isAbsoluteRuntimePath(value) {
+  return (
+    isAbsolute(value)
+    || win32.isAbsolute(value)
+    || /^file:\/\//i.test(value)
+  );
+}
+
+function runtimeStrings(value, path = [], result = []) {
+  if (typeof value === "string") result.push({ path, value });
+  else if (Array.isArray(value)) {
+    value.forEach((entry, index) => runtimeStrings(entry, [...path, String(index)], result));
+  } else if (isPlainObject(value)) {
+    for (const [key, entry] of Object.entries(value)) {
+      runtimeStrings(entry, [...path, key], result);
+    }
+  }
+  return result;
+}
+
+function containerImage(args) {
+  let index = args.indexOf("run");
+  if (index === -1) return undefined;
+  index += 1;
+  while (index < args.length) {
+    const argument = args[index];
+    if (typeof argument !== "string") return undefined;
+    if (argument === "--") return args[index + 1];
+    if (!argument.startsWith("-")) return argument;
+    if (CONTAINER_BOOLEAN_OPTIONS.has(argument) || /^-[it]{2}$/.test(argument)) {
+      index += 1;
+      continue;
+    }
+    const separator = argument.indexOf("=");
+    const option = separator === -1 ? argument : argument.slice(0, separator);
+    if (!CONTAINER_VALUE_OPTIONS.has(option)) return undefined;
+    index += separator === -1 ? 2 : 1;
+  }
+  return undefined;
+}
+
+function validateRuntimeJson(value, label, errors, runtimeDependencies = {}) {
+  if (!isPlainObject(value) && !Array.isArray(value)) return;
+  const inspect = (entry, path = []) => {
+    if (Array.isArray(entry)) {
+      entry.forEach((child, index) => inspect(child, [...path, String(index)]));
+      return;
+    }
+    if (!isPlainObject(entry)) return;
+    if (
+      typeof entry.command === "string"
+      && /^(?:container|docker|podman)(?:\.exe)?$/iu.test(basename(entry.command))
+      && Array.isArray(entry.args)
+    ) {
+      const image = containerImage(entry.args);
+      if (image && !/@sha256:[a-f0-9]{64}$/u.test(image)) {
+        errors.push(`${label}: mutable OCI image ${image}`);
+      }
+    }
+    for (const [key, child] of Object.entries(entry)) {
+      const nextPath = [...path, key];
+      if (["env", "environment"].includes(key) && isPlainObject(child)) {
+        for (const [name, secret] of Object.entries(child)) {
+          if (typeof secret !== "string" || (secret !== "" && secret !== `\${${name}}`)) {
+            errors.push(`${label}: concrete environment value at ${nextPath.join(".")}.${name}`);
+          }
+        }
+      }
+      inspect(child, nextPath);
+    }
+  };
+  inspect(value);
+  for (const { path, value: string } of runtimeStrings(value)) {
+    const key = path.at(-1) || "";
+    if (
+      /(?:@|:)(?:latest|next|\*|[xX])(?:$|[\s/])/u.test(string)
+      || /@(?:[\^~><=].+|\d+(?:\.\d+)?\.(?:x|X|\*))$/u.test(string)
+    ) {
+      errors.push(`${label}: floating runtime selector ${string}`);
+    }
+    if (key.toLowerCase() === "image" && !/@sha256:[a-f0-9]{64}$/u.test(string)) {
+      errors.push(`${label}: mutable OCI image ${string}`);
+    }
+    if (
+      ["command", "cwd", "executable", "path"].includes(key.toLowerCase())
+      && isAbsoluteRuntimePath(string)
+    ) {
+      errors.push(`${label}: absolute runtime path ${string}`);
+    }
+    if (/^\/(?:[^/]|$)/u.test(string) || win32.isAbsolute(string)) {
+      const parent = path.at(-2)?.toLowerCase();
+      if (parent === "args") errors.push(`${label}: absolute runtime path ${string}`);
+    }
+    if (path.at(-2)?.toLowerCase() === "args") {
+      const packageMatch = /^((?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*)@(.+)$/u
+        .exec(string);
+      if (
+        packageMatch
+        && Object.hasOwn(runtimeDependencies, packageMatch[1])
+        && packageMatch[2] !== runtimeDependencies[packageMatch[1]]
+        && !["latest", "next", "*", "x", "X"].includes(packageMatch[2])
+      ) {
+        errors.push(`${label}: runtime package disagrees with catalog pin ${string}`);
+      }
+    }
+  }
+}
+
+function runtimeComponentFiles({ pluginRoot, manifest }) {
+  const paths = [];
+  for (const component of manifest.components || []) {
+    if (!["app", "hook", "mcp"].includes(component.type)) continue;
+    if (typeof component.path === "string") paths.push(resolve(pluginRoot, component.path));
+    for (const disposition of Object.values(component.targets || {})) {
+      if (typeof disposition?.path === "string") paths.push(resolve(pluginRoot, disposition.path));
+    }
+  }
+  return sortedUnique(paths).flatMap((path) => {
+    const stats = statEntry(path);
+    if (!stats || stats.isSymbolicLink()) return [];
+    if (stats.isFile()) return extname(path).toLowerCase() === ".json" ? [path] : [];
+    return strictWalk(path).filter((file) => extname(file).toLowerCase() === ".json");
+  });
+}
+
+function executableComponentFiles({ pluginRoot, manifest }) {
+  const paths = [];
+  for (const component of manifest.components || []) {
+    if (component.type !== "executable") continue;
+    for (const configuredPath of [
+      component.path,
+      ...Object.values(component.targets || {}).map((disposition) => disposition?.path),
+    ]) {
+      if (typeof configuredPath !== "string") continue;
+      const path = resolve(pluginRoot, configuredPath);
+      const stats = statEntry(path);
+      if (!stats || stats.isSymbolicLink()) continue;
+      if (stats.isFile()) paths.push(path);
+      else if (stats.isDirectory()) paths.push(...strictWalk(path));
+    }
+  }
+  return sortedUnique(paths).filter((file) => SUPPORTED_SCRIPT_EXTENSIONS.has(extname(file)));
+}
+
+function syntaxFiles(repositoryRoot, pluginManifests) {
+  const files = [];
+  for (const relativeRoot of ["scripts"]) {
+    const root = resolve(repositoryRoot, relativeRoot);
+    const stats = statEntry(root);
+    if (stats?.isSymbolicLink() || (stats && !stats.isDirectory())) {
+      throw new Error(`${relativeRoot} must be a real directory`);
+    }
+    if (stats?.isDirectory()) {
+      files.push(...strictWalk(root).filter((file) => SUPPORTED_SCRIPT_EXTENSIONS.has(extname(file))));
+    }
+  }
+  const build = resolve(repositoryRoot, "build.sh");
+  const buildStats = statEntry(build);
+  if (buildStats?.isSymbolicLink() || (buildStats && !buildStats.isFile())) {
+    throw new Error("build.sh must be a regular file");
+  }
+  if (buildStats?.isFile()) files.push(build);
+  for (const entry of pluginManifests) files.push(...executableComponentFiles(entry));
+  return sortedUnique(files);
+}
+
+function validateSyntax({ repositoryRoot, pluginManifests, processRunner, errors }) {
+  for (const file of syntaxFiles(repositoryRoot, pluginManifests)) {
+    const extension = extname(file).toLowerCase();
+    const command = extension === ".sh" ? "bash" : process.execPath;
+    const args = extension === ".sh" ? ["-n", file] : ["--check", file];
+    let result;
+    try {
+      result = processRunner(command, args, {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+        timeout: 5_000,
+        windowsHide: true,
+      });
+    } catch (error) {
+      errors.push(`${normalizedRelative(repositoryRoot, file)}: syntax check failed (${messageOf(error)})`);
+      continue;
+    }
+    if (result?.status !== 0) {
+      const detail = String(result?.stderr || result?.error?.message || "non-zero exit")
+        .replace(/\s+/gu, " ")
+        .trim();
+      errors.push(`${normalizedRelative(repositoryRoot, file)}: syntax error${detail ? ` (${detail})` : ""}`);
+    }
+  }
+}
+
+function validateExceptions(value, errors, now = Date.now(), path = "catalog") {
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => validateExceptions(entry, errors, now, `${path}[${index}]`));
+    return;
+  }
+  if (!isPlainObject(value)) return;
+  for (const [key, entry] of Object.entries(value)) {
+    const nextPath = `${path}.${key}`;
+    if (key === "exceptions") {
+      const exceptions = Array.isArray(entry) ? entry : isPlainObject(entry) ? Object.values(entry) : [];
+      if (!Array.isArray(entry) && !isPlainObject(entry)) {
+        errors.push(`${nextPath}: exception metadata must be an array or object`);
+      }
+      exceptions.forEach((exception, index) => {
+        const label = `${nextPath}[${index}]`;
+        if (!isPlainObject(exception)) {
+          errors.push(`${label}: exception metadata must be an object`);
+          return;
+        }
+        const expiry = exception.expiresAt ?? exception.expires ?? exception.expiry;
+        const timestamp = typeof expiry === "string" ? Date.parse(expiry) : Number.NaN;
+        if (!Number.isFinite(timestamp)) errors.push(`${label}: exception expiry is not parseable`);
+        else if (timestamp <= now) errors.push(`${label}: exception is expired`);
+      });
+    }
+    validateExceptions(entry, errors, now, nextPath);
+  }
+}
+
+function validatePlugin({ repositoryRoot, plugin, lock, lockEntry, processData, errors }) {
+  const pluginRoot = resolve(repositoryRoot, `plugins/${plugin.name}`);
+  const manifestPath = safeExistingPath({
+    boundary: pluginRoot,
+    candidate: resolve(pluginRoot, ".agent-plugin/plugin.json"),
+    label: `${plugin.name} neutral manifest`,
+    errors,
+    type: "file",
+  });
+  if (!manifestPath || !isPlainObject(lockEntry)) return;
+  const manifest = readJsonFile(manifestPath, `${plugin.name} neutral manifest`, errors);
+  if (!isPlainObject(manifest)) return;
+  applySchema("plugin", manifest, `${plugin.name} neutral manifest`, errors);
+  if (manifest.name !== plugin.name || lockEntry.name !== plugin.name) {
+    errors.push(`${plugin.name}: catalog, manifest, and lock names must match`);
+  }
+  if (
+    manifest.distributionVersion !== plugin.distributionVersion
+    || lockEntry.distributionVersion !== plugin.distributionVersion
+  ) {
+    errors.push(`${plugin.name}: catalog, manifest, and lock versions must match`);
+  }
+  if (!compareObject(plugin.source, lockEntry.source)) {
+    errors.push(`${plugin.name}: source mismatch with lock`);
+  }
+  if (lockEntry.generatorDigest !== lock.generatorDigest) {
+    errors.push(`${plugin.name}: generator digest mismatch`);
+  }
+  const configuredTargets = sortedUnique(plugin.targets || []);
+  const manifestTargets = isPlainObject(manifest.targets)
+    ? Object.keys(manifest.targets).sort(compareCodePoints)
+    : [];
+  const lockTargets = isPlainObject(lockEntry.targets)
+    ? Object.keys(lockEntry.targets).sort(compareCodePoints)
+    : [];
+  if (!sameValues(configuredTargets, manifestTargets) || !sameValues(configuredTargets, lockTargets)) {
+    errors.push(`${plugin.name}: configured target coverage mismatch`);
+  }
+  const manifestComponents = mapById(manifest.components, `${plugin.name} manifest`, errors);
+  const lockComponents = mapById(lockEntry.components, `${plugin.name} lock`, errors);
+  if (!sameValues(sortedUnique([...manifestComponents.keys()]), sortedUnique([...lockComponents.keys()]))) {
+    errors.push(`${plugin.name}: manifest and lock component sets disagree`);
+  }
+  for (const component of manifestComponents.values()) {
+    validateComponent({
+      pluginRoot,
+      plugin,
+      manifest,
+      lockComponents,
+      component,
+      errors,
+    });
+  }
+  for (const target of configuredTargets.filter((target) => TARGETS.has(target))) {
+    validateTarget({ pluginRoot, plugin, manifest, lockEntry, target, errors });
+  }
+  const actualBundleDigest = addCaught(errors, plugin.name, () => treeHash(pluginRoot));
+  if (actualBundleDigest && actualBundleDigest !== lockEntry.bundleDigest) {
+    errors.push(`${plugin.name}: bundle digest mismatch`);
+  }
+  if (plugin.source?.type === "github") {
+    if (typeof plugin.source.sha !== "string" || !/^[a-f0-9]{40}$/.test(plugin.source.sha)) {
+      errors.push(`${plugin.name}: GitHub source requires a full lowercase SHA`);
+    }
+    const licensePath = safeExistingPath({
+      boundary: pluginRoot,
+      candidate: resolve(pluginRoot, "LICENSE"),
+      label: `${plugin.name} external LICENSE`,
+      errors,
+      type: "file",
+    });
+    if (licensePath && lstatSync(licensePath).size === 0) {
+      errors.push(`${plugin.name}: external LICENSE must not be empty`);
+    }
+  } else validateLocalSource({ repositoryRoot, plugin, errors });
+  for (const file of runtimeComponentFiles({ pluginRoot, manifest })) {
+    const json = readJsonFile(file, normalizedRelative(repositoryRoot, file), errors);
+    if (json !== undefined) {
+      validateRuntimeJson(
+        json,
+        normalizedRelative(repositoryRoot, file),
+        errors,
+        plugin.runtimeDependencies || {},
+      );
+    }
+  }
+  processData.push({ pluginRoot, manifest });
+}
+
+function previousLockValue(compareLock, repositoryRoot, currentLock, errors) {
+  if (compareLock === undefined) return undefined;
+  if (typeof compareLock === "function") {
+    try {
+      const result = compareLock({ repositoryRoot, currentLock: structuredClone(currentLock) });
+      if (result && typeof result.then === "function") {
+        errors.push("compareLock callback must be synchronous");
+        return undefined;
+      }
+      return result;
+    } catch (error) {
+      errors.push(`compareLock callback failed: ${messageOf(error)}`);
+      return undefined;
+    }
+  }
+  if (isPlainObject(compareLock)) return compareLock;
+  errors.push("compareLock must be a prior lock object or callback");
+  return undefined;
+}
+
+function validatePreviousLock({ compareLock, repositoryRoot, currentLock, errors }) {
+  const previous = previousLockValue(compareLock, repositoryRoot, currentLock, errors);
+  if (previous === undefined) return;
+  if (!applySchema("lock", previous, "previous registry lock", errors)) return;
+  for (const [name, nextEntry] of Object.entries(currentLock.plugins || {})) {
+    try {
+      assertVersionChange({ previousEntry: previous.plugins?.[name], nextEntry });
+    } catch (error) {
+      errors.push(`${name}: ${messageOf(error)}`);
+    }
+  }
+}
+
+export function validateRepository({
+  repositoryRoot,
+  compareLock,
+  processRunner = spawnSync,
+}) {
+  const errors = [];
+  const root = resolve(repositoryRoot);
+  const rootStats = statEntry(root);
+  if (!rootStats || rootStats.isSymbolicLink() || !rootStats.isDirectory()) {
+    return [`repository root must be a real directory: ${root}`];
+  }
+
+  const catalog = readRepositoryJson(root, "registry/catalog.json", errors);
+  const lock = readRepositoryJson(root, "registry/lock.json", errors);
+  const claudeMarketplace = readRepositoryJson(root, ".claude-plugin/marketplace.json", errors);
+  const codexMarketplace = readRepositoryJson(root, ".agents/plugins/marketplace.json", errors);
+  applySchema("catalog", catalog, "registry/catalog.json", errors);
+  applySchema("lock", lock, "registry/lock.json", errors);
+  if (catalog !== undefined) validateExceptions(catalog, errors);
+
+  const catalogPlugins = Array.isArray(catalog?.plugins) ? catalog.plugins : [];
+  const catalogNamesRaw = catalogPlugins
+    .map((plugin) => plugin?.name)
+    .filter((name) => typeof name === "string");
+  rejectPrototypeNames(catalogNamesRaw, "registry catalog", errors);
+  rejectDuplicateNames(catalogNamesRaw, "registry catalog", errors);
+  const catalogNames = sortedUnique(catalogNamesRaw);
+  const lockNames = isPlainObject(lock?.plugins)
+    ? Object.keys(lock.plugins).sort(compareCodePoints)
+    : [];
+  rejectPrototypeNames(lockNames, "registry lock", errors);
+  exactNameAgreement({
+    catalog: catalogNames,
+    lock: lockNames,
+    claude: marketplaceNames(claudeMarketplace, "Claude marketplace", errors),
+    codex: marketplaceNames(codexMarketplace, "Codex marketplace", errors),
+    plugins: pluginDirectories(root, errors),
+  }, errors);
+  validateMarketplaceEntries({
+    repositoryRoot: root,
+    marketplace: claudeMarketplace,
+    target: "claude",
+    errors,
+  });
+  validateMarketplaceEntries({
+    repositoryRoot: root,
+    marketplace: codexMarketplace,
+    target: "codex",
+    errors,
+  });
+
+  const processData = [];
+  for (const plugin of catalogPlugins) {
+    if (!isPlainObject(plugin) || typeof plugin.name !== "string") continue;
+    const lockEntry = isPlainObject(lock?.plugins) && Object.hasOwn(lock.plugins, plugin.name)
+      ? lock.plugins[plugin.name]
+      : undefined;
+    if (!lockEntry) continue;
+    addCaught(errors, plugin.name, () => validatePlugin({
+      repositoryRoot: root,
+      plugin,
+      lock,
+      lockEntry,
+      processData,
+      errors,
+    }));
+  }
+  addCaught(errors, "syntax validation", () => validateSyntax({
+    repositoryRoot: root,
+    pluginManifests: processData,
+    processRunner,
+    errors,
+  }));
+  if (isPlainObject(lock)) {
+    addCaught(errors, "compareLock", () => validatePreviousLock({
+      compareLock,
+      repositoryRoot: root,
+      currentLock: lock,
+      errors,
+    }));
+  }
+  return errors.sort(compareCodePoints);
+}
