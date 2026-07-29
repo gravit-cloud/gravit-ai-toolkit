@@ -10,6 +10,7 @@ import {
 import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
+  claimManagedRegistryPaths,
   promoteManagedPaths,
   withAtomicOutput,
 } from "./lib/atomic-output.mjs";
@@ -85,8 +86,16 @@ function assertSameNames(actual, expected, label) {
   }
 }
 
-function validateStagedProduction({ stageRoot, catalog, lock }) {
+function validateStagedProduction({
+  stageRoot,
+  catalog,
+  lock,
+  builtPlugins,
+  expectedClaudeMarketplace,
+  expectedCodexMarketplace,
+}) {
   const expectedNames = catalog.plugins.map(({ name }) => name);
+  const builtByName = new Map(builtPlugins.map((plugin) => [plugin.name, plugin]));
   const pluginDirectories = readdirSync(resolve(stageRoot, "plugins"), {
     withFileTypes: true,
   });
@@ -100,11 +109,24 @@ function validateStagedProduction({ stageRoot, catalog, lock }) {
   );
 
   for (const plugin of catalog.plugins) {
+    const built = builtByName.get(plugin.name);
+    if (!built) throw new Error(plugin.name + ": missing staged build result");
+    const pluginRoot = resolve(stageRoot, "plugins", plugin.name);
+    if (treeHash(pluginRoot) !== lock.plugins[plugin.name]?.bundleDigest) {
+      throw new Error(plugin.name + ": staged plugin digest differs from registry lock");
+    }
+    const neutralManifest = readJson(resolve(pluginRoot, ".agent-plugin/plugin.json"));
+    if (stableJson(neutralManifest) !== stableJson(built.manifest)) {
+      throw new Error(plugin.name + ": staged neutral manifest differs from build result");
+    }
+    assertSameNames(
+      neutralManifest.components.map(({ id }) => id),
+      built.manifest.components.map(({ id }) => id),
+      plugin.name + " staged component",
+    );
     for (const target of plugin.targets) {
       const manifestPath = resolve(
-        stageRoot,
-        "plugins",
-        plugin.name,
+        pluginRoot,
         "targets",
         target,
         "." + target + "-plugin/plugin.json",
@@ -118,6 +140,12 @@ function validateStagedProduction({ stageRoot, catalog, lock }) {
 
   const claudeMarketplace = readJson(resolve(stageRoot, ".claude-plugin/marketplace.json"));
   const codexMarketplace = readJson(resolve(stageRoot, ".agents/plugins/marketplace.json"));
+  if (stableJson(claudeMarketplace) !== stableJson(expectedClaudeMarketplace)) {
+    throw new Error("staged Claude marketplace differs from generated marketplace");
+  }
+  if (stableJson(codexMarketplace) !== stableJson(expectedCodexMarketplace)) {
+    throw new Error("staged Codex marketplace differs from generated marketplace");
+  }
   assertSameNames(
     claudeMarketplace.plugins.map(({ name }) => name),
     expectedNames,
@@ -380,17 +408,32 @@ export function buildRegistry({
           nextEntry: plugin.lockEntry,
         });
       }
+      const claudeMarketplace = createClaudeMarketplace(catalog);
+      const codexMarketplace = createCodexMarketplace(catalog);
       writeJson(
         resolve(stageRoot, ".claude-plugin/marketplace.json"),
-        createClaudeMarketplace(catalog),
+        claudeMarketplace,
       );
       writeJson(
         resolve(stageRoot, ".agents/plugins/marketplace.json"),
-        createCodexMarketplace(catalog),
+        codexMarketplace,
       );
       writeJson(resolve(stageRoot, "registry/lock.json"), lock);
-      validateStagedProduction({ stageRoot, catalog, lock });
-      promote({ repositoryRoot: lexicalRepository, stageRoot });
+      const sourceClaims = claimManagedRegistryPaths(stageRoot);
+      validateStagedProduction({
+        stageRoot,
+        catalog,
+        lock,
+        builtPlugins,
+        expectedClaudeMarketplace: claudeMarketplace,
+        expectedCodexMarketplace: codexMarketplace,
+      });
+      promote({
+        repositoryRoot: lexicalRepository,
+        stageRoot,
+        sourceClaims,
+        requireSourceClaims: true,
+      });
     } catch (error) {
       activeError = error;
       throw error;
