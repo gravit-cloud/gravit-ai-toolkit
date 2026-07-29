@@ -24,10 +24,12 @@ import { accountComponents } from "./provenance.mjs";
 import { renderSkills } from "./skills.mjs";
 import { renderClaudeTarget } from "./targets/claude.mjs";
 import { renderCodexTarget } from "./targets/codex.mjs";
+import { renderOpenClawTarget } from "./targets/openclaw.mjs";
 
 const TARGET_RENDERERS = {
   claude: renderClaudeTarget,
   codex: renderCodexTarget,
+  openclaw: renderOpenClawTarget,
 };
 function materializeExternalLicense({ sourcePath, bundleRoot }) {
   if (!sourcePath) return;

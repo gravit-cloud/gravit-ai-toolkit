@@ -52,6 +52,22 @@ const EXPECTED_SUPPORT = {
     asset: ["preserved", "asset", "native-component"],
     app: ["preserved", "app", "native-component"],
   },
+  openclaw: {
+    skill: ["transformed", "skill", "target-translation"],
+    command: ["transformed", "skill", "command-to-skill"],
+    mcp: ["transformed", "mcp", "target-translation"],
+    executable: ["preserved", "executable", "native-component"],
+    asset: ["preserved", "asset", "native-component"],
+    agent: undefined,
+    hook: undefined,
+    lsp: undefined,
+    app: undefined,
+    "output-style": undefined,
+    monitor: undefined,
+    theme: undefined,
+    channel: undefined,
+    settings: undefined,
+  },
 };
 
 function component(type) {

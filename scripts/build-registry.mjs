@@ -91,7 +91,7 @@ function validateStagedProduction({
         pluginRoot,
         "targets",
         target,
-        "." + target + "-plugin/plugin.json",
+        target === "claude" ? ".claude-plugin/plugin.json" : ".codex-plugin/plugin.json",
       );
       const manifest = readJson(manifestPath);
       if (manifest.name !== plugin.name) {

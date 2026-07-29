@@ -82,8 +82,14 @@ function mergeHooks(records, options) {
   return { hooks };
 }
 
-export function renderCodexTarget({ plugin, inventory, neutralComponents, bundleRoot }) {
-  const targetRoot = resolve(bundleRoot, "targets/codex");
+export function renderCodexFormatTarget({
+  plugin,
+  inventory,
+  neutralComponents,
+  bundleRoot,
+  target = "codex",
+}) {
+  const targetRoot = resolve(bundleRoot, "targets", target);
   const skillRoot = resolve(targetRoot, "skills");
   const records = new Map(inventory.components.map((component) => [component.id, component]));
   const components = {};
@@ -94,7 +100,7 @@ export function renderCodexTarget({ plugin, inventory, neutralComponents, bundle
 
   const skillNames = new Set(inventory.skills.map(({ name }) => name));
   for (const neutral of neutralComponents) {
-    const disposition = neutral.targets.codex;
+    const disposition = neutral.targets[target];
     if (disposition.status === "unsupported" || disposition.status === "rejected") {
       components[neutral.id] = { ...disposition };
       continue;
@@ -160,7 +166,7 @@ export function renderCodexTarget({ plugin, inventory, neutralComponents, bundle
     });
     const neutral = neutralComponents.find(({ id }) => id === plan.component.id);
     components[plan.component.id] = {
-      ...neutral.targets.codex,
+      ...neutral.targets[target],
       path: targetPath(bundleRoot, plan.destination),
     };
     if (
@@ -183,7 +189,7 @@ export function renderCodexTarget({ plugin, inventory, neutralComponents, bundle
   for (const skill of renderedSkills) {
     const neutral = neutralComponents.find(({ id }) => id === skill.id);
     components[skill.id] = {
-      ...neutral.targets.codex,
+      ...neutral.targets[target],
       path: targetPath(bundleRoot, skill.directory),
     };
   }
@@ -197,7 +203,7 @@ export function renderCodexTarget({ plugin, inventory, neutralComponents, bundle
       ? resolve(skillRoot, plan.names[0])
       : skillRoot;
     components[plan.component.id] = {
-      ...neutral.targets.codex,
+      ...neutral.targets[target],
       path: targetPath(bundleRoot, componentPath),
     };
   }
@@ -219,7 +225,7 @@ export function renderCodexTarget({ plugin, inventory, neutralComponents, bundle
     for (const record of hooks) {
       const neutral = neutralComponents.find(({ id }) => id === record.id);
       components[record.id] = {
-        ...neutral.targets.codex,
+        ...neutral.targets[target],
         path: targetPath(bundleRoot, hookPath),
       };
     }
@@ -237,7 +243,7 @@ export function renderCodexTarget({ plugin, inventory, neutralComponents, bundle
     for (const record of mcps) {
       const neutral = neutralComponents.find(({ id }) => id === record.id);
       components[record.id] = {
-        ...neutral.targets.codex,
+        ...neutral.targets[target],
         path: targetPath(bundleRoot, mcpPath),
       };
     }
@@ -268,4 +274,8 @@ export function renderCodexTarget({ plugin, inventory, neutralComponents, bundle
   });
   writeJson(resolve(targetRoot, ".codex-plugin/plugin.json"), manifest);
   return { digest: treeHash(targetRoot), components };
+}
+
+export function renderCodexTarget(input) {
+  return renderCodexFormatTarget({ ...input, target: "codex" });
 }
