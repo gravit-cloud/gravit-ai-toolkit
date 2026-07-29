@@ -1,24 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gravit.cloud/schemas/agent-plugin-v1.json",
+  "$id": "https://gravit.cloud/schemas/plugin-lock-v1.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "name", "distributionVersion", "components", "targets"],
+  "required": ["schemaVersion", "generatorDigest", "plugins"],
   "properties": {
     "schemaVersion": { "const": 1 },
-    "name": { "$ref": "#/$defs/registryName" },
-    "distributionVersion": { "$ref": "#/$defs/semver" },
-    "components": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/component" }
-    },
-    "targets": {
+    "generatorDigest": { "$ref": "#/$defs/digest" },
+    "plugins": {
       "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "claude": { "$ref": "#/$defs/target" },
-        "codex": { "$ref": "#/$defs/target" }
-      }
+      "propertyNames": { "$ref": "#/$defs/registryName" },
+      "additionalProperties": { "$ref": "#/$defs/plugin" }
     }
   },
   "$defs": {
@@ -46,6 +38,12 @@
         { "not": { "pattern": "//|/$" } },
         { "not": { "pattern": "(?:^|/)\\.\\.?(?:/|$)" } },
         { "not": { "pattern": "[\\u0000-\\u001f]" } }
+      ]
+    },
+    "sourceRoot": {
+      "oneOf": [
+        { "const": "." },
+        { "$ref": "#/$defs/safePath" }
       ]
     },
     "componentType": {
@@ -99,31 +97,86 @@
         "codex": { "$ref": "#/$defs/disposition" }
       }
     },
+    "localSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "const": "local" },
+        "path": { "$ref": "#/$defs/safePath" },
+        "root": { "$ref": "#/$defs/sourceRoot" }
+      }
+    },
+    "githubSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "repo", "ref", "sha"],
+      "properties": {
+        "type": { "const": "github" },
+        "repo": {
+          "type": "string",
+          "allOf": [
+            { "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+            { "not": { "pattern": "^(?:\\.\\.?)/|/\\.\\.?$" } }
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\u0000-\\u001f]+$"
+        },
+        "sha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "root": { "$ref": "#/$defs/sourceRoot" }
+      }
+    },
+    "source": {
+      "oneOf": [
+        { "$ref": "#/$defs/localSource" },
+        { "$ref": "#/$defs/githubSource" }
+      ]
+    },
     "component": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "type", "path", "digest", "targets"],
+      "required": ["id", "type", "digest", "targets"],
       "properties": {
         "id": { "$ref": "#/$defs/registryName" },
         "type": { "$ref": "#/$defs/componentType" },
-        "path": { "$ref": "#/$defs/safePath" },
         "digest": { "$ref": "#/$defs/digest" },
         "targets": { "$ref": "#/$defs/hostDispositions" }
       }
     },
-    "componentDispositions": {
-      "type": "object",
-      "propertyNames": { "$ref": "#/$defs/registryName" },
-      "additionalProperties": { "$ref": "#/$defs/disposition" }
-    },
-    "target": {
+    "targetDigests": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "digest", "components"],
       "properties": {
-        "path": { "$ref": "#/$defs/safePath" },
-        "digest": { "$ref": "#/$defs/digest" },
-        "components": { "$ref": "#/$defs/componentDispositions" }
+        "claude": { "$ref": "#/$defs/digest" },
+        "codex": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "distributionVersion",
+        "source",
+        "generatorDigest",
+        "bundleDigest",
+        "components",
+        "targets"
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/registryName" },
+        "distributionVersion": { "$ref": "#/$defs/semver" },
+        "source": { "$ref": "#/$defs/source" },
+        "generatorDigest": { "$ref": "#/$defs/digest" },
+        "bundleDigest": { "$ref": "#/$defs/digest" },
+        "components": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/component" }
+        },
+        "targets": { "$ref": "#/$defs/targetDigests" }
       }
     }
   }
