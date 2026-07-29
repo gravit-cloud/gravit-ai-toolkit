@@ -279,10 +279,36 @@ function validatePlugin(plugin) {
   ]), "plugin");
   assertOwn(plugin, "name", "plugin");
   assertOwn(plugin, "distributionVersion", "plugin");
+  assertOwn(plugin, "source", "plugin");
   assertOwn(plugin, "targets", "plugin");
   assertRegistryName(plugin.name, "plugin name");
   parseSemver(plugin.distributionVersion, "distributionVersion");
-  return validateTargetsArray(plugin.targets);
+  return {
+    source: cloneSource(plugin.source),
+    targets: validateTargetsArray(plugin.targets),
+  };
+}
+
+function assertMatchingSource(pluginSource, inputSource) {
+  if (pluginSource.type !== inputSource.type) {
+    throw new Error("plugin source must exactly match input source: type");
+  }
+  const fields = pluginSource.type === "github"
+    ? ["repo", "ref", "sha"]
+    : ["path"];
+  for (const field of fields) {
+    if (pluginSource[field] !== inputSource[field]) {
+      throw new Error("plugin source must exactly match input source: " + field);
+    }
+  }
+  const pluginHasRoot = Object.hasOwn(pluginSource, "root");
+  const inputHasRoot = Object.hasOwn(inputSource, "root");
+  if (pluginHasRoot !== inputHasRoot) {
+    throw new Error("plugin source must exactly match input source: root presence");
+  }
+  if (pluginHasRoot && pluginSource.root !== inputSource.root) {
+    throw new Error("plugin source must exactly match input source: root value");
+  }
 }
 
 function validateLockComponents(components) {
@@ -364,8 +390,9 @@ export function createLockEntry(input) {
   ]) {
     assertOwn(input, field, "createLockEntry input");
   }
-  const configuredTargets = validatePlugin(input.plugin);
+  const { source: pluginSource, targets: configuredTargets } = validatePlugin(input.plugin);
   const source = cloneSource(input.source);
+  assertMatchingSource(pluginSource, source);
   const generatorDigest = assertDigest(input.generatorDigest, "generatorDigest");
   let bundleStats;
   if (typeof input.bundleRoot === "string" && input.bundleRoot.length > 0) {
