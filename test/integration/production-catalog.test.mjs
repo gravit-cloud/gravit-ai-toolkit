@@ -330,3 +330,39 @@ test("production build retains its stage after a public promotion is rolled back
   );
   assert.equal(existsSync(resolve(sandbox.repositoryRoot, "plugins/foreign.txt")), false);
 });
+
+test("production build never cleans a replaced source root after preflight", (context) => {
+  const sandbox = sandboxRepository(context);
+  let error;
+
+  assert.throws(() => buildRegistry({
+    repositoryRoot: sandbox.repositoryRoot,
+    catalogPath: "registry/catalog.json",
+    outputRoot: sandbox.repositoryRoot,
+    production: true,
+    promote(input) {
+      let replaced = false;
+      return promoteManagedPaths(input, {
+        beforeSourceValidation({ phase, relativePath, source }) {
+          if (replaced || phase !== "before-backup" || relativePath !== "plugins") return;
+          replaced = true;
+          rmSync(source, { recursive: true });
+          mkdirSync(source);
+          writeFileSync(resolve(source, "foreign.txt"), "foreign replacement\n");
+        },
+      });
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.match(error.recoveryPath, /\.repository\.registry-stage-/);
+  assert.equal(existsSync(error.recoveryPath), true);
+  assert.equal(
+    readFileSync(resolve(error.recoveryPath, "plugins/foreign.txt"), "utf8"),
+    "foreign replacement\n",
+  );
+  assert.equal(existsSync(resolve(sandbox.repositoryRoot, "plugins")), false);
+  assert.equal(readFileSync(resolve(sandbox.repositoryRoot, "README.md"), "utf8"), "unrelated\n");
+});
