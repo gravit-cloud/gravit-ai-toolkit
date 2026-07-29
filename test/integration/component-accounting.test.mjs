@@ -41,6 +41,7 @@ function completePlugin() {
     description: "Complete component fixture",
     category: "development",
     distributionVersion: "1.0.0-gravit.1",
+    runtimeDependencies: { "@fixture/mcp": "1.2.3" },
     source: {
       type: "local",
       path: "test/fixtures/complete-plugin",
@@ -114,8 +115,10 @@ test("materializes every inventory component and accounts for it on every target
         manifest.targets[target].components[component.id],
         component.targets[target],
       );
-      if (component.type !== "skill") {
+      if (["unsupported", "rejected"].includes(component.targets[target].status)) {
         assert.equal(Object.hasOwn(component.targets[target], "path"), false);
+      } else {
+        assert.equal(existsSync(resolve(bundleRoot, component.targets[target].path)), true);
       }
     }
   }

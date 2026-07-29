@@ -12,7 +12,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
-import { stableJson, writeJson } from "../../scripts/lib/json.mjs";
+import { removeUndefined, stableJson, writeJson } from "../../scripts/lib/json.mjs";
 import { sha256, treeHash } from "../../scripts/lib/hash.mjs";
 import { withAtomicOutput } from "../../scripts/lib/atomic-output.mjs";
 
@@ -34,6 +34,22 @@ test("writeJson creates parent directories with stable two-space JSON", (context
     readFileSync(filePath, "utf8"),
     '{\n  "a": 1,\n  "b": [\n    3,\n    {\n      "a": false,\n      "z": true\n    }\n  ]\n}\n',
   );
+});
+
+test("removeUndefined is deterministic, non-mutating, and safe for own prototype-like keys", () => {
+  const input = JSON.parse('{"z":null,"__proto__":{"polluted":true},"b":{"drop":null,"a":1}}');
+  input.b.drop = undefined;
+  const beforeKeys = Object.keys(input);
+
+  const output = removeUndefined(input);
+
+  assert.deepEqual(Object.keys(output), ["__proto__", "b", "z"]);
+  assert.deepEqual(output.b, { a: 1 });
+  assert.equal(Object.getPrototypeOf(output), Object.prototype);
+  assert.equal(Object.hasOwn(output, "__proto__"), true);
+  assert.equal({}.polluted, undefined);
+  assert.deepEqual(Object.keys(input), beforeKeys);
+  assert.equal(Object.hasOwn(input.b, "drop"), true);
 });
 
 test("sha256 returns the SHA-256 digest of strings and buffers", () => {

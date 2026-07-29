@@ -12,8 +12,19 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
-import { copyComponent } from "../../scripts/lib/component-files.mjs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  commandSourceFiles,
+  commandToSkill,
+  copyComponent,
+  materializeComponent,
+} from "../../scripts/lib/component-files.mjs";
+
+const completeFixtureRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../fixtures/complete-plugin",
+);
 
 function sandbox(context, prefix = "component-copy-") {
   const root = mkdtempSync(resolve(tmpdir(), prefix));
@@ -302,4 +313,163 @@ test("rejects a bundle root that is not an existing real directory", (context) =
     }),
     /bundle root must be an existing real directory/,
   );
+});
+
+test("command-to-skill refuses an existing target skill name", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "command-skill-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(resolve(root, "release"), { recursive: true });
+
+  assert.throws(() => commandToSkill({
+    component: {
+      sourcePath: resolve(completeFixtureRoot, "commands/release.md"),
+    },
+    destinationRoot: root,
+  }), /duplicate target skill name: release/);
+});
+
+test("command-to-skill preserves Markdown without executing its body", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "command-no-execution-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const marker = resolve(root, "executed");
+  const command = resolve(root, "safe.md");
+  writeFileSync(
+    command,
+    "---\ndescription: Preserve only\n---\n\n# Safe\n\n$(touch " + marker + ")\n",
+  );
+
+  assert.equal(commandToSkill({
+    component: { sourcePath: command },
+    destinationRoot: resolve(root, "skills"),
+  }), "safe");
+  assert.equal(existsSync(marker), false);
+  assert.match(
+    readFileSync(resolve(root, "skills/safe/SKILL.md"), "utf8"),
+    /# Safe\n\n\$\(touch /,
+  );
+});
+
+test("command-to-skill rejects non-Markdown and invalid command filenames", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "command-invalid-name-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const nonMarkdown = resolve(root, "release.txt");
+  const invalidName = resolve(root, "!!!.md");
+  for (const path of [nonMarkdown, invalidName]) {
+    writeFileSync(path, "---\ndescription: Invalid\n---\nBody\n");
+  }
+
+  assert.throws(
+    () => commandToSkill({
+      component: { sourcePath: nonMarkdown },
+      destinationRoot: resolve(root, "skills"),
+    }),
+    /command source must be a Markdown file/,
+  );
+  assert.throws(
+    () => commandToSkill({
+      component: { sourcePath: invalidName },
+      destinationRoot: resolve(root, "skills"),
+    }),
+    /command filename does not produce a valid skill name/,
+  );
+  assert.equal(existsSync(resolve(root, "skills")), false);
+});
+
+test("materializes path directories, path files, and inline records at exact destinations", (context) => {
+  const { root, bundleRoot } = sandbox(context, "component-materialize-");
+  const directory = resolve(root, "source-directory");
+  mkdirSync(resolve(directory, "nested"), { recursive: true });
+  writeFileSync(resolve(directory, "root.txt"), "root\n");
+  writeFileSync(resolve(directory, "nested/data.bin"), Buffer.from([0x00, 0xff]));
+  chmodSync(resolve(directory, "nested/data.bin"), 0o751);
+
+  const directoryDestination = resolve(bundleRoot, "targets/claude/assets");
+  assert.equal(materializeComponent({
+    component: pathComponent(directory),
+    bundleRoot,
+    destination: directoryDestination,
+  }), directoryDestination);
+  assert.deepEqual(
+    readFileSync(resolve(directoryDestination, "nested/data.bin")),
+    Buffer.from([0x00, 0xff]),
+  );
+  assert.equal(statSync(resolve(directoryDestination, "nested/data.bin")).mode & 0o777, 0o751);
+
+  const file = resolve(root, "settings-source.json");
+  writeFileSync(file, "{\"enabled\":true}\n");
+  const fileDestination = resolve(bundleRoot, "targets/claude/settings.json");
+  materializeComponent({
+    component: pathComponent(file, { id: "settings-fixture", type: "settings" }),
+    bundleRoot,
+    destination: fileDestination,
+  });
+  assert.equal(readFileSync(fileDestination, "utf8"), "{\"enabled\":true}\n");
+
+  const inlineDestination = resolve(bundleRoot, "targets/codex/.app.json");
+  materializeComponent({
+    component: {
+      id: "app-inline",
+      type: "app",
+      sourceFormat: "inline",
+      inline: { z: true, a: 1 },
+    },
+    bundleRoot,
+    destination: inlineDestination,
+  });
+  assert.equal(readFileSync(inlineDestination, "utf8"), '{\n  "a": 1,\n  "z": true\n}\n');
+});
+
+test("materializeComponent rejects traversal, destination pivots, and overwrite", (context) => {
+  const { root, bundleRoot } = sandbox(context, "component-render-safety-");
+  const source = resolve(root, "source.txt");
+  const outside = resolve(root, "outside.txt");
+  writeFileSync(source, "source\n");
+  assert.throws(() => materializeComponent({
+    component: pathComponent(source),
+    bundleRoot,
+    destination: outside,
+  }), /destination escapes bundle root/);
+
+  const targetRoot = resolve(bundleRoot, "targets/claude");
+  const outsideDirectory = resolve(root, "outside");
+  mkdirSync(targetRoot, { recursive: true });
+  mkdirSync(outsideDirectory);
+  symlinkSync(outsideDirectory, resolve(targetRoot, "assets"));
+  assert.throws(() => materializeComponent({
+    component: pathComponent(source),
+    bundleRoot,
+    destination: resolve(targetRoot, "assets/icon.svg"),
+  }), /symbolic links are not allowed in component destination/);
+  assert.equal(existsSync(resolve(outsideDirectory, "icon.svg")), false);
+
+  const destination = resolve(targetRoot, "settings.json");
+  writeFileSync(destination, "keep\n");
+  assert.throws(() => materializeComponent({
+    component: pathComponent(source),
+    bundleRoot,
+    destination,
+  }), /component destination already exists/);
+  assert.equal(readFileSync(destination, "utf8"), "keep\n");
+});
+
+test("command directories expand every Markdown file in code-point order and fail closed", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "command-directory-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const commands = resolve(root, "commands");
+  mkdirSync(resolve(commands, "nested"), { recursive: true });
+  for (const path of ["z.md", "A.md", "nested/b.md"]) {
+    writeFileSync(resolve(commands, path), "---\ndescription: Command\n---\nBody\n");
+  }
+  const component = pathComponent(commands, { id: "command-fixture", type: "command" });
+
+  assert.deepEqual(
+    commandSourceFiles(component).map((path) => path.slice(commands.length + 1)),
+    ["A.md", "nested/b.md", "z.md"],
+  );
+
+  writeFileSync(resolve(commands, "README.txt"), "not a command\n");
+  assert.throws(() => commandSourceFiles(component), /command directory contains a non-Markdown file/);
+  rmSync(resolve(commands, "README.txt"));
+  symlinkSync(resolve(commands, "z.md"), resolve(commands, "linked.md"));
+  assert.throws(() => commandSourceFiles(component), /symbolic links are not allowed/);
 });

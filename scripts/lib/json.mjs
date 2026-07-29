@@ -10,6 +10,17 @@ function sortValue(value) {
   );
 }
 
+export function removeUndefined(value) {
+  if (Array.isArray(value)) return value.map(removeUndefined);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort(compareCodePoints)
+      .filter((key) => value[key] !== undefined)
+      .map((key) => [key, removeUndefined(value[key])]),
+  );
+}
+
 export function stableJson(value) {
   return JSON.stringify(sortValue(value), null, 2) + "\n";
 }

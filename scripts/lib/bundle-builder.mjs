@@ -1,11 +1,11 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, realpathSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { copyComponent } from "./component-files.mjs";
 import { treeHash } from "./hash.mjs";
 import { inventorySource } from "./inventory.mjs";
 import { writeJson } from "./json.mjs";
 import { compareCodePoints } from "./ordering.mjs";
-import { assertRegistryName } from "./path-safety.mjs";
+import { assertRegistryName, pathIsInside } from "./path-safety.mjs";
 import { accountComponents } from "./provenance.mjs";
 import { renderSkills } from "./skills.mjs";
 import { renderClaudeTarget } from "./targets/claude.mjs";
@@ -26,6 +26,66 @@ function cloneDisposition(disposition, path) {
     reasonCode: disposition.reasonCode,
     ...(path === undefined ? {} : { path }),
   };
+}
+
+function assertAdapterResult({ plugin, target, bundleRoot, neutralComponents, result }) {
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
+    throw new Error(plugin.name + ": invalid " + target + " adapter result");
+  }
+  const targetRoot = resolve(bundleRoot, "targets", target);
+  if (result.digest !== treeHash(targetRoot)) {
+    throw new Error(plugin.name + ": stale " + target + " target digest");
+  }
+  if (!result.components || typeof result.components !== "object" || Array.isArray(result.components)) {
+    throw new Error(plugin.name + ": invalid " + target + " component results");
+  }
+  const expectedIds = neutralComponents.map(({ id }) => id);
+  const actualIds = Object.keys(result.components).sort(compareCodePoints);
+  if (
+    actualIds.length !== expectedIds.length
+    || actualIds.some((id, index) => id !== expectedIds[index])
+  ) {
+    throw new Error(plugin.name + ": incomplete " + target + " component results");
+  }
+
+  const canonicalTargetRoot = realpathSync(targetRoot);
+  const components = Object.fromEntries(neutralComponents.map((component) => {
+    const expected = component.targets[target];
+    const actual = result.components[component.id];
+    if (
+      !actual
+      || typeof actual !== "object"
+      || Array.isArray(actual)
+      || actual.status !== expected.status
+      || actual.reasonCode !== expected.reasonCode
+    ) {
+      throw new Error(
+        plugin.name + ": incorrect adapter disposition for " + target + " " + component.id,
+      );
+    }
+    const terminal = ["unsupported", "rejected"].includes(actual.status);
+    if (terminal) {
+      if (Object.hasOwn(actual, "path")) {
+        throw new Error(
+          plugin.name + ": " + actual.status + " component has target path " + component.id,
+        );
+      }
+      return [component.id, cloneDisposition(actual)];
+    }
+    if (typeof actual.path !== "string" || actual.path.length === 0) {
+      throw new Error(plugin.name + ": rendered component missing target path " + component.id);
+    }
+    const absolutePath = resolve(bundleRoot, actual.path);
+    if (!pathIsInside(targetRoot, absolutePath) || !existsSync(absolutePath)) {
+      throw new Error(plugin.name + ": target component path is not materialized " + component.id);
+    }
+    const stats = lstatSync(absolutePath);
+    if (stats.isSymbolicLink() || !pathIsInside(canonicalTargetRoot, realpathSync(absolutePath))) {
+      throw new Error(plugin.name + ": unsafe target component path " + component.id);
+    }
+    return [component.id, cloneDisposition(actual, actual.path)];
+  }));
+  return { digest: result.digest, components };
 }
 
 export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
@@ -73,10 +133,7 @@ export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
         );
       }
       const targets = Object.fromEntries(targetNames.map((target) => {
-        const targetPath = component.type === "skill"
-          ? "targets/" + target + "/skills/" + component.id
-          : undefined;
-        return [target, cloneDisposition(accounted.targets[target], targetPath)];
+        return [target, cloneDisposition(accounted.targets[target])];
       }));
       return {
         id: component.id,
@@ -88,23 +145,26 @@ export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
     })
     .sort((left, right) => compareCodePoints(left.id, right.id));
 
-  const targetResults = Object.fromEntries(targetNames.map((target) => [
-    target,
-    {
-      path: "targets/" + target,
-      components: Object.fromEntries(neutralComponents.map((component) => [
-        component.id,
-        cloneDisposition(component.targets[target], component.targets[target].path),
-      ])),
-    },
-  ]));
-
+  const targetResults = {};
   for (const target of targetNames) {
-    TARGET_RENDERERS[target]({
+    const rendered = TARGET_RENDERERS[target]({
       plugin,
-      skills: inventory.skills,
+      inventory,
+      neutralComponents,
       bundleRoot,
     });
+    const validated = assertAdapterResult({
+      plugin,
+      target,
+      bundleRoot,
+      neutralComponents,
+      result: rendered,
+    });
+    targetResults[target] = {
+      path: "targets/" + target,
+      digest: validated.digest,
+      components: validated.components,
+    };
   }
 
   for (const component of neutralComponents) {
@@ -115,10 +175,8 @@ export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
             + " for " + target,
         );
       }
+      component.targets[target] = structuredClone(targetResults[target].components[component.id]);
     }
-  }
-  for (const target of targetNames) {
-    targetResults[target].digest = treeHash(resolve(bundleRoot, targetResults[target].path));
   }
 
   const manifest = {
