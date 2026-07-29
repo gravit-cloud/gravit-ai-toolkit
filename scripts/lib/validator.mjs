@@ -19,7 +19,9 @@ import Ajv from "ajv/dist/2020.js";
 import { parse as parseMarkdown, postprocess, preprocess } from "micromark";
 import { isTrueLike, parseFrontmatter } from "./frontmatter.mjs";
 import { treeHash } from "./hash.mjs";
+import { normalizeHooks } from "./hooks.mjs";
 import { stableJson } from "./json.mjs";
+import { normalizeMcp } from "./mcp.mjs";
 import { compareCodePoints } from "./ordering.mjs";
 import {
   canonicalPath,
@@ -27,9 +29,16 @@ import {
   walkFiles,
 } from "./path-safety.mjs";
 import { assertVersionChange } from "./provenance.mjs";
+import { classifyRuntimeCommand } from "./runtime-command.mjs";
 
 const PROTOTYPE_NAMES = new Set(["__proto__", "constructor", "prototype"]);
 const TARGETS = new Set(["claude", "codex"]);
+const CODEX_CATEGORY = Object.freeze({
+  cloud: "Cloud",
+  development: "Development",
+  productivity: "Productivity",
+  seo: "Productivity",
+});
 const SUPPORTED_SCRIPT_EXTENSIONS = new Set([".cjs", ".js", ".mjs", ".sh"]);
 const CONTAINER_BOOLEAN_OPTIONS = new Set([
   "-i", "-t", "--init", "--interactive", "--read-only", "--rm", "--tty",
@@ -103,6 +112,33 @@ function readRepositoryJson(repositoryRoot, relativePath, errors) {
     type: "file",
   });
   return path ? readJsonFile(path, relativePath, errors) : undefined;
+}
+
+function readOptionalRepositoryJson(repositoryRoot, relativePath, errors) {
+  if (!statEntry(resolve(repositoryRoot, relativePath))) return undefined;
+  return readRepositoryJson(repositoryRoot, relativePath, errors);
+}
+
+function validateMaintainedSourceVersions(repositoryRoot, errors) {
+  const manifestPaths = [
+    ["Claude", "sources/gravit-custom/.claude-plugin/plugin.json"],
+    ["Codex", "sources/gravit-custom/.codex-plugin/plugin.json"],
+  ];
+  const present = manifestPaths.filter(([, path]) => statEntry(resolve(repositoryRoot, path)));
+  if (present.length === 0) return;
+  const packageManifest = readRepositoryJson(repositoryRoot, "package.json", errors);
+  for (const [target, path] of present) {
+    const manifest = readOptionalRepositoryJson(repositoryRoot, path, errors);
+    if (
+      isPlainObject(packageManifest)
+      && isPlainObject(manifest)
+      && manifest.version !== packageManifest.version
+    ) {
+      errors.push(
+        `package.json and gravit-custom ${target} plugin must have the same version`,
+      );
+    }
+  }
 }
 
 function applySchema(kind, value, label, errors) {
@@ -387,10 +423,27 @@ function pluginDirectories(repositoryRoot, errors) {
   return sortedUnique(result);
 }
 
-function validateMarketplaceEntries({ repositoryRoot, marketplace, target, errors }) {
+function validateMarketplaceEntries({
+  repositoryRoot,
+  marketplace,
+  catalogByName,
+  target,
+  errors,
+}) {
   if (!Array.isArray(marketplace?.plugins)) return;
-  for (const entry of marketplace.plugins) {
-    if (!isPlainObject(entry) || typeof entry.name !== "string") continue;
+  const allowedFields = target === "claude"
+    ? new Set(["category", "description", "name", "source"])
+    : new Set(["category", "name", "policy", "source"]);
+  for (const [index, entry] of marketplace.plugins.entries()) {
+    const entryLabel = `${target === "claude" ? "Claude" : "Codex"} marketplace entry ${index}`;
+    if (!isPlainObject(entry) || typeof entry.name !== "string" || entry.name.length === 0) {
+      errors.push(`${entryLabel}: entry must be an object with a name`);
+      continue;
+    }
+    for (const field of Object.keys(entry).sort(compareCodePoints)) {
+      if (!allowedFields.has(field)) errors.push(`${entryLabel}: unexpected field ${field}`);
+    }
+    const catalogPlugin = catalogByName.get(entry.name);
     const expected = `./plugins/${entry.name}/targets/${target}`;
     const actual = target === "claude" ? entry.source : entry.source?.path;
     if (actual !== expected) {
@@ -399,6 +452,38 @@ function validateMarketplaceEntries({ repositoryRoot, marketplace, target, error
     }
     if (target === "codex" && entry.source?.source !== "local") {
       errors.push(`codex marketplace ${entry.name}: source must be local`);
+    }
+    if (target === "codex" && isPlainObject(entry.source)) {
+      for (const field of Object.keys(entry.source).sort(compareCodePoints)) {
+        if (!["path", "source"].includes(field)) {
+          errors.push(`codex marketplace ${entry.name}: unexpected source field ${field}`);
+        }
+      }
+    }
+    if (
+      target === "codex"
+      && (
+        entry.policy?.installation !== "AVAILABLE"
+        || entry.policy?.authentication !== "ON_INSTALL"
+        || Object.keys(entry.policy || {}).some((field) => (
+          !["authentication", "installation"].includes(field)
+        ))
+      )
+    ) {
+      errors.push(`codex marketplace ${entry.name}: invalid installation policy`);
+    }
+    if (catalogPlugin) {
+      const expectedCategory = target === "claude"
+        ? catalogPlugin.category
+        : CODEX_CATEGORY[catalogPlugin.category];
+      if (entry.category !== expectedCategory) {
+        errors.push(
+          `${target} marketplace ${entry.name}: category must be ${expectedCategory}`,
+        );
+      }
+      if (target === "claude" && entry.description !== catalogPlugin.description) {
+        errors.push(`claude marketplace ${entry.name}: description must match catalog`);
+      }
     }
     const expectedRoot = resolve(repositoryRoot, `plugins/${entry.name}`);
     const resolvedTarget = safeRelativePath({
@@ -439,20 +524,20 @@ function values(value) {
 
 const HOST_REFERENCES = {
   claude: [
-    ["skills", "skill", "directory"],
-    ["commands", "command", "file"],
-    ["agents", "agent", "file"],
-    ["hooks", "hook", "file"],
-    ["mcpServers", "mcp", "file"],
-    ["lspServers", "lsp", "file"],
-    ["outputStyles", "output-style", "file"],
-    ["channels", "channel", "file"],
+    ["skills", ["skill"], "directory"],
+    ["commands", ["command"], "file"],
+    ["agents", ["agent"], "file"],
+    ["hooks", ["hook"], "file"],
+    ["mcpServers", ["mcp"], "file"],
+    ["lspServers", ["lsp"], "file"],
+    ["outputStyles", ["output-style"], "file"],
+    ["channels", ["channel"], "file"],
   ],
   codex: [
-    ["skills", "skill", "directory"],
-    ["hooks", "hook", "file"],
-    ["mcpServers", "mcp", "file"],
-    ["apps", "app", "file"],
+    ["skills", ["skill", "command"], "directory"],
+    ["hooks", ["hook"], "file"],
+    ["mcpServers", ["mcp"], "file"],
+    ["apps", ["app"], "file"],
   ],
 };
 
@@ -488,10 +573,11 @@ function validateHostManifest({ pluginRoot, plugin, manifest, target, errors }) 
   }
   const referenceSpecs = [...HOST_REFERENCES[target]];
   if (target === "claude") {
-    referenceSpecs.push(["experimental.themes", "theme", "directory"]);
-    referenceSpecs.push(["experimental.monitors", "monitor", "file"]);
+    referenceSpecs.push(["experimental.themes", ["theme"], "directory"]);
+    referenceSpecs.push(["experimental.monitors", ["monitor"], "file"]);
   }
-  for (const [field, type, expectedType] of referenceSpecs) {
+  const referencesByType = new Map();
+  for (const [field, types, expectedType] of referenceSpecs) {
     const configured = field.startsWith("experimental.")
       ? host.experimental?.[field.split(".")[1]]
       : host[field];
@@ -505,11 +591,38 @@ function validateHostManifest({ pluginRoot, plugin, manifest, target, errors }) 
         type: expectedType,
       });
       if (!resolvedPath) continue;
-      const declared = dispositionPaths({ manifest, target, type })
-        .map((path) => resolve(pluginRoot, path));
-      if (!declared.some((path) => pathsOverlap(path, resolvedPath))) {
-        errors.push(`${referenceLabel}: path is not declared by a ${type} disposition`);
+      for (const type of types) {
+        referencesByType.set(type, [
+          ...(referencesByType.get(type) || []),
+          resolvedPath,
+        ]);
       }
+      const declared = types.flatMap((type) => (
+        dispositionPaths({ manifest, target, type })
+      )).map((path) => resolve(pluginRoot, path));
+      if (!declared.some((path) => pathsOverlap(path, resolvedPath))) {
+        errors.push(
+          `${referenceLabel}: path is not declared by a ${types.join("/")} disposition`,
+        );
+      }
+    }
+  }
+  for (const component of manifest.components || []) {
+    const disposition = component.targets?.[target];
+    if (
+      !["preserved", "transformed"].includes(disposition?.status)
+      || typeof disposition.path !== "string"
+      || !referenceSpecs.some(([, types]) => types.includes(component.type))
+    ) {
+      continue;
+    }
+    const componentPath = resolve(pluginRoot, disposition.path);
+    const references = referencesByType.get(component.type) || [];
+    if (!references.some((path) => pathsOverlap(path, componentPath))) {
+      errors.push(
+        `${plugin.name} ${target}: missing host manifest reference for `
+          + `${component.type} ${component.id}`,
+      );
     }
   }
   return host;
@@ -667,25 +780,141 @@ function runtimeStrings(value, path = [], result = []) {
   return result;
 }
 
-function containerImage(args) {
-  let index = args.indexOf("run");
-  if (index === -1) return undefined;
-  index += 1;
+function immutableContainerImage(image) {
+  const match = /^([^@\s]+)@sha256:[a-f0-9]{64}$/u.exec(image);
+  return Boolean(match && match[1].lastIndexOf(":") <= match[1].lastIndexOf("/"));
+}
+
+function parseContainerInvocation(args) {
+  if (!Array.isArray(args) || args.some((argument) => typeof argument !== "string")) {
+    throw new Error("container runtime args must be an array of strings");
+  }
+  if (args[0] !== "run") throw new Error("container runtime command must use run");
+  const options = [];
+  let index = 1;
   while (index < args.length) {
     const argument = args[index];
-    if (typeof argument !== "string") return undefined;
-    if (argument === "--") return args[index + 1];
-    if (!argument.startsWith("-")) return argument;
+    if (argument === "--") {
+      index += 1;
+      break;
+    }
+    if (!argument.startsWith("-")) break;
     if (CONTAINER_BOOLEAN_OPTIONS.has(argument) || /^-[it]{2}$/.test(argument)) {
+      options.push({ option: argument });
       index += 1;
       continue;
     }
     const separator = argument.indexOf("=");
     const option = separator === -1 ? argument : argument.slice(0, separator);
-    if (!CONTAINER_VALUE_OPTIONS.has(option)) return undefined;
+    if (!CONTAINER_VALUE_OPTIONS.has(option)) {
+      throw new Error(`unsupported container runtime option: ${argument}`);
+    }
+    const value = separator === -1 ? args[index + 1] : argument.slice(separator + 1);
+    if (typeof value !== "string" || value.length === 0) {
+      throw new Error(`container runtime option is missing a value: ${option}`);
+    }
+    options.push({ option, value });
     index += separator === -1 ? 2 : 1;
   }
-  return undefined;
+  const image = args[index];
+  if (typeof image !== "string" || image.length === 0) {
+    throw new Error("container runtime command is missing an image");
+  }
+  if (!immutableContainerImage(image)) {
+    throw new Error(`container image must use an immutable sha256 digest: ${image}`);
+  }
+  return { image, imageIndex: index, options };
+}
+
+function containerVolumeSource(value) {
+  if (/^[A-Za-z]:[\\/]/u.test(value)) {
+    const separator = value.indexOf(":", 2);
+    return separator === -1 ? value : value.slice(0, separator);
+  }
+  const separator = value.indexOf(":");
+  return separator === -1 ? value : value.slice(0, separator);
+}
+
+function validateContainerHostPaths(invocation, label, errors) {
+  for (const { option, value } of invocation.options) {
+    if (["-v", "--volume"].includes(option)) {
+      const source = containerVolumeSource(value);
+      if (isAbsoluteRuntimePath(source)) {
+        errors.push(`${label}: absolute container bind source ${source}`);
+      }
+    }
+    if (option !== "--mount") continue;
+    const fields = Object.fromEntries(value.split(",").map((field) => {
+      const separator = field.indexOf("=");
+      return separator === -1
+        ? [field.trim().toLowerCase(), ""]
+        : [field.slice(0, separator).trim().toLowerCase(), field.slice(separator + 1)];
+    }));
+    const source = fields.source ?? fields.src;
+    if (source && isAbsoluteRuntimePath(source)) {
+      errors.push(`${label}: absolute container bind source ${source}`);
+    }
+  }
+}
+
+function argumentHostPath(argument) {
+  if (isAbsoluteRuntimePath(argument)) return argument;
+  const separator = argument.indexOf("=");
+  if (separator === -1) return undefined;
+  const value = argument.slice(separator + 1);
+  return isAbsoluteRuntimePath(value) ? argument : undefined;
+}
+
+function validateNpxInvocation(args, runtimeDependencies, label, errors) {
+  let index = 0;
+  while (["-y", "--yes"].includes(args[index])) index += 1;
+  if (args[index] === "--") index += 1;
+  const packageSpec = args[index];
+  const match = typeof packageSpec === "string"
+    ? /^((?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*)@(.+)$/u.exec(packageSpec)
+    : undefined;
+  if (!match || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(match[2])) {
+    errors.push(`${label}: npx runtime package must use an exact version`);
+    return;
+  }
+  if (!Object.hasOwn(runtimeDependencies, match[1])) {
+    errors.push(`${label}: unpinned runtime package ${match[1]}`);
+  } else if (runtimeDependencies[match[1]] !== match[2]) {
+    errors.push(`${label}: runtime package disagrees with catalog pin ${packageSpec}`);
+  }
+}
+
+function validateRuntimeInvocation(entry, label, errors, runtimeDependencies) {
+  if (typeof entry.command !== "string" || !Array.isArray(entry.args)) return;
+  let runtime;
+  try {
+    runtime = classifyRuntimeCommand(entry.command);
+  } catch (error) {
+    errors.push(`${label}: ${messageOf(error)}`);
+    return;
+  }
+  if (isAbsoluteRuntimePath(entry.command)) {
+    errors.push(`${label}: absolute runtime path ${entry.command}`);
+  }
+  if (runtime.runtimeClass === "blocked") {
+    errors.push(`${label}: unsupported dynamic runtime launcher ${runtime.stem}`);
+    return;
+  }
+  if (runtime.runtimeClass === "container") {
+    try {
+      validateContainerHostPaths(parseContainerInvocation(entry.args), label, errors);
+    } catch (error) {
+      errors.push(`${label}: ${messageOf(error)}`);
+    }
+    return;
+  }
+  for (const argument of entry.args) {
+    const unsafePath = typeof argument === "string" ? argumentHostPath(argument) : undefined;
+    if (unsafePath) errors.push(`${label}: absolute runtime path ${unsafePath}`);
+  }
+  if (runtime.runtimeClass === "npx") {
+    validateNpxInvocation(entry.args, runtimeDependencies, label, errors);
+  }
 }
 
 function validateRuntimeJson(value, label, errors, runtimeDependencies = {}) {
@@ -696,16 +925,7 @@ function validateRuntimeJson(value, label, errors, runtimeDependencies = {}) {
       return;
     }
     if (!isPlainObject(entry)) return;
-    if (
-      typeof entry.command === "string"
-      && /^(?:container|docker|podman)(?:\.exe)?$/iu.test(basename(entry.command))
-      && Array.isArray(entry.args)
-    ) {
-      const image = containerImage(entry.args);
-      if (image && !/@sha256:[a-f0-9]{64}$/u.test(image)) {
-        errors.push(`${label}: mutable OCI image ${image}`);
-      }
-    }
+    validateRuntimeInvocation(entry, label, errors, runtimeDependencies);
     for (const [key, child] of Object.entries(entry)) {
       const nextPath = [...path, key];
       if (["env", "environment"].includes(key) && isPlainObject(child)) {
@@ -721,13 +941,16 @@ function validateRuntimeJson(value, label, errors, runtimeDependencies = {}) {
   inspect(value);
   for (const { path, value: string } of runtimeStrings(value)) {
     const key = path.at(-1) || "";
-    if (
+    const parent = path.at(-2)?.toLowerCase();
+    const runtimeField = parent === "args"
+      || ["command", "image", "package", "version"].includes(key.toLowerCase());
+    if (runtimeField && (
       /(?:@|:)(?:latest|next|\*|[xX])(?:$|[\s/])/u.test(string)
       || /@(?:[\^~><=].+|\d+(?:\.\d+)?\.(?:x|X|\*))$/u.test(string)
-    ) {
+    )) {
       errors.push(`${label}: floating runtime selector ${string}`);
     }
-    if (key.toLowerCase() === "image" && !/@sha256:[a-f0-9]{64}$/u.test(string)) {
+    if (key.toLowerCase() === "image" && !immutableContainerImage(string)) {
       errors.push(`${label}: mutable OCI image ${string}`);
     }
     if (
@@ -736,54 +959,88 @@ function validateRuntimeJson(value, label, errors, runtimeDependencies = {}) {
     ) {
       errors.push(`${label}: absolute runtime path ${string}`);
     }
-    if (/^\/(?:[^/]|$)/u.test(string) || win32.isAbsolute(string)) {
-      const parent = path.at(-2)?.toLowerCase();
-      if (parent === "args") errors.push(`${label}: absolute runtime path ${string}`);
-    }
-    if (path.at(-2)?.toLowerCase() === "args") {
-      const packageMatch = /^((?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*)@(.+)$/u
-        .exec(string);
-      if (
-        packageMatch
-        && Object.hasOwn(runtimeDependencies, packageMatch[1])
-        && packageMatch[2] !== runtimeDependencies[packageMatch[1]]
-        && !["latest", "next", "*", "x", "X"].includes(packageMatch[2])
-      ) {
-        errors.push(`${label}: runtime package disagrees with catalog pin ${string}`);
-      }
-    }
   }
 }
 
-function runtimeComponentFiles({ pluginRoot, manifest }) {
+function trustedComponentPath({ pluginRoot, configuredPath, containmentRoot }) {
+  if (
+    typeof configuredPath !== "string"
+    || configuredPath.length === 0
+    || isAbsolute(configuredPath)
+    || win32.isAbsolute(configuredPath)
+  ) {
+    return undefined;
+  }
+  const pluginStats = statEntry(pluginRoot);
+  const containmentStats = statEntry(containmentRoot);
+  if (
+    !pluginStats?.isDirectory()
+    || pluginStats.isSymbolicLink()
+    || !containmentStats?.isDirectory()
+    || containmentStats.isSymbolicLink()
+    || !pathIsInside(pluginRoot, containmentRoot)
+  ) {
+    return undefined;
+  }
+  const canonicalPluginRoot = realpathSync(pluginRoot);
+  const expectedContainmentRoot = resolve(
+    canonicalPluginRoot,
+    relative(pluginRoot, containmentRoot),
+  );
+  if (canonicalPath(containmentRoot) !== expectedContainmentRoot) return undefined;
+  const path = resolve(pluginRoot, configuredPath);
+  if (!pathIsInside(containmentRoot, path)) return undefined;
+  const stats = statEntry(path);
+  if (!stats || stats.isSymbolicLink() || (!stats.isFile() && !stats.isDirectory())) {
+    return undefined;
+  }
+  const expectedCanonical = resolve(
+    expectedContainmentRoot,
+    relative(containmentRoot, path),
+  );
+  return canonicalPath(path) === expectedCanonical ? path : undefined;
+}
+
+function componentMaterializationPaths({ pluginRoot, component }) {
   const paths = [];
+  const neutral = trustedComponentPath({
+    pluginRoot,
+    configuredPath: component.path,
+    containmentRoot: resolve(pluginRoot, "components"),
+  });
+  if (neutral) paths.push(neutral);
+  for (const [target, disposition] of Object.entries(component.targets || {})) {
+    const targetPath = trustedComponentPath({
+      pluginRoot,
+      configuredPath: disposition?.path,
+      containmentRoot: resolve(pluginRoot, `targets/${target}`),
+    });
+    if (targetPath) paths.push(targetPath);
+  }
+  return sortedUnique(paths);
+}
+
+function runtimeComponentFiles({ pluginRoot, manifest }) {
+  const records = new Map();
   for (const component of manifest.components || []) {
     if (!["app", "hook", "mcp"].includes(component.type)) continue;
-    if (typeof component.path === "string") paths.push(resolve(pluginRoot, component.path));
-    for (const disposition of Object.values(component.targets || {})) {
-      if (typeof disposition?.path === "string") paths.push(resolve(pluginRoot, disposition.path));
+    for (const path of componentMaterializationPaths({ pluginRoot, component })) {
+      const stats = lstatSync(path);
+      const files = stats.isFile() ? [path] : strictWalk(path);
+      for (const file of files.filter((file) => extname(file).toLowerCase() === ".json")) {
+        records.set(`${component.type}\0${file}`, { file, type: component.type });
+      }
     }
   }
-  return sortedUnique(paths).flatMap((path) => {
-    const stats = statEntry(path);
-    if (!stats || stats.isSymbolicLink()) return [];
-    if (stats.isFile()) return extname(path).toLowerCase() === ".json" ? [path] : [];
-    return strictWalk(path).filter((file) => extname(file).toLowerCase() === ".json");
-  });
+  return [...records.values()].sort((left, right) => compareCodePoints(left.file, right.file));
 }
 
 function executableComponentFiles({ pluginRoot, manifest }) {
   const paths = [];
   for (const component of manifest.components || []) {
     if (component.type !== "executable") continue;
-    for (const configuredPath of [
-      component.path,
-      ...Object.values(component.targets || {}).map((disposition) => disposition?.path),
-    ]) {
-      if (typeof configuredPath !== "string") continue;
-      const path = resolve(pluginRoot, configuredPath);
-      const stats = statEntry(path);
-      if (!stats || stats.isSymbolicLink()) continue;
+    for (const path of componentMaterializationPaths({ pluginRoot, component })) {
+      const stats = lstatSync(path);
       if (stats.isFile()) paths.push(path);
       else if (stats.isDirectory()) paths.push(...strictWalk(path));
     }
@@ -943,12 +1200,24 @@ function validatePlugin({ repositoryRoot, plugin, lock, lockEntry, processData, 
       errors.push(`${plugin.name}: external LICENSE must not be empty`);
     }
   } else validateLocalSource({ repositoryRoot, plugin, errors });
-  for (const file of runtimeComponentFiles({ pluginRoot, manifest })) {
-    const json = readJsonFile(file, normalizedRelative(repositoryRoot, file), errors);
+  for (const { file, type } of runtimeComponentFiles({ pluginRoot, manifest })) {
+    const label = normalizedRelative(repositoryRoot, file);
+    const json = readJsonFile(file, label, errors);
     if (json !== undefined) {
+      if (type === "mcp") {
+        addCaught(errors, label, () => normalizeMcp({
+          record: { sourceFormat: "path", sourcePath: file },
+          runtimePins: plugin.runtimeDependencies || {},
+        }));
+      } else if (type === "hook") {
+        addCaught(errors, label, () => normalizeHooks({
+          sourceFormat: "path",
+          sourcePath: file,
+        }));
+      }
       validateRuntimeJson(
         json,
-        normalizedRelative(repositoryRoot, file),
+        label,
         errors,
         plugin.runtimeDependencies || {},
       );
@@ -1006,6 +1275,7 @@ export function validateRepository({
   const lock = readRepositoryJson(root, "registry/lock.json", errors);
   const claudeMarketplace = readRepositoryJson(root, ".claude-plugin/marketplace.json", errors);
   const codexMarketplace = readRepositoryJson(root, ".agents/plugins/marketplace.json", errors);
+  validateMaintainedSourceVersions(root, errors);
   applySchema("catalog", catalog, "registry/catalog.json", errors);
   applySchema("lock", lock, "registry/lock.json", errors);
   if (catalog !== undefined) validateExceptions(catalog, errors);
@@ -1017,6 +1287,9 @@ export function validateRepository({
   rejectPrototypeNames(catalogNamesRaw, "registry catalog", errors);
   rejectDuplicateNames(catalogNamesRaw, "registry catalog", errors);
   const catalogNames = sortedUnique(catalogNamesRaw);
+  const catalogByName = new Map(catalogPlugins
+    .filter((plugin) => isPlainObject(plugin) && typeof plugin.name === "string")
+    .map((plugin) => [plugin.name, plugin]));
   const lockNames = isPlainObject(lock?.plugins)
     ? Object.keys(lock.plugins).sort(compareCodePoints)
     : [];
@@ -1031,12 +1304,14 @@ export function validateRepository({
   validateMarketplaceEntries({
     repositoryRoot: root,
     marketplace: claudeMarketplace,
+    catalogByName,
     target: "claude",
     errors,
   });
   validateMarketplaceEntries({
     repositoryRoot: root,
     marketplace: codexMarketplace,
+    catalogByName,
     target: "codex",
     errors,
   });
