@@ -149,6 +149,7 @@ test("explicit resources preserve root layout, modes, and runtime reachability",
     );
     assert.deepEqual(validateRecursiveSkills(skillRoot, {
       target,
+      projectionRoot: targetRoot,
       allowedComponentRoots: manifest.components
         .map((component) => component.targets[target])
         .filter((disposition) => ["preserved", "transformed"].includes(

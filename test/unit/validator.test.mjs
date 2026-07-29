@@ -15,7 +15,7 @@ import {
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { buildRegistry } from "../../scripts/build-registry.mjs";
-import { treeHash } from "../../scripts/lib/hash.mjs";
+import { sourceContextHash, treeHash } from "../../scripts/lib/hash.mjs";
 import { writeJson } from "../../scripts/lib/json.mjs";
 import {
   validateRecursiveSkills,
@@ -78,7 +78,7 @@ function validRepository(context) {
       source: { type: "local", path: "sources/fixture", root: "." },
       sourceContext: [{
         path: "source-only-context.txt",
-        digest: treeHash(sourceContextPath),
+        digest: sourceContextHash(sourceContextPath),
       }],
       targets: ["claude", "codex"],
       policies: { default: "transform-or-fail", skills: "transform" },
@@ -196,6 +196,7 @@ test("recursive validation permits only explicitly owned component projection ro
 
   const errors = validateRecursiveSkills(skillsRoot, {
     target: "codex",
+    projectionRoot: targetRoot,
     allowedComponentRoots: [skillsRoot, assetsRoot],
   });
   assertNoError(errors, "../../assets/icon.svg");
@@ -209,6 +210,56 @@ test("recursive validation permits only explicitly owned component projection ro
     assertHasError(errors, `local Markdown link is outside owned components -> ${path}`);
   }
   assertHasError(errors, "unsafe local Markdown link -> ../../assets/metadata-link");
+});
+
+test("recursive validation requires a projection root for external component roots", (context) => {
+  const targetRoot = mkdtempSync(resolve(tmpdir(), "registry-projection-required-"));
+  context.after(() => rmSync(targetRoot, { recursive: true, force: true }));
+  const skillsRoot = resolve(targetRoot, "skills");
+  writeSkill(skillsRoot, "fixture", "fixture");
+
+  assertHasError(
+    validateRecursiveSkills(skillsRoot, { allowedComponentRoots: [skillsRoot] }),
+    "projection root is required when allowed component roots are supplied",
+  );
+});
+
+test("recursive validation rejects component roots outside the trusted projection", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-projection-escape-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const targetRoot = resolve(parent, "target");
+  const skillsRoot = resolve(targetRoot, "skills");
+  const outsideRoot = resolve(parent, "outside-assets");
+  writeSkill(skillsRoot, "fixture", "fixture");
+  mkdirSync(outsideRoot);
+  writeFileSync(resolve(outsideRoot, "icon.svg"), "<svg/>\n");
+
+  assertHasError(
+    validateRecursiveSkills(skillsRoot, {
+      projectionRoot: targetRoot,
+      allowedComponentRoots: [skillsRoot, outsideRoot],
+    }),
+    "allowed component projection root: path escapes expected root",
+  );
+});
+
+test("recursive validation rejects a parent symlink pivot below the projection root", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-projection-pivot-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const targetRoot = resolve(parent, "target");
+  const outsideRoot = resolve(parent, "outside");
+  mkdirSync(targetRoot);
+  writeSkill(outsideRoot, "skills/fixture", "fixture");
+  symlinkSync(outsideRoot, resolve(targetRoot, "pivot"));
+  const pivotedSkillsRoot = resolve(targetRoot, "pivot/skills");
+
+  assertHasError(
+    validateRecursiveSkills(pivotedSkillsRoot, {
+      projectionRoot: targetRoot,
+      allowedComponentRoots: [pivotedSkillsRoot],
+    }),
+    "skills root: symbolic path is not allowed",
+  );
 });
 
 test("repository validation rejects a skill link to generated host metadata", (context) => {

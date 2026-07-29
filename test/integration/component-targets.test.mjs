@@ -15,7 +15,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildPluginBundle } from "../../scripts/lib/bundle-builder.mjs";
 import { parseFrontmatter } from "../../scripts/lib/frontmatter.mjs";
-import { treeHash } from "../../scripts/lib/hash.mjs";
+import { sourceContextHash, treeHash } from "../../scripts/lib/hash.mjs";
 import { readJson } from "../../scripts/lib/json.mjs";
 import { walkFiles } from "../../scripts/lib/path-safety.mjs";
 
@@ -36,7 +36,7 @@ function completePlugin() {
     },
     sourceContext: ["LICENSE", "README.md"].map((path) => ({
       path,
-      digest: treeHash(resolve(completeFixtureRoot, path)),
+      digest: sourceContextHash(resolve(completeFixtureRoot, path)),
     })),
     targets: ["codex", "claude"],
     policies: { default: "transform-or-fail", skills: "transform" },

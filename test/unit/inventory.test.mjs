@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inventorySource } from "../../scripts/lib/inventory.mjs";
-import { sha256, treeHash } from "../../scripts/lib/hash.mjs";
+import { sha256, sourceContextHash, treeHash } from "../../scripts/lib/hash.mjs";
 import { stableJson } from "../../scripts/lib/json.mjs";
 
 const fixture = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/complete-plugin");
@@ -39,7 +39,7 @@ function writeSourceFile(source, relativePath, contents = "{}\n") {
 }
 
 function contextEntry(source, path) {
-  return { path, digest: treeHash(resolve(source, path)) };
+  return { path, digest: sourceContextHash(resolve(source, path)) };
 }
 
 function fixtureSourceContext(source = fixture) {
@@ -505,6 +505,26 @@ test("source context digests bind content, additions, and removals", (context) =
       /source context digest mismatch: docs/,
     );
   }
+});
+
+test("source context inventory uses the v1 shape-bound digest", (context) => {
+  const source = temporarySource(context);
+  const contextPath = resolve(source, "README.md");
+  writeFileSync(contextPath, "identical\n");
+  const sourceContext = [{
+    path: "README.md",
+    digest: sourceContextHash(contextPath),
+  }];
+
+  assert.doesNotThrow(() => inventorySource({ sourceRoot: source, sourceContext }));
+
+  rmSync(contextPath);
+  mkdirSync(contextPath);
+  writeFileSync(resolve(contextPath, "README.md"), "identical\n");
+  assert.throws(
+    () => inventorySource({ sourceRoot: source, sourceContext }),
+    /source context digest mismatch: README\.md/,
+  );
 });
 
 test("source context rejects malformed, unsafe, symbolic, special, and overlapping paths", (context) => {

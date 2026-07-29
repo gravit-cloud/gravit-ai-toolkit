@@ -12,13 +12,13 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inventorySource } from "../../scripts/lib/inventory.mjs";
-import { treeHash } from "../../scripts/lib/hash.mjs";
+import { sourceContextHash, treeHash } from "../../scripts/lib/hash.mjs";
 import { normalizeHooks, renderHooks } from "../../scripts/lib/hooks.mjs";
 
 const fixture = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/complete-plugin");
 const sourceContext = ["LICENSE", "README.md"].map((path) => ({
   path,
-  digest: treeHash(resolve(fixture, path)),
+  digest: sourceContextHash(resolve(fixture, path)),
 }));
 
 function inlineRecord(inline) {

@@ -6,7 +6,7 @@ import {
   realpathSync,
 } from "node:fs";
 import { isAbsolute, relative, resolve, win32 } from "node:path";
-import { treeHash, sha256 } from "./hash.mjs";
+import { sourceContextHash, treeHash, sha256 } from "./hash.mjs";
 import { externalLicenseSource } from "./external-license.mjs";
 import { stableJson } from "./json.mjs";
 import { compareCodePoints } from "./ordering.mjs";
@@ -390,7 +390,7 @@ function sourceContextRecord({ sourceRoot, entry }) {
     throw new Error("special filesystem entries are not allowed in source context: " + sourcePath);
   }
   if (stats.isDirectory()) walkFiles(sourcePath);
-  const digest = treeHash(sourcePath);
+  const digest = sourceContextHash(sourcePath);
   if (digest !== entry.digest) {
     throw new Error("source context digest mismatch: " + entry.path);
   }

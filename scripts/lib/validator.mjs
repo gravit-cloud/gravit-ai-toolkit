@@ -345,22 +345,38 @@ function validateMarkdownLinks({ root, allowedRoots, file, errors }) {
 
 export function validateRecursiveSkills(
   targetSkillsRoot,
-  { target, allowedComponentRoots } = {},
+  { target, allowedComponentRoots, projectionRoot } = {},
 ) {
   const errors = [];
   const root = resolve(targetSkillsRoot);
-  const rootStats = statEntry(root);
-  if (!rootStats || rootStats.isSymbolicLink() || !rootStats.isDirectory()) {
-    return [`${root}: skills root must be a real directory`];
+  if (target !== undefined && !TARGETS.has(target)) {
+    return [`${root}: unsupported skill validation target ${String(target)}`];
   }
+  if (allowedComponentRoots !== undefined && projectionRoot === undefined) {
+    return [`${root}: projection root is required when allowed component roots are supplied`];
+  }
+  const projection = resolve(projectionRoot ?? root);
+  const projectionStats = statEntry(projection);
+  if (
+    !projectionStats
+    || projectionStats.isSymbolicLink()
+    || !projectionStats.isDirectory()
+  ) {
+    return [`${projection}: projection root must be a real directory`];
+  }
+  const validatedRoot = safeExistingPath({
+    boundary: projection,
+    candidate: root,
+    label: `${root}: skills root`,
+    errors,
+    type: "directory",
+  });
+  if (!validatedRoot) return errors;
   let files;
   try {
     files = strictWalk(root);
   } catch (error) {
     return [messageOf(error).replaceAll(root, ".")];
-  }
-  if (target !== undefined && !TARGETS.has(target)) {
-    return [`${root}: unsupported skill validation target ${String(target)}`];
   }
   const configuredRoots = allowedComponentRoots === undefined
     ? [root]
@@ -374,18 +390,14 @@ export function validateRecursiveSkills(
       errors.push(`${root}: allowed component projection root must be a path`);
       continue;
     }
-    const path = resolve(configuredRoot);
-    const stats = statEntry(path);
-    if (!stats || stats.isSymbolicLink() || (!stats.isFile() && !stats.isDirectory())) {
-      errors.push(`${path}: allowed component projection root must be a real file or directory`);
-      continue;
-    }
-    const canonical = canonicalPath(path);
-    if (canonical !== realpathSync(path)) {
-      errors.push(`${path}: allowed component projection root must not use symbolic paths`);
-      continue;
-    }
-    allowedRoots.push({ canonicalPath: canonical, path });
+    const configuredPath = resolve(configuredRoot);
+    const path = safeExistingPath({
+      boundary: projection,
+      candidate: configuredPath,
+      label: `${configuredPath}: allowed component projection root`,
+      errors,
+    });
+    if (path) allowedRoots.push({ canonicalPath: realpathSync(path), path });
   }
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
@@ -880,6 +892,7 @@ function validateTarget({ pluginRoot, plugin, manifest, lockEntry, target, error
     });
     for (const error of validateRecursiveSkills(skillsRoot, {
       target,
+      projectionRoot: targetRoot,
       allowedComponentRoots,
     })) {
       errors.push(`${plugin.name} ${target}: ${error}`);

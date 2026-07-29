@@ -17,7 +17,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
 import { removeUndefined, stableJson, writeJson } from "../../scripts/lib/json.mjs";
-import { sha256, treeHash } from "../../scripts/lib/hash.mjs";
+import { sha256, sourceContextHash, treeHash } from "../../scripts/lib/hash.mjs";
 import {
   MANAGED_REGISTRY_PATHS,
   promoteManagedPaths,
@@ -113,6 +113,66 @@ test("treeHash hashes a file as one basename and content-digest record", (contex
     treeHash(filePath),
     sha256("component.json\0" + sha256("{\"fixture\":true}\n")),
   );
+});
+
+test("sourceContextHash v1 separates the reproduced treeHash file-directory collision", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "registry-context-collision-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const fileRoot = resolve(root, "file", "README.md");
+  const directoryRoot = resolve(root, "directory", "README.md");
+  mkdirSync(dirname(fileRoot), { recursive: true });
+  mkdirSync(directoryRoot, { recursive: true });
+  writeFileSync(fileRoot, "identical\n");
+  writeFileSync(resolve(directoryRoot, "README.md"), "identical\n");
+
+  assert.equal(treeHash(fileRoot), treeHash(directoryRoot), "reproduces the old collision");
+  assert.equal(
+    sourceContextHash(fileRoot),
+    "5afda75f305de37e1fce6481b502ce67a2a4c128c80ed9042d8bccb834a19c49",
+    "pins the gravit-ai-toolkit/source-context-hash/v1 domain and record format",
+  );
+  assert.notEqual(sourceContextHash(fileRoot), sourceContextHash(directoryRoot));
+});
+
+test("sourceContextHash v1 binds empty directory additions and removals", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "registry-context-empty-directory-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(resolve(root, "payload.txt"), "payload\n");
+  const withoutEmptyDirectory = sourceContextHash(root);
+
+  mkdirSync(resolve(root, "empty"));
+  assert.notEqual(sourceContextHash(root), withoutEmptyDirectory);
+  rmdirSync(resolve(root, "empty"));
+  assert.equal(sourceContextHash(root), withoutEmptyDirectory);
+});
+
+test("sourceContextHash v1 binds nested file and directory entry types", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "registry-context-entry-type-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const fileTree = resolve(root, "file-tree");
+  const directoryTree = resolve(root, "directory-tree");
+  mkdirSync(resolve(fileTree, "nested"), { recursive: true });
+  mkdirSync(resolve(directoryTree, "nested", "item"), { recursive: true });
+  writeFileSync(resolve(fileTree, "nested", "item"), "");
+
+  assert.notEqual(sourceContextHash(fileTree), sourceContextHash(directoryTree));
+});
+
+test("sourceContextHash v1 binds only portable regular-versus-executable state", (context) => {
+  const root = mkdtempSync(resolve(tmpdir(), "registry-context-mode-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const file = resolve(root, "script.sh");
+  writeFileSync(file, "#!/bin/sh\nexit 0\n");
+
+  chmodSync(file, 0o600);
+  const regular = sourceContextHash(root);
+  chmodSync(file, 0o644);
+  assert.equal(sourceContextHash(root), regular);
+  chmodSync(file, 0o755);
+  const executable = sourceContextHash(root);
+  assert.notEqual(executable, regular);
+  chmodSync(file, 0o700);
+  assert.equal(sourceContextHash(root), executable);
 });
 
 test("withAtomicOutput preserves the old tree when build throws", (context) => {
