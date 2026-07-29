@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gravit.cloud/schemas/plugin-receipt-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "registry",
+    "registryRevision",
+    "plugin",
+    "target",
+    "distributionVersion",
+    "sourceBundleDigest",
+    "sourceTargetDigest",
+    "materializedDigest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "registry": { "const": "gravit-cloud" },
+    "registryRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "plugin": { "type": "string" },
+    "target": { "enum": ["claude", "codex", "openclaw"] },
+    "distributionVersion": { "type": "string" },
+    "sourceBundleDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sourceTargetDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "materializedDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

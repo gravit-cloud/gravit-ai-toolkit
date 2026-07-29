@@ -1,4 +1,5 @@
 import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { relative, resolve } from "node:path";
 import Ajv from "ajv/dist/2020.js";
 import { treeHash } from "./hash.mjs";
@@ -18,6 +19,8 @@ function loadSchema(name) {
 const ajv = new Ajv({ allErrors: true, strict: true });
 const validateLock = ajv.compile(loadSchema("lock"));
 const validatePluginManifest = ajv.compile(loadSchema("agent-plugin"));
+const materializationReaders = new WeakMap();
+const MATERIALIZATION_TARGETS = new Set(["claude", "codex", "openclaw"]);
 
 function messageOf(error) {
   return String(error instanceof Error ? error.message : error)
@@ -267,7 +270,7 @@ export function openRegistry(repositoryRoot) {
     return { plugin, locked };
   }
 
-  return {
+  const reader = {
     list() {
       const loaded = ready();
       return loaded.catalog.plugins.map((plugin) => ({
@@ -311,4 +314,52 @@ export function openRegistry(repositoryRoot) {
       return { ok: errors.length === 0, errors };
     },
   };
+  materializationReaders.set(reader, (name, target) => {
+    if (!MATERIALIZATION_TARGETS.has(target)) {
+      throw new Error("unsupported materialization target: " + String(target));
+    }
+    const selected = entry(name);
+    if (!selected.plugin.targets.includes(target)) {
+      throw new Error(name + ": target is not configured: " + target);
+    }
+    const bundleRoot = safeExistingPath(
+      state.root,
+      resolve(state.root, "plugins", name),
+      `${name} bundle`,
+      "directory",
+    );
+    const targetRoot = safeExistingPath(
+      bundleRoot,
+      resolve(bundleRoot, "targets", target),
+      `${name} target ${target}`,
+      "directory",
+    );
+    return Object.freeze({
+      plugin: selected.plugin.name,
+      target,
+      distributionVersion: selected.plugin.distributionVersion,
+      bundleDigest: selected.locked.bundleDigest,
+      targetDigest: selected.locked.targets[target],
+      bundleRoot,
+      targetRoot,
+    });
+  });
+  return reader;
+}
+
+export function materializationSource(reader, name, target) {
+  const select = materializationReaders.get(reader);
+  if (!select) throw new Error("materialization requires a trusted registry reader");
+  return select(name, target);
+}
+
+export function registryRevision(repositoryRoot) {
+  const result = spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+  });
+  if (result.status !== 0 || !/^[a-f0-9]{40}\n?$/u.test(result.stdout)) {
+    throw new Error("registry checkout must have a resolvable Git HEAD");
+  }
+  return result.stdout.trim();
 }
