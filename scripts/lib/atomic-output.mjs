@@ -1,19 +1,115 @@
-import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  rmdirSync,
+} from "node:fs";
 import { basename, dirname, resolve } from "node:path";
+import { compareCodePoints } from "./ordering.mjs";
 import { pathIsInside } from "./path-safety.mjs";
 
-function removeIfPresent(path) {
-  if (existsSync(path)) rmSync(path, { recursive: true, force: true });
+function removeIfPresent(path, remove = rmSync) {
+  if (existsSync(path)) remove(path, { recursive: true, force: true });
+}
+
+function outputExistsError(outputRoot, cause) {
+  const error = new Error("atomic output already exists: " + outputRoot, { cause });
+  error.code = "EEXIST";
+  return error;
+}
+
+function retainedAbsentOutputError({ promotionError, recoveryErrors, stage, outputRoot }) {
+  const outputRetained = existsSync(outputRoot);
+  const locations = outputRetained ? stage + " and " + outputRoot : stage;
+  const error = new AggregateError(
+    [promotionError, ...recoveryErrors],
+    "could not promote absent-only atomic output; recovery data retained at " + locations,
+  );
+  error.recoveryPath = stage;
+  if (outputRetained) error.additionalRecoveryPaths = [outputRoot];
+  return error;
+}
+
+function promoteIntoReservedOutput({
+  stage,
+  outputRoot,
+  makeDirectory,
+  readDirectory,
+  rename,
+  removeDirectory,
+}) {
+  const entries = readDirectory(stage).sort(compareCodePoints);
+  try {
+    makeDirectory(outputRoot);
+  } catch (error) {
+    if (error.code === "EEXIST") throw outputExistsError(outputRoot, error);
+    throw error;
+  }
+
+  const movedEntries = [];
+  try {
+    for (const entry of entries) {
+      rename(resolve(stage, entry), resolve(outputRoot, entry));
+      movedEntries.push(entry);
+    }
+    removeDirectory(stage);
+  } catch (promotionError) {
+    const recoveryErrors = [];
+    for (const entry of movedEntries.reverse()) {
+      try {
+        rename(resolve(outputRoot, entry), resolve(stage, entry));
+      } catch (rollbackError) {
+        recoveryErrors.push(rollbackError);
+      }
+    }
+
+    let outputEntries;
+    try {
+      outputEntries = readDirectory(outputRoot).sort(compareCodePoints);
+    } catch (inspectionError) {
+      recoveryErrors.push(inspectionError);
+    }
+
+    if (outputEntries?.length === 0) {
+      try {
+        // This path was exclusively reserved above. A non-recursive removal
+        // cannot delete content that appears between inspection and cleanup.
+        removeDirectory(outputRoot);
+      } catch (cleanupError) {
+        recoveryErrors.push(cleanupError);
+      }
+    } else if (outputEntries) {
+      recoveryErrors.push(new Error(
+        "reserved atomic output contains unexpected entries: "
+          + outputEntries.join(", "),
+      ));
+    }
+
+    if (recoveryErrors.length === 0) throw promotionError;
+    throw retainedAbsentOutputError({
+      promotionError,
+      recoveryErrors,
+      stage,
+      outputRoot,
+    });
+  }
 }
 
 export function withAtomicOutput({ finalRoot, build, replaceExisting = true }, fileSystem = {}) {
   const makeTemporaryDirectory = fileSystem.mkdtempSync ?? mkdtempSync;
+  const makeDirectory = fileSystem.mkdirSync ?? mkdirSync;
+  const readDirectory = fileSystem.readdirSync ?? readdirSync;
   const rename = fileSystem.renameSync ?? renameSync;
+  const remove = fileSystem.rmSync ?? rmSync;
+  const removeDirectory = fileSystem.rmdirSync ?? rmdirSync;
   const outputRoot = resolve(finalRoot);
   const parent = dirname(outputRoot);
   const name = basename(outputRoot);
   if (!replaceExisting && existsSync(outputRoot)) {
-    throw new Error("atomic output already exists: " + outputRoot);
+    throw outputExistsError(outputRoot);
   }
   mkdirSync(parent, { recursive: true });
 
@@ -29,13 +125,18 @@ export function withAtomicOutput({ finalRoot, build, replaceExisting = true }, f
       backup = resolve(backupRoot, "previous");
     }
     build(stage);
-    // Absent-only callers recheck after the build. A concurrent non-empty
-    // directory also makes the following directory rename fail without
-    // clobbering it; preserve that promotion error because there is no backup.
-    if (!replaceExisting && existsSync(outputRoot)) {
-      throw new Error("atomic output already exists: " + outputRoot);
+    if (!replaceExisting) {
+      promoteIntoReservedOutput({
+        stage,
+        outputRoot,
+        makeDirectory,
+        readDirectory,
+        rename,
+        removeDirectory,
+      });
+      return;
     }
-    if (replaceExisting && existsSync(outputRoot)) rename(outputRoot, backup);
+    if (existsSync(outputRoot)) rename(outputRoot, backup);
     try {
       rename(stage, outputRoot);
     } catch (promotionError) {
@@ -73,10 +174,25 @@ export function withAtomicOutput({ finalRoot, build, replaceExisting = true }, f
     activeError = error;
     throw error;
   } finally {
-    try {
-      removeIfPresent(stage);
-    } catch (cleanupError) {
-      if (!activeError) throw cleanupError;
+    const preserveStage = !replaceExisting
+      && activeError
+      && typeof activeError === "object"
+      && typeof activeError.recoveryPath === "string"
+      && resolve(activeError.recoveryPath) === stage;
+    if (!preserveStage) {
+      try {
+        removeIfPresent(stage, remove);
+      } catch (cleanupError) {
+        if (!activeError) throw cleanupError;
+        if (!replaceExisting && existsSync(stage)) {
+          const recoveryError = new AggregateError(
+            [activeError, cleanupError],
+            "could not clean up absent-only atomic output; recovery data retained at " + stage,
+          );
+          recoveryError.recoveryPath = stage;
+          throw recoveryError;
+        }
+      }
     }
     if (
       activeError
@@ -89,7 +205,7 @@ export function withAtomicOutput({ finalRoot, build, replaceExisting = true }, f
     }
     if (backupRoot && !keepBackupRoot) {
       try {
-        removeIfPresent(backupRoot);
+        removeIfPresent(backupRoot, remove);
       } catch (cleanupError) {
         if (!activeError) throw cleanupError;
       }

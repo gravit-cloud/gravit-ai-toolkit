@@ -8,6 +8,7 @@ import {
   readdirSync,
   renameSync,
   rmSync,
+  rmdirSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -139,6 +140,16 @@ test("withAtomicOutput can require an absent final output without replacing race
   context.after(() => rmSync(parent, { recursive: true, force: true }));
   const finalRoot = resolve(parent, "output");
   mkdirSync(finalRoot);
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build() {
+      assert.fail("build must not run for an existing empty final output");
+    },
+  }), (error) => error.code === "EEXIST");
+  assert.deepEqual(readdirSync(finalRoot), []);
+
   writeFileSync(resolve(finalRoot, "sentinel.txt"), "keep\n");
 
   assert.throws(() => withAtomicOutput({
@@ -166,11 +177,33 @@ test("withAtomicOutput can require an absent final output without replacing race
   assert.deepEqual(readdirSync(parent), ["output"]);
 });
 
-test("absent-only atomic promotion preserves errors and cannot clobber a concurrent tree", (context) => {
-  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-race-"));
+test("absent-only atomic promotion preserves the staged output structure", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-absent-success-"));
   context.after(() => rmSync(parent, { recursive: true, force: true }));
   const finalRoot = resolve(parent, "output");
 
+  withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build(stage) {
+      mkdirSync(resolve(stage, "nested"));
+      writeFileSync(resolve(stage, "root.txt"), "root\n");
+      writeFileSync(resolve(stage, "nested", "child.txt"), "child\n");
+    },
+  });
+
+  assert.deepEqual(readdirSync(finalRoot), ["nested", "root.txt"]);
+  assert.equal(readFileSync(resolve(finalRoot, "root.txt"), "utf8"), "root\n");
+  assert.equal(readFileSync(resolve(finalRoot, "nested", "child.txt"), "utf8"), "child\n");
+  assert.deepEqual(readdirSync(parent), ["output"]);
+});
+
+test("absent-only atomic promotion exclusively reserves the final output", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-race-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  let raced = false;
+
   assert.throws(() => withAtomicOutput({
     finalRoot,
     replaceExisting: false,
@@ -178,34 +211,189 @@ test("absent-only atomic promotion preserves errors and cannot clobber a concurr
       writeFileSync(resolve(stage, "new.txt"), "new\n");
     },
   }, {
-    renameSync() {
-      throw new Error("synthetic absent promotion failure");
+    mkdirSync(path, options) {
+      if (path === finalRoot && !raced) {
+        raced = true;
+        mkdirSync(path);
+      }
+      return mkdirSync(path, options);
     },
-  }), /synthetic absent promotion failure/);
-  assert.equal(existsSync(finalRoot), false);
-  assert.deepEqual(readdirSync(parent), []);
+    renameSync(source, destination) {
+      // Exercises the old whole-directory promotion while the production
+      // implementation is still RED. The reserving implementation races at
+      // mkdirSync above and never reaches this branch.
+      if (destination === finalRoot && !raced) {
+        raced = true;
+        mkdirSync(finalRoot);
+      }
+      return renameSync(source, destination);
+    },
+  }), (error) => error.code === "EEXIST");
 
-  let raceError;
+  assert.equal(raced, true);
+  assert.deepEqual(readdirSync(finalRoot), []);
+  assert.deepEqual(readdirSync(parent), ["output"]);
+});
+
+test("absent-only atomic promotion rolls moved entries back after a later move fails", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-rollback-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  const promotionError = new Error("synthetic second-entry promotion failure");
+
   assert.throws(() => withAtomicOutput({
     finalRoot,
     replaceExisting: false,
     build(stage) {
-      writeFileSync(resolve(stage, "new.txt"), "new\n");
+      writeFileSync(resolve(stage, "a.txt"), "a\n");
+      writeFileSync(resolve(stage, "b.txt"), "b\n");
     },
   }, {
     renameSync(source, destination) {
-      mkdirSync(finalRoot);
-      writeFileSync(resolve(finalRoot, "concurrent.txt"), "concurrent\n");
-      renameSync(source, destination);
+      if (destination === resolve(finalRoot, "b.txt")) throw promotionError;
+      return renameSync(source, destination);
     },
-  }), (error) => {
-    raceError = error;
-    return ["EEXIST", "ENOTEMPTY"].includes(error.code);
+  }), (error) => error === promotionError);
+
+  assert.equal(existsSync(finalRoot), false);
+  assert.deepEqual(readdirSync(parent), []);
+});
+
+test("absent-only promotion rolls back when its empty stage cannot be removed", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-stage-rmdir-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  const stageCleanupError = new Error("synthetic empty-stage cleanup failure");
+  let stageRoot;
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build(stage) {
+      stageRoot = stage;
+      writeFileSync(resolve(stage, "a.txt"), "a\n");
+      writeFileSync(resolve(stage, "b.txt"), "b\n");
+    },
+  }, {
+    rmdirSync(path) {
+      if (path === stageRoot) throw stageCleanupError;
+      return rmdirSync(path);
+    },
+  }), (error) => error === stageCleanupError);
+
+  assert.equal(existsSync(finalRoot), false);
+  assert.deepEqual(readdirSync(parent), []);
+});
+
+test("absent-only rollback preserves recovery data and an unexpected foreign entry", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-foreign-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  const promotionError = new Error("synthetic promotion collision");
+  let error;
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build(stage) {
+      writeFileSync(resolve(stage, "a.txt"), "a\n");
+      writeFileSync(resolve(stage, "b.txt"), "b\n");
+    },
+  }, {
+    renameSync(source, destination) {
+      if (destination === resolve(finalRoot, "b.txt")) {
+        writeFileSync(resolve(finalRoot, "foreign.txt"), "foreign\n");
+        throw promotionError;
+      }
+      return renameSync(source, destination);
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
   });
-  assert.equal(["EEXIST", "ENOTEMPTY"].includes(raceError.code), true);
-  assert.equal(readFileSync(resolve(finalRoot, "concurrent.txt"), "utf8"), "concurrent\n");
-  assert.equal(existsSync(resolve(finalRoot, "new.txt")), false);
-  assert.deepEqual(readdirSync(parent), ["output"]);
+
+  assert.equal(error.errors[0], promotionError);
+  assert.match(error.message, /recovery data retained/);
+  assert.match(basename(error.recoveryPath), /^\.output\.stage-/);
+  assert.deepEqual(readdirSync(error.recoveryPath), ["a.txt", "b.txt"]);
+  assert.equal(readFileSync(resolve(finalRoot, "foreign.txt"), "utf8"), "foreign\n");
+  assert.deepEqual(readdirSync(finalRoot), ["foreign.txt"]);
+});
+
+test("absent-only rollback failure retains both staged and promoted recovery data", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-recovery-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  const promotionError = new Error("synthetic promotion failure");
+  const rollbackError = new Error("synthetic rollback failure");
+  let stageRoot;
+  let error;
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build(stage) {
+      stageRoot = stage;
+      writeFileSync(resolve(stage, "a.txt"), "a\n");
+      writeFileSync(resolve(stage, "b.txt"), "b\n");
+    },
+  }, {
+    renameSync(source, destination) {
+      if (destination === resolve(finalRoot, "b.txt")) throw promotionError;
+      if (source === resolve(finalRoot, "a.txt") && destination === resolve(stageRoot, "a.txt")) {
+        throw rollbackError;
+      }
+      return renameSync(source, destination);
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.equal(error.errors[0], promotionError);
+  assert.equal(error.errors[1], rollbackError);
+  assert.equal(error.recoveryPath, stageRoot);
+  assert.deepEqual(readdirSync(stageRoot), ["b.txt"]);
+  assert.equal(readFileSync(resolve(finalRoot, "a.txt"), "utf8"), "a\n");
+  assert.deepEqual(readdirSync(finalRoot), ["a.txt"]);
+});
+
+test("absent-only cleanup failure retains and reports the rolled-back stage", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-cleanup-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  const promotionError = new Error("synthetic promotion failure");
+  const cleanupError = new Error("synthetic stage cleanup failure");
+  let stageRoot;
+  let error;
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build(stage) {
+      stageRoot = stage;
+      writeFileSync(resolve(stage, "a.txt"), "a\n");
+      writeFileSync(resolve(stage, "b.txt"), "b\n");
+    },
+  }, {
+    renameSync(source, destination) {
+      if (destination === resolve(finalRoot, "b.txt")) throw promotionError;
+      return renameSync(source, destination);
+    },
+    rmSync(path, options) {
+      if (path === stageRoot) throw cleanupError;
+      return rmSync(path, options);
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.equal(error.errors[0], promotionError);
+  assert.equal(error.errors[1], cleanupError);
+  assert.equal(error.recoveryPath, stageRoot);
+  assert.deepEqual(readdirSync(stageRoot), ["a.txt", "b.txt"]);
+  assert.equal(existsSync(finalRoot), false);
 });
 
 test("withAtomicOutput never deletes a pre-existing sibling backup path", (context) => {
