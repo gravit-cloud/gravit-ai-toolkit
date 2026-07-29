@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -9,6 +10,7 @@ import {
   renameSync,
   rmSync,
   rmdirSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -871,4 +873,207 @@ test("promoteManagedPaths preserves foreign content introduced into a promoted d
   assert.equal(error.recoveryPath, stageRoot);
   assert.equal(readFileSync(oldPaths.plugins, "utf8"), "old:plugins\n");
   assert.equal(readFileSync(resolve(stageRoot, "plugins/foreign.txt"), "utf8"), "foreign\n");
+});
+
+test("promoteManagedPaths retains a foreign transaction-root sibling discovered after success", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-transaction-foreign-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  seedManagedArtifacts(repositoryRoot, "old:");
+  seedManagedArtifacts(stageRoot, "new:");
+  let transactionRoot;
+  let stagedRenames = 0;
+  let error;
+
+  assert.throws(() => promoteManagedPaths({
+    repositoryRoot,
+    stageRoot,
+    rename(from, to) {
+      if (to.includes("/backup/")) transactionRoot = dirname(dirname(to));
+      renameSync(from, to);
+      if (from.startsWith(stageRoot) && ++stagedRenames === MANAGED_REGISTRY_PATHS.length) {
+        writeFileSync(resolve(transactionRoot, "foreign.txt"), "foreign\n");
+      }
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.equal(error.recoveryPath, transactionRoot);
+  assert.equal(readFileSync(resolve(transactionRoot, "foreign.txt"), "utf8"), "foreign\n");
+  for (const relativePath of MANAGED_REGISTRY_PATHS) {
+    const publicPath = relativePath.endsWith(".json")
+      ? resolve(repositoryRoot, relativePath)
+      : resolve(repositoryRoot, relativePath, "marker.txt");
+    assert.equal(readFileSync(publicPath, "utf8"), "new:" + relativePath + "\n");
+  }
+});
+
+test("promoteManagedPaths rejects a staged artifact changed after its target was backed up", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-staged-mutation-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  const oldPaths = seedManagedArtifacts(repositoryRoot, "old:");
+  seedManagedArtifacts(stageRoot, "new:");
+  let error;
+
+  assert.throws(() => promoteManagedPaths({
+    repositoryRoot,
+    stageRoot,
+    rename(from, to) {
+      renameSync(from, to);
+      if (from === resolve(repositoryRoot, "plugins")) {
+        writeFileSync(resolve(stageRoot, "plugins/marker.txt"), "changed staged plugins\n");
+      }
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.equal(error.recoveryPath, stageRoot);
+  assert.equal(readFileSync(oldPaths.plugins, "utf8"), "old:plugins\n");
+  assert.equal(
+    readFileSync(resolve(stageRoot, "plugins/marker.txt"), "utf8"),
+    "changed staged plugins\n",
+  );
+});
+
+test("promoteManagedPaths retains a replaced source root before its first validation", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-source-replacement-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  const oldPaths = seedManagedArtifacts(repositoryRoot, "old:");
+  seedManagedArtifacts(stageRoot, "new:");
+  let replaced = false;
+  let error;
+
+  assert.throws(() => promoteManagedPaths({ repositoryRoot, stageRoot }, {
+    beforeSourceValidation({ phase, relativePath, source }) {
+      if (replaced || phase !== "before-backup" || relativePath !== "plugins") return;
+      replaced = true;
+      rmSync(source, { recursive: true });
+      mkdirSync(source);
+      writeFileSync(resolve(source, "foreign.txt"), "foreign replacement\n");
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.equal(replaced, true);
+  assert.equal(error.recoveryPath, stageRoot);
+  assert.equal(
+    readFileSync(resolve(stageRoot, "plugins/foreign.txt"), "utf8"),
+    "foreign replacement\n",
+  );
+  assert.equal(readFileSync(oldPaths.plugins, "utf8"), "old:plugins\n");
+});
+
+test("promoteManagedPaths audits promoted directory contents before reporting success", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-public-mutation-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  const oldPaths = seedManagedArtifacts(repositoryRoot, "old:");
+  seedManagedArtifacts(stageRoot, "new:");
+  let error;
+
+  assert.throws(() => promoteManagedPaths({
+    repositoryRoot,
+    stageRoot,
+    rename(from, to) {
+      renameSync(from, to);
+      if (from === resolve(stageRoot, "plugins")) {
+        mkdirSync(resolve(repositoryRoot, "plugins/unexpected"));
+        writeFileSync(resolve(repositoryRoot, "plugins/unexpected/foreign.txt"), "foreign\n");
+      }
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.equal(error.recoveryPath, stageRoot);
+  assert.equal(readFileSync(oldPaths.plugins, "utf8"), "old:plugins\n");
+  assert.equal(
+    readFileSync(resolve(stageRoot, "plugins/unexpected/foreign.txt"), "utf8"),
+    "foreign\n",
+  );
+});
+
+test("promoteManagedPaths never restores or deletes a backup with changed modes", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-backup-mode-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  seedManagedArtifacts(repositoryRoot, "old:");
+  seedManagedArtifacts(stageRoot, "new:");
+  let changedBackup;
+  let transactionRoot;
+  let error;
+
+  assert.throws(() => promoteManagedPaths({
+    repositoryRoot,
+    stageRoot,
+    rename(from, to) {
+      renameSync(from, to);
+      if (!changedBackup && from === resolve(repositoryRoot, "plugins")) {
+        transactionRoot = dirname(dirname(to));
+        changedBackup = resolve(to, "marker.txt");
+        chmodSync(changedBackup, 0o600);
+      }
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.equal(error.recoveryPath, transactionRoot);
+  assert.equal(error.additionalRecoveryPaths.includes(stageRoot), true);
+  assert.equal(existsSync(resolve(repositoryRoot, "plugins")), false);
+  assert.equal(readFileSync(changedBackup, "utf8"), "old:plugins\n");
+  assert.equal(statSync(changedBackup).mode & 0o777, 0o600);
+  assert.equal(readFileSync(resolve(stageRoot, "plugins/marker.txt"), "utf8"), "new:plugins\n");
+});
+
+test("promoteManagedPaths retains an unexpected sibling in its backup directory", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-backup-sibling-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  seedManagedArtifacts(repositoryRoot, "old:");
+  seedManagedArtifacts(stageRoot, "new:");
+  let transactionRoot;
+  let foreignPath;
+  let error;
+
+  assert.throws(() => promoteManagedPaths({
+    repositoryRoot,
+    stageRoot,
+    rename(from, to) {
+      renameSync(from, to);
+      if (from === resolve(repositoryRoot, "plugins")) {
+        transactionRoot = dirname(dirname(to));
+        foreignPath = resolve(transactionRoot, "backup/foreign.txt");
+        writeFileSync(foreignPath, "foreign backup sibling\n");
+      }
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.equal(error.recoveryPath, transactionRoot);
+  assert.equal(readFileSync(foreignPath, "utf8"), "foreign backup sibling\n");
+  for (const relativePath of MANAGED_REGISTRY_PATHS) {
+    const publicPath = relativePath.endsWith(".json")
+      ? resolve(repositoryRoot, relativePath)
+      : resolve(repositoryRoot, relativePath, "marker.txt");
+    assert.equal(readFileSync(publicPath, "utf8"), "new:" + relativePath + "\n");
+  }
 });
