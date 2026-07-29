@@ -63,6 +63,7 @@ test("Azure Codex bundle contains pinned MCP and unique skills", () => {
   assert.deepEqual(
     validateRecursiveSkills(resolve(root, "targets/codex/skills"), {
       target: "codex",
+      projectionRoot: resolve(root, "targets/codex"),
       allowedComponentRoots: allowedComponentRoots(root, "codex"),
     }),
     [],
@@ -105,6 +106,7 @@ test("Azure target projections preserve exact runtime links and 34 unique public
     assert.deepEqual([...names].sort(), EXPECTED_AZURE_SKILLS);
     assert.deepEqual(validateRecursiveSkills(skillsRoot, {
       target,
+      projectionRoot: targetRoot,
       allowedComponentRoots: allowedComponentRoots(root, target),
     }), []);
   }

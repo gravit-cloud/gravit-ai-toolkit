@@ -13,7 +13,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv from "ajv/dist/2020.js";
 import { buildPluginBundle } from "../../scripts/lib/bundle-builder.mjs";
-import { sha256, treeHash } from "../../scripts/lib/hash.mjs";
+import { sha256, sourceContextHash, treeHash } from "../../scripts/lib/hash.mjs";
 import { assertRegistryName } from "../../scripts/lib/path-safety.mjs";
 import { createLockEntry } from "../../scripts/lib/provenance.mjs";
 import { validateRecursiveSkills } from "../../scripts/lib/validator.mjs";
@@ -51,7 +51,7 @@ function completePlugin() {
     },
     sourceContext: ["LICENSE", "README.md"].map((path) => ({
       path,
-      digest: treeHash(resolve(completeFixture, path)),
+      digest: sourceContextHash(resolve(completeFixture, path)),
     })),
     targets: ["codex", "claude"],
     policies: { default: "transform-or-fail", skills: "transform" },
@@ -190,10 +190,12 @@ test("keeps the public prototype skill name behind a safe component identity", (
   assert.throws(() => assertRegistryName("prototype"), /prototype registry name/);
 
   for (const target of ["claude", "codex"]) {
-    const skillRoot = resolve(bundleRoot, "targets", target, "skills");
+    const targetRoot = resolve(bundleRoot, "targets", target);
+    const skillRoot = resolve(targetRoot, "skills");
     assert.equal(existsSync(resolve(skillRoot, "prototype/SKILL.md")), true);
     assert.deepEqual(validateRecursiveSkills(skillRoot, {
       target,
+      projectionRoot: targetRoot,
       allowedComponentRoots: manifest.components
         .map((component) => component.targets[target])
         .filter((disposition) => ["preserved", "transformed"].includes(

@@ -1,5 +1,5 @@
 {
-  "generatorDigest": "46db050c20a3c035b1985d9aa2c44b45c03ba51f4097e7da8ecf851fabf14773",
+  "generatorDigest": "5a0ffb2dad142b0f640743db678f0939f57c5ec0ee5fa3daa6f25841a3e70d2c",
   "plugins": {
     "azure": {
       "bundleDigest": "ecf04de3d39ad1efcd324f520b7ac46788c1c87bd244fee25c4a175211c8561f",
@@ -652,7 +652,7 @@
         }
       ],
       "distributionVersion": "1.2.5-gravit.1",
-      "generatorDigest": "46db050c20a3c035b1985d9aa2c44b45c03ba51f4097e7da8ecf851fabf14773",
+      "generatorDigest": "5a0ffb2dad142b0f640743db678f0939f57c5ec0ee5fa3daa6f25841a3e70d2c",
       "name": "azure",
       "source": {
         "ref": "v1.2.5",
@@ -1316,7 +1316,7 @@
         }
       ],
       "distributionVersion": "2.2.4-gravit.1",
-      "generatorDigest": "46db050c20a3c035b1985d9aa2c44b45c03ba51f4097e7da8ecf851fabf14773",
+      "generatorDigest": "5a0ffb2dad142b0f640743db678f0939f57c5ec0ee5fa3daa6f25841a3e70d2c",
       "name": "claude-seo",
       "source": {
         "ref": "v2.2.4",
@@ -1454,7 +1454,7 @@
         }
       ],
       "distributionVersion": "1.0.0-gravit.1",
-      "generatorDigest": "46db050c20a3c035b1985d9aa2c44b45c03ba51f4097e7da8ecf851fabf14773",
+      "generatorDigest": "5a0ffb2dad142b0f640743db678f0939f57c5ec0ee5fa3daa6f25841a3e70d2c",
       "name": "gravit-custom",
       "source": {
         "path": "sources/gravit-custom",
@@ -1828,7 +1828,7 @@
         }
       ],
       "distributionVersion": "1.1.0-gravit.1",
-      "generatorDigest": "46db050c20a3c035b1985d9aa2c44b45c03ba51f4097e7da8ecf851fabf14773",
+      "generatorDigest": "5a0ffb2dad142b0f640743db678f0939f57c5ec0ee5fa3daa6f25841a3e70d2c",
       "name": "mattpocock-skills",
       "source": {
         "ref": "v1.1.0",
@@ -1932,7 +1932,7 @@
         }
       ],
       "distributionVersion": "1.0.1-gravit.1",
-      "generatorDigest": "46db050c20a3c035b1985d9aa2c44b45c03ba51f4097e7da8ecf851fabf14773",
+      "generatorDigest": "5a0ffb2dad142b0f640743db678f0939f57c5ec0ee5fa3daa6f25841a3e70d2c",
       "name": "obsidian",
       "source": {
         "ref": "main",
@@ -2223,7 +2223,7 @@
         }
       ],
       "distributionVersion": "6.2.0-gravit.1",
-      "generatorDigest": "46db050c20a3c035b1985d9aa2c44b45c03ba51f4097e7da8ecf851fabf14773",
+      "generatorDigest": "5a0ffb2dad142b0f640743db678f0939f57c5ec0ee5fa3daa6f25841a3e70d2c",
       "name": "superpowers",
       "source": {
         "ref": "v6.2.0",

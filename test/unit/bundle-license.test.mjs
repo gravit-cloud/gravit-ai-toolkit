@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { buildPluginBundle } from "../../scripts/lib/bundle-builder.mjs";
-import { treeHash } from "../../scripts/lib/hash.mjs";
+import { sourceContextHash, treeHash } from "../../scripts/lib/hash.mjs";
 
 function sandbox(context) {
   const root = mkdtempSync(resolve(tmpdir(), "bundle-license-"));
@@ -114,7 +114,7 @@ test("local bundles do not invent a redistributed external license", (context) =
   const localPlugin = plugin("local");
   localPlugin.sourceContext = [{
     path: "LICENSE.txt",
-    digest: treeHash(resolve(sourceRoot, "LICENSE.txt")),
+    digest: sourceContextHash(resolve(sourceRoot, "LICENSE.txt")),
   }];
 
   buildPluginBundle({
