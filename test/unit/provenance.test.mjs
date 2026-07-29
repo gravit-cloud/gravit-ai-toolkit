@@ -45,6 +45,13 @@ function lockFixture(context) {
     plugin: {
       name: "fixture",
       distributionVersion: "1.0.0-gravit.2",
+      source: {
+        type: "github",
+        repo: "owner/repository",
+        ref: "v1.0.0",
+        sha: "0123456789abcdef0123456789abcdef01234567",
+        root: ".",
+      },
       targets: ["codex", "claude"],
     },
     source: {
@@ -85,6 +92,14 @@ function lockFixture(context) {
       },
     },
   };
+}
+
+function localLockFixture(context) {
+  const input = lockFixture(context);
+  const source = { type: "local", path: "plugins/fixture", root: "source" };
+  input.plugin.source = structuredClone(source);
+  input.source = structuredClone(source);
+  return input;
 }
 
 test("accounts for every component on every configured target without leaking render hints", () => {
@@ -324,6 +339,71 @@ test("lock creation validates sources, digests, paths, and prototype-safe maps",
     mutate(input);
     assert.throws(() => createLockEntry(input), expected);
   }
+});
+
+test("lock creation rejects every GitHub provenance mismatch without mutating input", (context) => {
+  const cases = [
+    ["type", (source) => {
+      delete source.repo;
+      delete source.ref;
+      delete source.sha;
+      delete source.root;
+      source.type = "local";
+      source.path = "plugins/fixture";
+    }],
+    ["repo", (source) => { source.repo = "other/repository"; }],
+    ["ref", (source) => { source.ref = "v2.0.0"; }],
+    ["sha", (source) => { source.sha = "f".repeat(40); }],
+    ["root presence", (source) => { delete source.root; }],
+    ["root value", (source) => { source.root = "nested"; }],
+  ];
+  for (const [field, mutate] of cases) {
+    const input = lockFixture(context);
+    mutate(input.source);
+    const before = structuredClone(input);
+
+    assert.throws(
+      () => createLockEntry(input),
+      new RegExp("plugin source must exactly match input source: " + field),
+    );
+    assert.deepEqual(input, before);
+  }
+});
+
+test("lock creation rejects every local provenance mismatch without mutating input", (context) => {
+  const cases = [
+    ["type", (source) => {
+      delete source.path;
+      delete source.root;
+      source.type = "github";
+      source.repo = "owner/repository";
+      source.ref = "v1.0.0";
+      source.sha = "0123456789abcdef0123456789abcdef01234567";
+    }],
+    ["path", (source) => { source.path = "plugins/other"; }],
+    ["root presence", (source) => { delete source.root; }],
+    ["root value", (source) => { source.root = "nested"; }],
+  ];
+  for (const [field, mutate] of cases) {
+    const input = localLockFixture(context);
+    mutate(input.source);
+    const before = structuredClone(input);
+
+    assert.throws(
+      () => createLockEntry(input),
+      new RegExp("plugin source must exactly match input source: " + field),
+    );
+    assert.deepEqual(input, before);
+  }
+});
+
+test("lock creation requires plugin provenance without mutating input", (context) => {
+  const input = lockFixture(context);
+  delete input.plugin.source;
+  const before = structuredClone(input);
+
+  assert.throws(() => createLockEntry(input), /plugin requires source/);
+  assert.deepEqual(input, before);
 });
 
 test("lock creation requires configured targets to exactly match target results", (context) => {
