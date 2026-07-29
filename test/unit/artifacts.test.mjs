@@ -701,6 +701,46 @@ test("promoteManagedPaths preflights every staged artifact before moving product
   );
 });
 
+test("promoteManagedPaths rejects malformed required source-claim maps before publication", (context) => {
+  const malformedClaims = [
+    {},
+    Object.create({ inherited: true }),
+    {
+      ...Object.fromEntries(MANAGED_REGISTRY_PATHS.map((path) => [path, {}])),
+      unexpected: {},
+    },
+  ];
+
+  for (const [index, sourceClaims] of malformedClaims.entries()) {
+    const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-claim-shape-"));
+    context.after(() => rmSync(parent, { recursive: true, force: true }));
+    const repositoryRoot = resolve(parent, "repository");
+    const stageRoot = resolve(parent, "stage");
+    const oldPaths = seedManagedArtifacts(repositoryRoot, "old:");
+    seedManagedArtifacts(stageRoot, "new:");
+    let error;
+
+    assert.throws(() => promoteManagedPaths({
+      repositoryRoot,
+      stageRoot,
+      sourceClaims,
+      requireSourceClaims: true,
+    }), (caught) => {
+      error = caught;
+      return caught instanceof AggregateError;
+    }, "case " + index);
+
+    assert.equal(error.recoveryPath, stageRoot, "case " + index);
+    for (const relativePath of MANAGED_REGISTRY_PATHS) {
+      assert.equal(
+        readFileSync(oldPaths[relativePath], "utf8"),
+        "old:" + relativePath + "\n",
+        "case " + index,
+      );
+    }
+  }
+});
+
 test("promoteManagedPaths replaces mixed existing and missing targets without touching siblings", (context) => {
   const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-mixed-"));
   context.after(() => rmSync(parent, { recursive: true, force: true }));

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -9,6 +10,7 @@ import {
   renameSync,
   rmSync,
   symlinkSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -242,6 +244,75 @@ test("production build rejects a non-repository output before changing either lo
   assert.equal(readFileSync(resolve(sandbox.repositoryRoot, "README.md"), "utf8"), "unrelated\n");
   assert.equal(existsSync(resolve(sandbox.repositoryRoot, "plugins")), false);
 });
+
+const postValidationMutations = [
+  {
+    name: "an extra plugin file",
+    mutate(stageRoot) {
+      const path = resolve(stageRoot, "plugins/local-plugin/post-validation.txt");
+      writeFileSync(path, "post validation\n");
+      return {
+        assertRetained() {
+          assert.equal(readFileSync(path, "utf8"), "post validation\n");
+        },
+      };
+    },
+  },
+  {
+    name: "different marketplace bytes",
+    mutate(stageRoot) {
+      const path = resolve(stageRoot, ".claude-plugin/marketplace.json");
+      writeFileSync(path, readFileSync(path, "utf8") + "\n");
+      return {
+        assertRetained() {
+          assert.equal(readFileSync(path, "utf8").endsWith("\n\n"), true);
+        },
+      };
+    },
+  },
+  {
+    name: "a different marketplace mode",
+    mutate(stageRoot) {
+      const path = resolve(stageRoot, ".agents/plugins/marketplace.json");
+      chmodSync(path, 0o600);
+      return {
+        assertRetained() {
+          assert.equal(statSync(path).mode & 0o777, 0o600);
+        },
+      };
+    },
+  },
+];
+
+for (const mutation of postValidationMutations) {
+  test("production build rejects " + mutation.name + " introduced after validation", (context) => {
+    const sandbox = sandboxRepository(context);
+    let retained;
+    let error;
+
+    assert.throws(() => buildRegistry({
+      repositoryRoot: sandbox.repositoryRoot,
+      catalogPath: "registry/catalog.json",
+      outputRoot: sandbox.repositoryRoot,
+      production: true,
+      promote(input) {
+        retained = mutation.mutate(input.stageRoot);
+        return promoteManagedPaths(input);
+      },
+    }), (caught) => {
+      error = caught;
+      return caught instanceof AggregateError;
+    });
+
+    assert.match(error.recoveryPath, /\.repository\.registry-stage-/);
+    assert.equal(existsSync(error.recoveryPath), true);
+    retained.assertRetained();
+    assert.equal(existsSync(resolve(sandbox.repositoryRoot, "plugins")), false);
+    assert.equal(existsSync(resolve(sandbox.repositoryRoot, ".claude-plugin")), false);
+    assert.equal(existsSync(resolve(sandbox.repositoryRoot, ".agents")), false);
+    assert.equal(existsSync(resolve(sandbox.repositoryRoot, "registry/lock.json")), false);
+  });
+}
 
 test("production build rejects an existing lock symlink before reading outside the repository", (context) => {
   const sandbox = sandboxRepository(context);

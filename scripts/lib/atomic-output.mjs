@@ -90,6 +90,22 @@ function sameStatIdentity(left, right) {
   return left.dev === right.dev && left.ino === right.ino;
 }
 
+function deterministicArtifactSnapshot(entries) {
+  return JSON.stringify(entries.map((entry) => ({
+    relativePath: entry.relativePath,
+    type: entry.type,
+    mode: entry.mode,
+    ...(entry.digest ? { digest: entry.digest } : {}),
+  })));
+}
+
+function freezeArtifactClaim(claim) {
+  Object.freeze(claim.identity);
+  for (const entry of claim.entries) Object.freeze(entry);
+  Object.freeze(claim.entries);
+  return Object.freeze(claim);
+}
+
 function claimArtifact(path, label) {
   const entries = [];
 
@@ -147,17 +163,148 @@ function claimArtifact(path, label) {
   }
 
   visit(path, ".");
-  const deterministicSnapshot = JSON.stringify(entries.map((entry) => ({
-    relativePath: entry.relativePath,
-    type: entry.type,
-    mode: entry.mode,
-    ...(entry.digest ? { digest: entry.digest } : {}),
-  })));
-  return {
+  return freezeArtifactClaim({
     identity: { device: entries[0].device, inode: entries[0].inode },
     entries,
-    deterministicSnapshot,
-  };
+    deterministicSnapshot: deterministicArtifactSnapshot(entries),
+  });
+}
+
+function assertExactPlainDataObject(value, expectedKeys, label) {
+  if (
+    value === null
+    || typeof value !== "object"
+    || Array.isArray(value)
+    || Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    throw new Error(label + " must be a plain object");
+  }
+  const actualKeys = Reflect.ownKeys(value);
+  if (actualKeys.some((key) => typeof key !== "string")) {
+    throw new Error(label + " has unexpected symbol keys");
+  }
+  const actual = [...actualKeys].sort(compareCodePoints);
+  const expected = [...expectedKeys].sort(compareCodePoints);
+  if (
+    actual.length !== expected.length
+    || actual.some((key, index) => key !== expected[index])
+  ) {
+    throw new Error(label + " has an invalid keyset");
+  }
+  for (const key of actual) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.hasOwn(descriptor, "value")) {
+      throw new Error(label + " must use own data properties");
+    }
+  }
+}
+
+function assertPlainArray(value, label) {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) {
+    throw new Error(label + " must be a plain array");
+  }
+  const expectedKeys = [
+    ...value.map((_, index) => String(index)),
+    "length",
+  ].sort(compareCodePoints);
+  const actualKeys = Reflect.ownKeys(value);
+  if (
+    actualKeys.some((key) => typeof key !== "string")
+    || actualKeys.length !== expectedKeys.length
+    || [...actualKeys].sort(compareCodePoints).some((key, index) => key !== expectedKeys[index])
+  ) {
+    throw new Error(label + " has unexpected properties");
+  }
+}
+
+function assertClaimInteger(value, label, maximum = Number.MAX_SAFE_INTEGER) {
+  if (!Number.isSafeInteger(value) || value < 0 || value > maximum) {
+    throw new Error(label + " must be a non-negative safe integer");
+  }
+}
+
+function validateArtifactClaim(claim, expectedRootType, label) {
+  assertExactPlainDataObject(
+    claim,
+    ["identity", "entries", "deterministicSnapshot"],
+    label,
+  );
+  assertExactPlainDataObject(claim.identity, ["device", "inode"], label + " identity");
+  assertClaimInteger(claim.identity.device, label + " identity device");
+  assertClaimInteger(claim.identity.inode, label + " identity inode");
+  assertPlainArray(claim.entries, label + " entries");
+  if (claim.entries.length === 0) throw new Error(label + " entries must not be empty");
+
+  const seenPaths = new Set();
+  for (const [index, entry] of claim.entries.entries()) {
+    const entryLabel = label + " entry " + index;
+    if (entry?.type === "file") {
+      assertExactPlainDataObject(
+        entry,
+        ["relativePath", "type", "mode", "device", "inode", "digest"],
+        entryLabel,
+      );
+    } else {
+      assertExactPlainDataObject(
+        entry,
+        ["relativePath", "type", "mode", "device", "inode"],
+        entryLabel,
+      );
+    }
+    if (entry.type !== "file" && entry.type !== "directory") {
+      throw new Error(entryLabel + " has an unsupported type");
+    }
+    if (
+      typeof entry.relativePath !== "string"
+      || entry.relativePath.length === 0
+      || (entry.relativePath !== "." && entry.relativePath.split("/").some((part) => (
+        part.length === 0 || part === "." || part === ".."
+      )))
+      || seenPaths.has(entry.relativePath)
+    ) {
+      throw new Error(entryLabel + " has an unsafe or duplicate relative path");
+    }
+    seenPaths.add(entry.relativePath);
+    assertClaimInteger(entry.mode, entryLabel + " mode", 0o7777);
+    assertClaimInteger(entry.device, entryLabel + " device");
+    assertClaimInteger(entry.inode, entryLabel + " inode");
+    if (entry.type === "file" && !/^[a-f0-9]{64}$/.test(entry.digest)) {
+      throw new Error(entryLabel + " has an invalid file digest");
+    }
+  }
+
+  const root = claim.entries[0];
+  if (
+    root.relativePath !== "."
+    || root.type !== expectedRootType
+    || root.device !== claim.identity.device
+    || root.inode !== claim.identity.inode
+  ) {
+    throw new Error(label + " has an invalid root entry");
+  }
+  if (
+    typeof claim.deterministicSnapshot !== "string"
+    || claim.deterministicSnapshot !== deterministicArtifactSnapshot(claim.entries)
+  ) {
+    throw new Error(label + " has an invalid deterministic snapshot");
+  }
+  return freezeArtifactClaim(claim);
+}
+
+function validateManagedSourceClaims(sourceClaims) {
+  assertExactPlainDataObject(
+    sourceClaims,
+    MANAGED_REGISTRY_PATHS,
+    "managed source claims",
+  );
+  for (const relativePath of MANAGED_REGISTRY_PATHS) {
+    validateArtifactClaim(
+      sourceClaims[relativePath],
+      relativePath.endsWith(".json") ? "file" : "directory",
+      "managed source claim " + relativePath,
+    );
+  }
+  return Object.freeze(sourceClaims);
 }
 
 function assertArtifactClaim(path, expected, label) {
@@ -275,10 +422,43 @@ function managedRecoveryPaths({ stageRoot, pending }) {
   return [...new Set(paths)];
 }
 
+function retainedStageClaimError(error, stageRoot) {
+  const retained = new AggregateError(
+    [error],
+    "staged managed registry differs from its captured promotion claims; recovery data retained at "
+      + stageRoot,
+  );
+  retained.recoveryPath = stageRoot;
+  return retained;
+}
+
+export function claimManagedRegistryPaths(stageRoot) {
+  const lexicalStage = resolve(stageRoot);
+  assertRealDirectory(lexicalStage, "registry stage root");
+  const claims = Object.fromEntries(MANAGED_REGISTRY_PATHS.map((relativePath) => {
+    const source = assertUnpivoted(
+      lexicalStage,
+      resolve(lexicalStage, relativePath),
+      "staged artifact",
+    );
+    if (!pathEntryExists(source)) {
+      throw new Error("missing staged artifact: " + relativePath);
+    }
+    assertManagedArtifact(source, relativePath, "staged artifact");
+    return [
+      relativePath,
+      claimArtifact(source, "staged artifact " + relativePath),
+    ];
+  }));
+  return Object.freeze(claims);
+}
+
 export function promoteManagedPaths({
   repositoryRoot,
   stageRoot,
   rename = renameSync,
+  sourceClaims,
+  requireSourceClaims = false,
 }, fileSystem = {}) {
   const beforeSourceValidation = fileSystem.beforeSourceValidation ?? (() => {});
   const lexicalRepository = resolve(repositoryRoot);
@@ -293,6 +473,40 @@ export function promoteManagedPaths({
     || pathsOverlap(canonicalRepository, canonicalStage)
   ) {
     throw new Error("unsafe managed registry stage overlaps repository");
+  }
+
+  const suppliedSourceClaims = sourceClaims !== undefined;
+  let expectedSourceClaims;
+  try {
+    if (requireSourceClaims && !suppliedSourceClaims) {
+      throw new Error("managed source claims are required for production promotion");
+    }
+    expectedSourceClaims = suppliedSourceClaims
+      ? validateManagedSourceClaims(sourceClaims)
+      : claimManagedRegistryPaths(lexicalStage);
+    if (suppliedSourceClaims) {
+      for (const relativePath of MANAGED_REGISTRY_PATHS) {
+        const source = assertUnpivoted(
+          lexicalStage,
+          resolve(lexicalStage, relativePath),
+          "staged artifact",
+        );
+        if (!pathEntryExists(source)) {
+          throw new Error("missing staged artifact: " + relativePath);
+        }
+        assertManagedArtifact(source, relativePath, "staged artifact");
+        assertArtifactClaim(
+          source,
+          expectedSourceClaims[relativePath],
+          "staged artifact " + relativePath,
+        );
+      }
+    }
+  } catch (error) {
+    if (suppliedSourceClaims || requireSourceClaims) {
+      throw retainedStageClaimError(error, lexicalStage);
+    }
+    throw error;
   }
 
   const pending = MANAGED_REGISTRY_PATHS.map((relativePath, index) => {
@@ -310,7 +524,7 @@ export function promoteManagedPaths({
       throw new Error("missing staged artifact: " + relativePath);
     }
     assertManagedArtifact(source, relativePath, "staged artifact");
-    const sourceClaim = claimArtifact(source, "staged artifact " + relativePath);
+    const sourceClaim = expectedSourceClaims[relativePath];
     const hadTarget = pathEntryExists(target);
     let targetClaim;
     if (hadTarget) {
