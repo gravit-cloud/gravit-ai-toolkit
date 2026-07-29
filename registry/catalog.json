@@ -14,6 +14,29 @@
         "sha": "6b63c8bb7b2e8e4480060604555e3af629b54c2c",
         "root": "."
       },
+      "sourceContext": [
+        { "path": ".claude-plugin/marketplace.json", "digest": "c18a2f552900422dadb006a65cd0460e6ad5ebe4016943eb3c51ecdddcaead15" },
+        { "path": ".devcontainer", "digest": "a8cbbb68a69565a3a7a585dfc1d5a592eeb37bb067aedb5d8aedcf8e3dbf0b1f" },
+        { "path": ".github", "digest": "de424c25e9dee89a802382d3b959960fc36862d0e30a4e9b08bcc7a5888db45c" },
+        { "path": ".gitignore", "digest": "649c6ff8fdcfb9a46f33825f6e7952d21a556acd77e7cb83cc099914d84558c6" },
+        { "path": "AGENTS.md", "digest": "e91a9315ec78a7a605fb93e8bd4e41e0ffa43790a578b6c27927e134298d7a95" },
+        { "path": "CHANGELOG.md", "digest": "8ecaa2361f09e81031bc626b03a505415e1542c29171772b47204d905e5ce079" },
+        { "path": "CITATION.cff", "digest": "640eac3ba7b012701f586e44a31d400b251aa9af946579a9f92c167c070d2b6a" },
+        { "path": "CLAUDE.md", "digest": "8edbb499543d6051bfb2443ebdc4863fcb9e82830e7ef2a4ed45fd9828edc789" },
+        { "path": "CODE_OF_CONDUCT.md", "digest": "c8d72949acd43cf35085bc04b60b66dcce3e1461acdfb9305e5fe077024d2ade" },
+        { "path": "CONTRIBUTING.md", "digest": "f585dc6294dfe5ba479cd2e406103f014f8acb1fc94a941ecaa5f82143ff70bf" },
+        { "path": "CONTRIBUTORS.md", "digest": "40728d578fded0be11dd8079834a775263aac9f9038b23a6b2d8f04d249e93a3" },
+        { "path": "PRIVACY.md", "digest": "2fb674e28e6d9e6bead7c55f2418a6a3022012c5de7eb1f3492816227ac06116" },
+        { "path": "README.md", "digest": "19ea738c4114c3fcbb2496547e111c26bc6a3f25994197c38eb1da472c90adf7" },
+        { "path": "SECURITY.md", "digest": "12ba894cef8a3fa40c7a58460406dbda562120ad15865818cb53c6a158a02829" },
+        { "path": "docs", "digest": "c8a43e48028bf686a83e6b205ca1b1837774feb1d4596aaa6b600c0351951734" },
+        { "path": "install.ps1", "digest": "ec47f569ac3e8cadf37c77721c63983e80b48a1f8bafe3ed9b73da7d7798dc17" },
+        { "path": "install.sh", "digest": "607709381bcf54de0fc785a3c237e94f5c92d2b7830a85d08438741a6fd42a25" },
+        { "path": "pyproject.toml", "digest": "25d7c68a354feafa2fd29aa4486a4a3d8f8e87a2ec113c6867602731979ed382" },
+        { "path": "tests", "digest": "a7180243206876191a78f10f2bd28a0df305c811006f50c1db79ad7a65b627b7" },
+        { "path": "uninstall.ps1", "digest": "a143d8ff5bd85d7c6f8c423addf155ee2b3ca5d91ad9a065f5e62b62973614cf" },
+        { "path": "uninstall.sh", "digest": "298e7f52e0f379cad4257ef26f5fb7d205ab20d357510c75f66e26d0efe92c89" }
+      ],
       "resources": [
         {
           "type": "executable",
@@ -77,6 +100,10 @@
         "sha": "a1dc48e68138490d522c04cbf5822214c6eb1202",
         "root": "."
       },
+      "sourceContext": [
+        { "path": ".claude-plugin/marketplace.json", "digest": "7c20b6693e8c9907b941543d1c3cea6ec9c61a2d12bdb621d70720179a57be35" },
+        { "path": "README.md", "digest": "f7b71c263327ad704d0d2cd723d110d7f98f2946f8c0701dc24a4b7f676acc41" }
+      ],
       "targets": ["claude", "codex"],
       "policies": {
         "default": "transform-or-fail",
@@ -95,6 +122,28 @@
         "sha": "d574778f94cf620fcc8ce741584093bc650a61d3",
         "root": "."
       },
+      "sourceContext": [
+        { "path": ".agents", "digest": "0f609f54f69f2b8c49a8437bc31b4fd5e71afd48a94f6f5a87afcb291fd9e84e" },
+        { "path": ".changeset", "digest": "07cdf49cd401a472dde283fbb61f577e593984a551e45b634338feb15a399149" },
+        { "path": ".github", "digest": "d5048090727fa10a20bdf8c02d3e336c33d6af18a6ba9db469435cc408650368" },
+        { "path": ".gitignore", "digest": "93b3b0953c0657a9f34bc51673f155e0efee7a34b950963df16ded187f83aeab" },
+        { "path": ".out-of-scope", "digest": "8ed466e875207694ec2351d111d38d6ef2deb6c661091d49daa08415837e3906" },
+        { "path": "CHANGELOG.md", "digest": "044ef115111d82eef7e96be87ce15b1b7873a3eb1bd14908d7f8ab5c659604c8" },
+        { "path": "CLAUDE.md", "digest": "02ca0ce61ca75a2a9711a77146c7c9bae9360cb68e2d4cc59cda8845f24e9cc3" },
+        { "path": "CONTEXT.md", "digest": "87ed19a7a458bef1ccc7a5189047b0327a48e7b60f2b14280a34d443d232598b" },
+        { "path": "README.md", "digest": "aa5ccf2ccdba87b4d16215cf21b5cc90336f3542ff30828a993458a4d7ff4dfd" },
+        { "path": "docs", "digest": "6d9515346f6b42897227520280bcc69aff4ff1a5ed8dc8b5cd67aea19a2ae68c" },
+        { "path": "package-lock.json", "digest": "e12655d04addec758d5b7cbee60e2b834734434d92a795bab3a46f9d0fc7ba21" },
+        { "path": "package.json", "digest": "7549cb630d543287c5940838e8c69ad3397ffac464bc8210aea97849499f3399" },
+        { "path": "scripts", "digest": "6600b8b88719764bf14486a39e44e493d9eb787131fe2b2ca1c2a98bfa3855a6" },
+        { "path": "skills/deprecated", "digest": "11b4a186629041b46e8615e6a999141f3cca0757a56da71bb5208db4a2787bea" },
+        { "path": "skills/engineering/README.md", "digest": "1abafc422abb3164e71343007cb888fc1d0a6f2839bc027ff727097228fc18aa" },
+        { "path": "skills/engineering/resolving-merge-conflicts", "digest": "ee9a971a442551bf67dcc657a1eaf96579b3ed7363aad6d82e3b9ae1d2533ce8" },
+        { "path": "skills/in-progress", "digest": "ad0a77e5476a08a9428696d2d4352a5adbf5eb4e7fa543ffb8fdc82a103dcc96" },
+        { "path": "skills/misc", "digest": "250fb9a60ebb3bd87bd09025b81c78bdfdbdba80b83f85bcff144cf980f923b1" },
+        { "path": "skills/personal", "digest": "ba574f0f5ef6efeddd1734ed1c99176430ebea395f7e2f791d8a347f686e05ba" },
+        { "path": "skills/productivity/README.md", "digest": "32d9104fa4b750bbfdfbd3d885ef570b9f14be0dca0393633b72f0ded9c3cb91" }
+      ],
       "targets": ["claude", "codex"],
       "policies": {
         "default": "transform-or-fail",
@@ -140,6 +189,21 @@
         "sha": "013b97d8aab03ce8cd88944976e9988f8c829746",
         "root": "."
       },
+      "sourceContext": [
+        { "path": ".claude-plugin/marketplace.json", "digest": "cdce0dfa13146647a514122eea837c1d3cd98d4df498a3c737c24014a4597f88" },
+        { "path": ".cursor-plugin", "digest": "cdb0acd58b101abb45943982aaf43633dd02506e8524d23e141031e135cc81b1" },
+        { "path": ".gitattributes", "digest": "e120c63de7896ffed2908f207b653904066b49bb5ba1116154ee88194f8a4cda" },
+        { "path": ".github", "digest": "dd16247d1c11cde1bfd2d73b2c8a19238694b96ebbd49509e831ced9df03d27d" },
+        { "path": ".gitignore", "digest": "6a2ad986bf37bc912f6466c5427c4157d894515dcd083701af3787fdb8fffcd4" },
+        { "path": "README.md", "digest": "5e07c6fda4e568838d3b9e2ff7d3a375bb75e0db004e14346ed08b49ca4c1169" },
+        { "path": "SECURITY.md", "digest": "c9ddce7a083d1d199ea3016d4fbf61ef7780b6b78e631bf9496e58d8dfe42377" },
+        { "path": "apm.yml", "digest": "722aceace0d17f97834543b2f40fe09cdf3e0e69b3ca8cb2ac29b6cbb6991b08" },
+        { "path": "gemini-extension.json", "digest": "c4dca8c2258b4f1faa32373d2e3edf63978fddfb566797bff4206940ad7ec22c" },
+        { "path": "hooks/cursor-hooks.json", "digest": "aed63d83b74b82908123bc9f16d77a448846da5191781a5c22d3980cb3c72a8f" },
+        { "path": "hooks/hooks.json", "digest": "e6c04d85950e493e4c7d15ed518fdb280fd31ff6185cbcad069f695b47502f5e" },
+        { "path": "landing-page", "digest": "06739511015f3bbd39d0fb4c07dda9c54d2d5585e2fe487fe3c983847f05d0e2" },
+        { "path": "plugin.json", "digest": "e49fe2294cc19b3ca697933cb20f501e08db66e0593c0886a7ba152e50b29856" }
+      ],
       "targets": ["claude", "codex"],
       "policies": {
         "default": "transform-or-fail",
@@ -158,6 +222,30 @@
         "sha": "3dcbd5c4b48e02263fbf4a3c01e3fe4f81d584d9",
         "root": "."
       },
+      "sourceContext": [
+        { "path": ".agents", "digest": "498c82654d5b7151c75a520e5d4921723994f5a333d51fe3af3c0a8aef92ef4a" },
+        { "path": ".claude-plugin/marketplace.json", "digest": "1450989836140098bb381eb8ef016cf6ba8a2267751129fc4efe2d18f0dec3ef" },
+        { "path": ".cursor-plugin", "digest": "c7bab15b0c529548b293bd8b906173c1d47a6c97c0c0b391ab3ddf974765c0e7" },
+        { "path": ".gitattributes", "digest": "27fefbc9062bcdab83229e2ac56ecb51e190c754b06d08e90d65cb3524a60909" },
+        { "path": ".github", "digest": "c7193917cf6f3e72b2f0549e26e169d42e0c942bbd591502bf271fb30c5df2ad" },
+        { "path": ".gitignore", "digest": "7f6d2d1ef68efbd53baea55b32daef648007dc3f629d0b31d2783eeb423fbf3a" },
+        { "path": ".kimi-plugin", "digest": "aaa1456f1fa756a4a8379e4b21b5656a3efe95110fe8694ae4e37170a8b93afa" },
+        { "path": ".opencode", "digest": "3f9fb5013117a0176b3233755e673aeaaec01d1d39483b0bc906774fe3854842" },
+        { "path": ".pi", "digest": "0039933ec675797883e4acdd05f5e48b431367c596ffcb184804832ee097ec41" },
+        { "path": ".pre-commit-config.yaml", "digest": "dac1c12f49832269814a81c79edb93e2ba0bbe959a92ed228319774ec238eccb" },
+        { "path": ".version-bump.json", "digest": "ba804abd1592d8bff7644d983895a5d2697acc702c7e81430e2e014580f23fb4" },
+        { "path": "CLAUDE.md", "digest": "116060c2d04a29706d975f944fcea8c67d5eb27a98f55c2cfd2477084d412333" },
+        { "path": "CODE_OF_CONDUCT.md", "digest": "7f2617442368144a2418e819ffc28e252db1a160264096e379d8ccdcf1b58c6c" },
+        { "path": "GEMINI.md", "digest": "8cbdd05afbaf6386138ec58ab9822684c0827cdc8a7114f889eb5db3107ab298" },
+        { "path": "README.md", "digest": "45e7a724d1a91ec9b64d02fbbfdb2a716e3f9d4725152a07c3e86e28c81e3dfb" },
+        { "path": "RELEASE-NOTES.md", "digest": "24b9352eb963192237866a124de88571a2d4db4b67b6734ee96cdee457411a16" },
+        { "path": "docs", "digest": "acd1b1beef8320be78575b8b9bf17b7dfb4b7d8819c6f260b05fc40719af51fa" },
+        { "path": "gemini-extension.json", "digest": "b81371802e8ca2b13a85eb75380373141cd3c4d4219aa01a83ae6f8fb92fa992" },
+        { "path": "hooks", "digest": "e1029fcad21882f9bcba4e5ca4c3852f0ceef986980c0922f2b84ab06cc2e210" },
+        { "path": "package.json", "digest": "53b12ede20b74e43c893c39a7cf357a870195481a4bc1d926421dc64ab7d267d" },
+        { "path": "scripts", "digest": "1f094addba4ca1ca0350b4db951e14cc51c449ebfbf4b912a3d57d0cfa38b3a6" },
+        { "path": "tests", "digest": "cd0e06b1527025e76d080d171bc2ccf894919c3af9847c34c4e0759270144a5d" }
+      ],
       "targets": ["claude", "codex"],
       "policies": {
         "default": "transform-or-fail",

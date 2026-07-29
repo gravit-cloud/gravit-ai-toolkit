@@ -58,6 +58,11 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/resource" }
         },
+        "sourceContext": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sourceContext" }
+        },
         "targetPolicies": {
           "type": "object",
           "additionalProperties": false,
@@ -126,6 +131,15 @@
       "properties": {
         "type": { "enum": ["asset", "executable"] },
         "path": { "$ref": "#/$defs/safePath" }
+      }
+    },
+    "sourceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest"],
+      "properties": {
+        "path": { "$ref": "#/$defs/safePath" },
+        "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
       }
     },
     "targetPolicy": {

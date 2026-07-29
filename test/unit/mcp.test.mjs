@@ -10,9 +10,14 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inventorySource } from "../../scripts/lib/inventory.mjs";
+import { treeHash } from "../../scripts/lib/hash.mjs";
 import { normalizeMcp, writeMcpConfig } from "../../scripts/lib/mcp.mjs";
 
 const fixture = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/complete-plugin");
+const sourceContext = ["LICENSE", "README.md"].map((path) => ({
+  path,
+  digest: treeHash(resolve(fixture, path)),
+}));
 const exactPin = { "@fixture/mcp": "1.4.2" };
 const knownShellAndWrapperCommands = [
   "/bin/ash",
@@ -57,7 +62,7 @@ function npxServer(args, command = "npx") {
 }
 
 test("unwraps mcpServers and replaces latest with the exact catalog pin", () => {
-  const record = inventorySource({ sourceRoot: fixture }).components
+  const record = inventorySource({ sourceRoot: fixture, sourceContext }).components
     .find((component) => component.type === "mcp");
 
   assert.deepEqual(normalizeMcp({ record, runtimePins: exactPin }), [{
@@ -103,7 +108,7 @@ test("normalizes direct and mcp_servers maps in code-point server-ID order", () 
 });
 
 test("rejects latest when the catalog does not provide an exact pin", () => {
-  const record = inventorySource({ sourceRoot: fixture }).components
+  const record = inventorySource({ sourceRoot: fixture, sourceContext }).components
     .find((component) => component.type === "mcp");
   assert.throws(
     () => normalizeMcp({ record, runtimePins: {} }),

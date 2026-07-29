@@ -12,9 +12,14 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inventorySource } from "../../scripts/lib/inventory.mjs";
+import { treeHash } from "../../scripts/lib/hash.mjs";
 import { normalizeHooks, renderHooks } from "../../scripts/lib/hooks.mjs";
 
 const fixture = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/complete-plugin");
+const sourceContext = ["LICENSE", "README.md"].map((path) => ({
+  path,
+  digest: treeHash(resolve(fixture, path)),
+}));
 
 function inlineRecord(inline) {
   return { sourceFormat: "inline", inline };
@@ -27,7 +32,7 @@ function normalizeCommand(command, options) {
 }
 
 test("renders exact plugin-root references for each host", () => {
-  const record = inventorySource({ sourceRoot: fixture }).components
+  const record = inventorySource({ sourceRoot: fixture, sourceContext }).components
     .find((component) => component.type === "hook");
   const config = normalizeHooks(record);
 

@@ -3,7 +3,6 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
-  readdirSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -11,6 +10,7 @@ import {
 import { relative, resolve } from "node:path";
 import { withAtomicOutput } from "./atomic-output.mjs";
 import { copyComponent } from "./component-files.mjs";
+import { externalLicenseSource } from "./external-license.mjs";
 import { treeHash } from "./hash.mjs";
 import { inventorySource } from "./inventory.mjs";
 import { writeJson } from "./json.mjs";
@@ -29,44 +29,6 @@ const TARGET_RENDERERS = {
   claude: renderClaudeTarget,
   codex: renderCodexTarget,
 };
-const EXTERNAL_LICENSE_NAME = /^license(?:\.(?:md|rst|txt))?$/i;
-
-function externalLicenseSource({ plugin, sourceRoot }) {
-  if (plugin.source?.type !== "github") return undefined;
-  const sourceStats = lstatSync(sourceRoot);
-  if (sourceStats.isSymbolicLink() || !sourceStats.isDirectory()) {
-    throw new Error("external source root must be a real directory: " + sourceRoot);
-  }
-  const canonicalSourceRoot = realpathSync(sourceRoot);
-  const candidates = readdirSync(sourceRoot, { withFileTypes: true })
-    .filter(({ name }) => EXTERNAL_LICENSE_NAME.test(name))
-    .sort((left, right) => compareCodePoints(left.name, right.name));
-  if (candidates.length === 0) {
-    throw new Error("external source must contain one top-level license");
-  }
-  if (candidates.length > 1) {
-    throw new Error(
-      "external source has ambiguous top-level licenses: "
-        + candidates.map(({ name }) => name).join(", "),
-    );
-  }
-  const candidate = candidates[0];
-  const sourcePath = resolve(sourceRoot, candidate.name);
-  const stats = lstatSync(sourcePath);
-  const expectedCanonical = resolve(canonicalSourceRoot, candidate.name);
-  if (
-    candidate.isSymbolicLink()
-    || !candidate.isFile()
-    || stats.isSymbolicLink()
-    || !stats.isFile()
-    || canonicalPath(sourcePath) !== expectedCanonical
-    || !pathIsInside(canonicalSourceRoot, expectedCanonical)
-  ) {
-    throw new Error("external license must be a real regular file: " + sourcePath);
-  }
-  return sourcePath;
-}
-
 function materializeExternalLicense({ sourcePath, bundleRoot }) {
   if (!sourcePath) return;
   const bundleStats = lstatSync(bundleRoot);
@@ -168,8 +130,16 @@ function assertAdapterResult({ plugin, target, bundleRoot, neutralComponents, re
 }
 
 export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
-  const externalLicense = externalLicenseSource({ plugin, sourceRoot });
-  const inventory = inventorySource({ sourceRoot, resources: plugin.resources });
+  const externalLicense = externalLicenseSource({
+    sourceType: plugin.source?.type,
+    sourceRoot,
+  });
+  const inventory = inventorySource({
+    sourceRoot,
+    sourceType: plugin.source?.type,
+    sourceContext: plugin.sourceContext,
+    resources: plugin.resources,
+  });
   for (const skill of inventory.skills) assertRegistryName(skill.id, "skill component id");
 
   const accounting = accountComponents({

@@ -20,6 +20,21 @@ export function validateCatalog(catalog) {
   for (const plugin of catalog.plugins) {
     if (names.has(plugin.name)) throw new Error("duplicate plugin name: " + plugin.name);
     names.add(plugin.name);
+    const sourceContextPaths = (plugin.sourceContext || []).map(({ path }) => path);
+    for (const [index, left] of sourceContextPaths.entries()) {
+      for (const right of sourceContextPaths.slice(index + 1)) {
+        if (
+          left === right
+          || left.startsWith(right + "/")
+          || right.startsWith(left + "/")
+        ) {
+          throw new Error(
+            "invalid registry catalog: " + plugin.name
+              + " sourceContext paths overlap: " + [left, right].sort(compareCodePoints).join(", "),
+          );
+        }
+      }
+    }
   }
 }
 

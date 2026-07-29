@@ -264,6 +264,31 @@ function cloneSource(source) {
   throw new Error("unknown source type: " + String(source.type));
 }
 
+function validateSourceContext(sourceContext) {
+  if (sourceContext === undefined) return;
+  if (!Array.isArray(sourceContext)) throw new Error("sourceContext must be an array");
+  const paths = sourceContext.map((entry) => {
+    assertPlainObject(entry, "sourceContext entry");
+    assertAllowedKeys(entry, new Set(["path", "digest"]), "sourceContext entry");
+    assertOwn(entry, "path", "sourceContext entry");
+    assertOwn(entry, "digest", "sourceContext entry");
+    safeRelativePath(entry.path, "sourceContext path");
+    assertDigest(entry.digest, "sourceContext digest");
+    return entry.path;
+  });
+  for (const [index, left] of paths.entries()) {
+    for (const right of paths.slice(index + 1)) {
+      if (
+        left === right
+        || left.startsWith(right + "/")
+        || right.startsWith(left + "/")
+      ) {
+        throw new Error("sourceContext paths overlap: " + [left, right].join(", "));
+      }
+    }
+  }
+}
+
 function validatePlugin(plugin) {
   assertPlainObject(plugin, "plugin");
   assertAllowedKeys(plugin, new Set([
@@ -276,6 +301,7 @@ function validatePlugin(plugin) {
     "policies",
     "runtimeDependencies",
     "resources",
+    "sourceContext",
     "targetPolicies",
   ]), "plugin");
   assertOwn(plugin, "name", "plugin");
@@ -284,6 +310,7 @@ function validatePlugin(plugin) {
   assertOwn(plugin, "targets", "plugin");
   assertRegistryName(plugin.name, "plugin name");
   parseSemver(plugin.distributionVersion, "distributionVersion");
+  validateSourceContext(plugin.sourceContext);
   return {
     source: cloneSource(plugin.source),
     targets: validateTargetsArray(plugin.targets),

@@ -54,11 +54,19 @@ function safeManifestPath(sourceRoot, relativePath) {
   return manifestPath;
 }
 
-export function readUpstreamManifests(sourceRoot) {
+export function readUpstreamManifestEntries(sourceRoot) {
   const claudePath = safeManifestPath(sourceRoot, ".claude-plugin/plugin.json");
   const codexPath = safeManifestPath(sourceRoot, ".codex-plugin/plugin.json");
   return {
-    claude: claudePath ? readJson(claudePath) : {},
-    codex: codexPath ? readJson(codexPath) : {},
+    claude: { path: claudePath, manifest: claudePath ? readJson(claudePath) : {} },
+    codex: { path: codexPath, manifest: codexPath ? readJson(codexPath) : {} },
+  };
+}
+
+export function readUpstreamManifests(sourceRoot) {
+  const entries = readUpstreamManifestEntries(sourceRoot);
+  return {
+    claude: entries.claude.manifest,
+    codex: entries.codex.manifest,
   };
 }

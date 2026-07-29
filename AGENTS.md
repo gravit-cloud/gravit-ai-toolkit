@@ -139,6 +139,8 @@ npm run validate
 
 Der Sync inventarisiert die vom Upstream deklarierten Komponenten, baut ein neutrales Bundle und erzeugt daraus Claude- und Codex-Projektionen. Claude-spezifische `disable-model-invocation: true`-Flags werden nur in generierten Codex-Skills entfernt. Unterstützte MCP-Definitionen werden in die jeweilige Zielprojektion eingebettet und aus dem Host-Manifest referenziert; Laufzeitpakete müssen im Katalog exakt gepinnt sein.
 
+Die Codex-Projektion belegt nur die erzeugte Dateistruktur und ihre internen Referenzen. Sie garantiert weder, dass `bin/` automatisch in `PATH` liegt, noch dass Claude-spezifische Upstream-Umgebungsvariablen durch Codex bereitgestellt werden. Hook-Konfigurationen und lokale Skripte werden statisch validiert, aber während Sync und Validierung nicht ausgeführt.
+
 ---
 
 ## Skill-Referenz
