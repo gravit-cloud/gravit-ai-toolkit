@@ -1,8 +1,13 @@
 import {
+  closeSync,
+  constants,
   existsSync,
+  fchmodSync,
+  fstatSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   readdirSync,
   realpathSync,
@@ -922,4 +927,450 @@ export function withAtomicOutput({ finalRoot, build, replaceExisting = true }, f
       }
     }
   }
+}
+
+export function claimAtomicArtifact(path, label = "atomic artifact") {
+  return claimArtifact(resolve(path), label);
+}
+
+export function assertAtomicArtifactClaim(path, claim, label = "atomic artifact") {
+  const expectedType = claim?.entries?.[0]?.type;
+  if (expectedType !== "file" && expectedType !== "directory") {
+    throw new Error(label + " claim has an invalid root type");
+  }
+  validateArtifactClaim(claim, expectedType, label + " claim");
+  return assertArtifactClaim(resolve(path), claim, label);
+}
+
+export function removeClaimedAtomicArtifact(path, claim, label = "atomic artifact") {
+  const expectedType = claim?.entries?.[0]?.type;
+  if (expectedType !== "file" && expectedType !== "directory") {
+    throw new Error(label + " claim has an invalid root type");
+  }
+  validateArtifactClaim(claim, expectedType, label + " claim");
+  removeClaimedArtifact(resolve(path), claim, label);
+}
+
+function sameNames(left, right) {
+  return left.length === right.length && left.every((name, index) => name === right[index]);
+}
+
+function recoveryError(errors, message, paths) {
+  const uniquePaths = [...new Set(paths.filter((path) => (
+    typeof path === "string" && pathEntryExists(path)
+  )))];
+  const error = new AggregateError(errors, message + uniquePaths.join(" and "));
+  if (uniquePaths.length > 0) {
+    error.recoveryPath = uniquePaths[0];
+    if (uniquePaths.length > 1) error.additionalRecoveryPaths = uniquePaths.slice(1);
+  }
+  return error;
+}
+
+function retainedClaimedStage(error, stage, extraPaths = []) {
+  return recoveryError(
+    [error],
+    "claimed atomic output failed: " + error.message + "; recovery data retained at ",
+    [stage, ...extraPaths],
+  );
+}
+
+function assertDirectoryEntry(path, expected, label) {
+  assertClaimedEntry(path, expected, label);
+  if (expected.type !== "directory") throw new Error(label + " must be a directory");
+}
+
+function removeEmptyClaimedDirectory(path, expected, label, readDirectory, removeDirectory) {
+  assertDirectoryEntry(path, expected, label);
+  const names = readDirectory(path).sort(compareCodePoints);
+  if (names.length > 0) {
+    throw new Error(label + " contains unexpected entries: " + names.join(", "));
+  }
+  removeDirectory(path);
+}
+
+function setBoundDirectoryMode(path, mode, label) {
+  const before = lstatSync(path);
+  if (!before.isDirectory() || before.isSymbolicLink()) {
+    throw new Error(label + " must be a real directory: " + path);
+  }
+  let descriptor;
+  try {
+    descriptor = openSync(
+      path,
+      constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW,
+    );
+    const opened = fstatSync(descriptor);
+    if (!opened.isDirectory() || !sameStatIdentity(before, opened)) {
+      throw new Error(label + " ownership changed before mode binding: " + path);
+    }
+    fchmodSync(descriptor, mode);
+    const after = fstatSync(descriptor);
+    const bound = lstatSync(path);
+    if (
+      !after.isDirectory()
+      || !sameStatIdentity(opened, after)
+      || permissionMode(after) !== mode
+      || !sameStatIdentity(after, bound)
+      || bound.isSymbolicLink()
+    ) {
+      throw new Error(label + " ownership changed while binding its mode: " + path);
+    }
+    return {
+      relativePath: ".",
+      type: "directory",
+      mode,
+      device: after.dev,
+      inode: after.ino,
+    };
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
+function promoteClaimedStage({
+  stage,
+  stageClaim,
+  outputRoot,
+  makeDirectory,
+  readDirectory,
+  rename,
+  removeDirectory,
+  beforeSourceValidation,
+  beforePromotedValidation,
+}) {
+  beforeSourceValidation({ phase: "before-reservation", source: stage });
+  assertArtifactClaim(stage, stageClaim, "claimed atomic stage");
+  const stageRootEntry = stageClaim.entries[0];
+  const names = readDirectory(stage).sort(compareCodePoints);
+  const sourceClaims = new Map(names.map((name) => [
+    name,
+    claimArtifact(resolve(stage, name), "claimed staged entry " + name),
+  ]));
+  try {
+    makeDirectory(outputRoot);
+  } catch (error) {
+    if (error.code === "EEXIST") throw outputExistsError(outputRoot, error);
+    throw error;
+  }
+  const reservedEntry = setBoundDirectoryMode(
+    outputRoot,
+    stageRootEntry.mode,
+    "reserved claimed output",
+  );
+  const moved = [];
+
+  try {
+    for (const [index, name] of names.entries()) {
+      beforeSourceValidation({ phase: "before-entry", source: stage, entry: name });
+      assertDirectoryEntry(stage, stageRootEntry, "claimed atomic stage root");
+      const expectedRemaining = names.slice(index);
+      const actualRemaining = readDirectory(stage).sort(compareCodePoints);
+      if (!sameNames(actualRemaining, expectedRemaining)) {
+        throw new Error("claimed atomic stage contains unexpected entries");
+      }
+      const source = resolve(stage, name);
+      const destination = resolve(outputRoot, name);
+      const sourceClaim = sourceClaims.get(name);
+      assertArtifactClaim(source, sourceClaim, "claimed staged entry " + name);
+      if (pathEntryExists(destination)) {
+        throw new Error("claimed atomic output entry appeared: " + name);
+      }
+      rename(source, destination);
+      moved.push({ name, source, destination, claim: sourceClaim });
+      assertArtifactClaim(destination, sourceClaim, "promoted claimed entry " + name);
+    }
+    assertDirectoryEntry(stage, stageRootEntry, "claimed atomic stage root");
+    if (readDirectory(stage).length !== 0) {
+      throw new Error("claimed atomic stage contains unexpected entries after promotion");
+    }
+    removeDirectory(stage);
+    const outputClaim = claimArtifact(outputRoot, "claimed atomic output");
+    if (outputClaim.deterministicSnapshot !== stageClaim.deterministicSnapshot) {
+      throw new Error("claimed atomic output differs from staged artifact");
+    }
+    return outputClaim;
+  } catch (promotionError) {
+    const rollbackErrors = [];
+    for (const item of [...moved].reverse()) {
+      try {
+        beforePromotedValidation({
+          phase: "before-rollback",
+          destination: item.destination,
+          entry: item.name,
+        });
+        assertArtifactClaim(
+          item.destination,
+          item.claim,
+          "promoted claimed entry " + item.name,
+        );
+        if (pathEntryExists(item.source)) {
+          throw new Error("claimed stage entry reappeared during rollback: " + item.name);
+        }
+        rename(item.destination, item.source);
+        assertArtifactClaim(item.source, item.claim, "rolled back staged entry " + item.name);
+      } catch (error) {
+        rollbackErrors.push(error);
+      }
+    }
+    try {
+      if (pathEntryExists(outputRoot)) {
+        removeEmptyClaimedDirectory(
+          outputRoot,
+          reservedEntry,
+          "reserved claimed output",
+          readDirectory,
+          removeDirectory,
+        );
+      }
+    } catch (error) {
+      rollbackErrors.push(error);
+    }
+    if (rollbackErrors.length === 0) throw retainedClaimedStage(promotionError, stage);
+    throw recoveryError(
+      [promotionError, ...rollbackErrors],
+      "claimed atomic promotion and rollback failed; recovery data retained at ",
+      [stage, outputRoot],
+    );
+  }
+}
+
+export function withClaimedAtomicOutput({
+  finalRoot,
+  build,
+  finalize = () => {},
+  stageMode,
+  existingClaim,
+}, fileSystem = {}) {
+  if (typeof build !== "function") throw new Error("claimed atomic build must be a function");
+  if (typeof finalize !== "function") throw new Error("claimed atomic finalize must be a function");
+  if (stageMode !== undefined && (!Number.isSafeInteger(stageMode) || stageMode < 0 || stageMode > 0o7777)) {
+    throw new Error("claimed atomic stage mode must be a portable permission mode");
+  }
+  const makeTemporaryDirectory = fileSystem.mkdtempSync ?? mkdtempSync;
+  const makeDirectory = fileSystem.mkdirSync ?? mkdirSync;
+  const readDirectory = fileSystem.readdirSync ?? readdirSync;
+  const rename = fileSystem.renameSync ?? renameSync;
+  const removeDirectory = fileSystem.rmdirSync ?? rmdirSync;
+  const beforeExistingValidation = fileSystem.beforeExistingValidation ?? (() => {});
+  const beforeSourceValidation = fileSystem.beforeSourceValidation ?? (() => {});
+  const beforeBackupValidation = fileSystem.beforeBackupValidation ?? (() => {});
+  const beforePromotedValidation = fileSystem.beforePromotedValidation ?? (() => {});
+  const outputRoot = resolve(finalRoot);
+  const parent = dirname(outputRoot);
+  const name = basename(outputRoot);
+  const canonicalParent = assertRealDirectory(parent, "claimed atomic output parent");
+  if (canonicalParent !== parent) {
+    throw new Error("claimed atomic output parent must be canonical: " + parent);
+  }
+  const parentClaim = identity(parent);
+  const assertParent = () => {
+    if (!sameIdentity(parent, parentClaim) || realpathSync(parent) !== parent) {
+      throw new Error("claimed atomic output parent ownership changed: " + parent);
+    }
+  };
+  let validatedExistingClaim;
+  if (existingClaim !== undefined) {
+    validatedExistingClaim = validateArtifactClaim(
+      existingClaim,
+      "directory",
+      "existing claimed output",
+    );
+    assertArtifactClaim(outputRoot, validatedExistingClaim, "existing claimed output");
+  } else if (pathEntryExists(outputRoot)) {
+    throw outputExistsError(outputRoot);
+  }
+
+  assertParent();
+  const stage = makeTemporaryDirectory(resolve(parent, "." + name + ".stage-"));
+  if (dirname(stage) !== parent || !basename(stage).startsWith("." + name + ".stage-")) {
+    throw new Error("claimed atomic stage escaped its output parent: " + stage);
+  }
+  let canonicalStage;
+  try {
+    canonicalStage = assertRealDirectory(stage, "claimed atomic stage");
+  } catch (stageError) {
+    throw retainedClaimedStage(stageError, stage);
+  }
+  if (canonicalStage !== stage) {
+    throw retainedClaimedStage(
+      new Error("claimed atomic stage must be canonical: " + stage),
+      stage,
+    );
+  }
+  const stageIdentity = identity(stage);
+  let stageClaim;
+  try {
+    build(stage);
+    if (!sameIdentity(stage, stageIdentity)) {
+      throw new Error("claimed atomic stage ownership changed: " + stage);
+    }
+    if (stageMode !== undefined) {
+      setBoundDirectoryMode(stage, stageMode, "claimed atomic stage");
+    }
+    finalize(stage);
+    if (!sameIdentity(stage, stageIdentity)) {
+      throw new Error("claimed atomic stage ownership changed during finalization: " + stage);
+    }
+    stageClaim = claimArtifact(stage, "claimed atomic stage");
+  } catch (buildError) {
+    throw retainedClaimedStage(buildError, stage);
+  }
+
+  try {
+    assertParent();
+    beforeExistingValidation({
+      outputRoot,
+      expectedExisting: validatedExistingClaim !== undefined,
+    });
+    if (validatedExistingClaim !== undefined) {
+      assertArtifactClaim(outputRoot, validatedExistingClaim, "existing claimed output");
+    } else if (pathEntryExists(outputRoot)) {
+      throw outputExistsError(outputRoot);
+    }
+    beforeSourceValidation({ phase: "before-backup", source: stage });
+    assertArtifactClaim(stage, stageClaim, "claimed atomic stage");
+  } catch (preflightError) {
+    throw retainedClaimedStage(preflightError, stage);
+  }
+
+  let transactionRoot;
+  let transactionEntry;
+  let backup;
+  let backupMoved = false;
+  if (validatedExistingClaim !== undefined) {
+    try {
+      assertParent();
+      transactionRoot = makeTemporaryDirectory(resolve(parent, "." + name + ".backup-"));
+      if (
+        dirname(transactionRoot) !== parent
+        || !basename(transactionRoot).startsWith("." + name + ".backup-")
+      ) {
+        throw new Error("claimed atomic backup escaped its output parent: " + transactionRoot);
+      }
+      const canonicalTransaction = assertRealDirectory(
+        transactionRoot,
+        "claimed atomic transaction",
+      );
+      if (canonicalTransaction !== transactionRoot) {
+        throw new Error("claimed atomic transaction must be canonical: " + transactionRoot);
+      }
+      const transactionStats = lstatSync(transactionRoot);
+      transactionEntry = {
+        relativePath: ".",
+        type: "directory",
+        mode: permissionMode(transactionStats),
+        device: transactionStats.dev,
+        inode: transactionStats.ino,
+      };
+      backup = resolve(transactionRoot, "previous");
+    } catch (transactionError) {
+      throw retainedClaimedStage(transactionError, stage, [transactionRoot]);
+    }
+    try {
+      assertParent();
+      beforeExistingValidation({
+        outputRoot,
+        expectedExisting: true,
+        phase: "immediately-before-backup",
+      });
+      assertArtifactClaim(outputRoot, validatedExistingClaim, "existing claimed output");
+      if (pathEntryExists(backup)) throw new Error("claimed atomic backup already exists");
+      rename(outputRoot, backup);
+      backupMoved = true;
+      assertArtifactClaim(backup, validatedExistingClaim, "claimed atomic backup");
+    } catch (backupError) {
+      throw recoveryError(
+        [backupError],
+        "claimed atomic backup failed; recovery data retained at ",
+        [stage, transactionRoot, outputRoot],
+      );
+    }
+  }
+
+  let outputClaim;
+  try {
+    assertParent();
+    outputClaim = promoteClaimedStage({
+      stage,
+      stageClaim,
+      outputRoot,
+      makeDirectory,
+      readDirectory,
+      rename,
+      removeDirectory,
+      beforeSourceValidation,
+      beforePromotedValidation,
+    });
+  } catch (promotionError) {
+    if (!backupMoved) {
+      if (pathEntryExists(stage) && promotionError.recoveryPath === undefined) {
+        throw retainedClaimedStage(promotionError, stage);
+      }
+      throw promotionError;
+    }
+    const restoreErrors = [];
+    try {
+      assertParent();
+      beforeBackupValidation({ phase: "before-restore", backup });
+      assertArtifactClaim(backup, validatedExistingClaim, "claimed atomic backup");
+      if (pathEntryExists(outputRoot)) {
+        throw new Error("claimed atomic output path reappeared before restore: " + outputRoot);
+      }
+      rename(backup, outputRoot);
+      backupMoved = false;
+      assertArtifactClaim(outputRoot, validatedExistingClaim, "restored claimed output");
+    } catch (restoreError) {
+      restoreErrors.push(restoreError);
+    }
+    if (restoreErrors.length > 0) {
+      throw recoveryError(
+        [promotionError, ...restoreErrors],
+        "claimed atomic promotion could not restore the previous output; recovery data retained at ",
+        [stage, outputRoot, backup, transactionRoot],
+      );
+    }
+    try {
+      removeEmptyClaimedDirectory(
+        transactionRoot,
+        transactionEntry,
+        "claimed atomic transaction",
+        readDirectory,
+        removeDirectory,
+      );
+    } catch (cleanupError) {
+      throw recoveryError(
+        [promotionError, cleanupError],
+        "claimed atomic promotion restored the previous output but cleanup failed; recovery data retained at ",
+        [stage, transactionRoot],
+      );
+    }
+    if (pathEntryExists(stage) && promotionError.recoveryPath === undefined) {
+      throw retainedClaimedStage(promotionError, stage);
+    }
+    throw promotionError;
+  }
+
+  if (backupMoved) {
+    try {
+      beforeBackupValidation({ phase: "before-cleanup", backup });
+      assertArtifactClaim(backup, validatedExistingClaim, "claimed atomic backup");
+      removeClaimedArtifact(backup, validatedExistingClaim, "claimed atomic backup");
+      backupMoved = false;
+      removeEmptyClaimedDirectory(
+        transactionRoot,
+        transactionEntry,
+        "claimed atomic transaction",
+        readDirectory,
+        removeDirectory,
+      );
+    } catch (cleanupError) {
+      throw recoveryError(
+        [cleanupError],
+        "claimed atomic output succeeded but backup cleanup failed; recovery data retained at ",
+        [transactionRoot, backup, outputRoot],
+      );
+    }
+  }
+  return outputClaim;
 }
