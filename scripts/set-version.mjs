@@ -12,8 +12,8 @@ if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version || "")) {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const files = [
   "package.json",
-  "plugins/gravit-custom/.claude-plugin/plugin.json",
-  "plugins/gravit-custom/.codex-plugin/plugin.json",
+  "sources/gravit-custom/.claude-plugin/plugin.json",
+  "sources/gravit-custom/.codex-plugin/plugin.json",
 ];
 
 for (const file of files) {

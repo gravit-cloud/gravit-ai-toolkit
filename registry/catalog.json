@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "name": "gravit-cloud",
+  "plugins": [
+    {
+      "name": "claude-seo",
+      "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
+      "category": "seo",
+      "distributionVersion": "2.2.4-gravit.1",
+      "source": {
+        "type": "github",
+        "repo": "AgricIDaniel/claude-seo",
+        "ref": "v2.2.4",
+        "sha": "6b63c8bb7b2e8e4480060604555e3af629b54c2c",
+        "root": "."
+      },
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    },
+    {
+      "name": "obsidian",
+      "description": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle.",
+      "category": "productivity",
+      "distributionVersion": "1.0.1-gravit.1",
+      "source": {
+        "type": "github",
+        "repo": "kepano/obsidian-skills",
+        "ref": "main",
+        "sha": "a1dc48e68138490d522c04cbf5822214c6eb1202",
+        "root": "."
+      },
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    },
+    {
+      "name": "mattpocock-skills",
+      "description": "Produktivitäts-Skills von Matt Pocock (u.a. grill-me — intensives Interview zur Plan-Schärfung).",
+      "category": "productivity",
+      "distributionVersion": "1.1.0-gravit.1",
+      "source": {
+        "type": "github",
+        "repo": "mattpocock/skills",
+        "ref": "v1.1.0",
+        "sha": "d574778f94cf620fcc8ce741584093bc650a61d3",
+        "root": "."
+      },
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    },
+    {
+      "name": "azure",
+      "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
+      "category": "cloud",
+      "distributionVersion": "1.2.5-gravit.1",
+      "runtimeDependencies": {
+        "@azure/mcp": "2.0.5"
+      },
+      "targetPolicies": {
+        "codex": {
+          "unsupported": {
+            "agent": "host-does-not-load-agents",
+            "lsp": "host-does-not-load-lsp",
+            "monitor": "host-does-not-load-monitors",
+            "output-style": "host-does-not-load-output-styles",
+            "theme": "host-does-not-load-themes",
+            "channel": "host-does-not-load-channels",
+            "settings": "host-does-not-load-settings"
+          }
+        },
+        "claude": {
+          "unsupported": {
+            "app": "host-uses-mcp-without-app-binding"
+          }
+        }
+      },
+      "source": {
+        "type": "github",
+        "repo": "microsoft/azure-skills",
+        "ref": "v1.2.5",
+        "sha": "013b97d8aab03ce8cd88944976e9988f8c829746",
+        "root": "."
+      },
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    },
+    {
+      "name": "superpowers",
+      "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
+      "category": "development",
+      "distributionVersion": "6.2.0-gravit.1",
+      "source": {
+        "type": "github",
+        "repo": "obra/superpowers",
+        "ref": "v6.2.0",
+        "sha": "3dcbd5c4b48e02263fbf4a3c01e3fe4f81d584d9",
+        "root": "."
+      },
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    },
+    {
+      "name": "gravit-custom",
+      "description": "Sieben lokal gepflegte Skills der Gravit Cloud (sources/gravit-custom/skills/).",
+      "category": "development",
+      "distributionVersion": "1.0.0-gravit.1",
+      "source": {
+        "type": "local",
+        "path": "sources/gravit-custom",
+        "root": "."
+      },
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    }
+  ]
+}

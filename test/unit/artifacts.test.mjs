@@ -9,13 +9,34 @@ import {
   renameSync,
   rmSync,
   rmdirSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
 import { removeUndefined, stableJson, writeJson } from "../../scripts/lib/json.mjs";
 import { sha256, treeHash } from "../../scripts/lib/hash.mjs";
-import { withAtomicOutput } from "../../scripts/lib/atomic-output.mjs";
+import {
+  MANAGED_REGISTRY_PATHS,
+  promoteManagedPaths,
+  withAtomicOutput,
+} from "../../scripts/lib/atomic-output.mjs";
+
+function writeManagedArtifact(root, relativePath, value) {
+  const path = relativePath.endsWith(".json")
+    ? resolve(root, relativePath)
+    : resolve(root, relativePath, "marker.txt");
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, value + relativePath + "\n");
+  return path;
+}
+
+function seedManagedArtifacts(root, value, selected = MANAGED_REGISTRY_PATHS) {
+  return Object.fromEntries(selected.map((relativePath) => [
+    relativePath,
+    writeManagedArtifact(root, relativePath, value),
+  ]));
+}
 
 test("stableJson sorts object keys recursively", () => {
   assert.equal(
@@ -623,4 +644,231 @@ test("withAtomicOutput reports retained backup when output reappears during prom
   assert.equal(readFileSync(resolve(finalRoot, "concurrent.txt"), "utf8"), "concurrent\n");
   assert.equal(readFileSync(resolve(error.recoveryPath, "old-only.txt"), "utf8"), "old\n");
   assert.equal(dirname(dirname(error.recoveryPath)), parent);
+});
+
+test("promoteManagedPaths rolls every managed path back after a mid-promotion failure", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  const oldPaths = seedManagedArtifacts(repositoryRoot, "old:");
+  seedManagedArtifacts(stageRoot, "new:");
+  writeFileSync(resolve(repositoryRoot, "unrelated.txt"), "keep\n");
+  let stagedRenames = 0;
+
+  assert.throws(() => promoteManagedPaths({
+    repositoryRoot,
+    stageRoot,
+    rename(from, to) {
+      if (from.startsWith(stageRoot) && ++stagedRenames === 3) {
+        throw new Error("synthetic promotion failure");
+      }
+      renameSync(from, to);
+    },
+  }), /synthetic promotion failure/);
+
+  for (const relativePath of MANAGED_REGISTRY_PATHS) {
+    assert.equal(readFileSync(oldPaths[relativePath], "utf8"), "old:" + relativePath + "\n");
+  }
+  assert.equal(readFileSync(resolve(repositoryRoot, "unrelated.txt"), "utf8"), "keep\n");
+});
+
+test("promoteManagedPaths preflights every staged artifact before moving production", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-preflight-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  const oldPaths = seedManagedArtifacts(repositoryRoot, "old:");
+  seedManagedArtifacts(
+    stageRoot,
+    "new:",
+    MANAGED_REGISTRY_PATHS.filter((path) => path !== "registry/lock.json"),
+  );
+
+  assert.throws(
+    () => promoteManagedPaths({ repositoryRoot, stageRoot }),
+    /missing staged artifact: registry\/lock\.json/,
+  );
+
+  for (const relativePath of MANAGED_REGISTRY_PATHS) {
+    assert.equal(readFileSync(oldPaths[relativePath], "utf8"), "old:" + relativePath + "\n");
+  }
+  assert.equal(
+    readdirSync(parent).some((entry) => entry.startsWith(".repository.promote-")),
+    false,
+  );
+});
+
+test("promoteManagedPaths replaces mixed existing and missing targets without touching siblings", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-mixed-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  seedManagedArtifacts(
+    repositoryRoot,
+    "old:",
+    ["plugins", "registry/lock.json"],
+  );
+  const newPaths = seedManagedArtifacts(stageRoot, "new:");
+  mkdirSync(resolve(repositoryRoot, ".github"), { recursive: true });
+  writeFileSync(resolve(repositoryRoot, ".github/workflow.yml"), "keep\n");
+
+  promoteManagedPaths({ repositoryRoot, stageRoot });
+
+  for (const relativePath of MANAGED_REGISTRY_PATHS) {
+    const publicPath = relativePath.endsWith(".json")
+      ? resolve(repositoryRoot, relativePath)
+      : resolve(repositoryRoot, relativePath, "marker.txt");
+    assert.equal(readFileSync(publicPath, "utf8"), "new:" + relativePath + "\n");
+    assert.equal(existsSync(newPaths[relativePath]), false);
+  }
+  assert.equal(readFileSync(resolve(repositoryRoot, ".github/workflow.yml"), "utf8"), "keep\n");
+  assert.equal(
+    readdirSync(parent).some((entry) => entry.startsWith(".repository.promote-")),
+    false,
+  );
+});
+
+test("promoteManagedPaths restores mixed target absence after rollback", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-mixed-rollback-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  const oldPaths = seedManagedArtifacts(
+    repositoryRoot,
+    "old:",
+    ["plugins", "registry/lock.json"],
+  );
+  seedManagedArtifacts(stageRoot, "new:");
+  let stagedRenames = 0;
+  let error;
+
+  assert.throws(() => promoteManagedPaths({
+    repositoryRoot,
+    stageRoot,
+    rename(from, to) {
+      if (from.startsWith(stageRoot) && ++stagedRenames === 3) {
+        throw new Error("synthetic mixed promotion failure");
+      }
+      renameSync(from, to);
+    },
+  }), (caught) => {
+    error = caught;
+    return /synthetic mixed promotion failure/.test(caught.message);
+  });
+
+  assert.equal(error.recoveryPath, stageRoot);
+  assert.equal(readFileSync(oldPaths.plugins, "utf8"), "old:plugins\n");
+  assert.equal(readFileSync(oldPaths["registry/lock.json"], "utf8"), "old:registry/lock.json\n");
+  assert.equal(existsSync(resolve(repositoryRoot, ".claude-plugin")), false);
+  assert.equal(existsSync(resolve(repositoryRoot, ".agents")), false);
+});
+
+test("promoteManagedPaths retains explicit recovery paths when rollback fails", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-recovery-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  seedManagedArtifacts(repositoryRoot, "old:");
+  seedManagedArtifacts(stageRoot, "new:");
+  let stagedRenames = 0;
+  let error;
+
+  assert.throws(() => promoteManagedPaths({
+    repositoryRoot,
+    stageRoot,
+    rename(from, to) {
+      if (from.startsWith(stageRoot) && ++stagedRenames === 3) {
+        throw new Error("synthetic promotion failure");
+      }
+      if (from.includes("/backup/2")) {
+        throw new Error("synthetic rollback failure");
+      }
+      renameSync(from, to);
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.match(error.message, /registry promotion and rollback failed/);
+  assert.equal(error.errors[0].message, "synthetic promotion failure");
+  assert.equal(error.errors[1].message, "synthetic rollback failure");
+  assert.match(basename(error.recoveryPath), /^\.repository\.promote-/);
+  assert.equal(existsSync(resolve(error.recoveryPath, "backup/2")), true);
+  assert.equal(error.additionalRecoveryPaths.includes(stageRoot), true);
+  assert.equal(existsSync(error.recoveryPath), true);
+});
+
+test("promoteManagedPaths rejects staged and production symlink pivots before mutation", (context) => {
+  const cases = ["staged-artifact", "production-parent", "dangling-production-parent"];
+  for (const kind of cases) {
+    const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-pivot-"));
+    context.after(() => rmSync(parent, { recursive: true, force: true }));
+    const repositoryRoot = resolve(parent, "repository");
+    const stageRoot = resolve(parent, "stage");
+    const outside = resolve(parent, "outside");
+    const oldPaths = seedManagedArtifacts(repositoryRoot, "old:");
+    seedManagedArtifacts(stageRoot, "new:");
+    mkdirSync(outside);
+
+    if (kind === "staged-artifact") {
+      rmSync(resolve(stageRoot, "plugins"), { recursive: true });
+      symlinkSync(outside, resolve(stageRoot, "plugins"));
+    } else {
+      rmSync(resolve(repositoryRoot, ".agents"), { recursive: true });
+      const target = kind === "production-parent"
+        ? outside
+        : resolve(parent, "missing-outside");
+      symlinkSync(target, resolve(repositoryRoot, ".agents"));
+      if (kind === "production-parent") {
+        writeFileSync(resolve(outside, "sentinel.txt"), "keep\n");
+      }
+    }
+
+    assert.throws(
+      () => promoteManagedPaths({ repositoryRoot, stageRoot }),
+      /unsafe|symbolic|escapes|pivot/,
+      kind,
+    );
+    for (const relativePath of ["plugins", ".claude-plugin/marketplace.json", "registry/lock.json"]) {
+      assert.equal(readFileSync(oldPaths[relativePath], "utf8"), "old:" + relativePath + "\n", kind);
+    }
+    if (kind === "production-parent") {
+      assert.equal(readFileSync(resolve(outside, "sentinel.txt"), "utf8"), "keep\n");
+    }
+  }
+});
+
+test("promoteManagedPaths preserves foreign content introduced into a promoted directory", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-promote-foreign-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const repositoryRoot = resolve(parent, "repository");
+  const stageRoot = resolve(parent, "stage");
+  const oldPaths = seedManagedArtifacts(repositoryRoot, "old:");
+  seedManagedArtifacts(stageRoot, "new:");
+  let stagedRenames = 0;
+  let error;
+
+  assert.throws(() => promoteManagedPaths({
+    repositoryRoot,
+    stageRoot,
+    rename(from, to) {
+      if (from.startsWith(stageRoot)) {
+        stagedRenames += 1;
+        if (stagedRenames === 2) {
+          writeFileSync(resolve(repositoryRoot, "plugins/foreign.txt"), "foreign\n");
+          throw new Error("synthetic later promotion failure");
+        }
+      }
+      renameSync(from, to);
+    },
+  }), (caught) => {
+    error = caught;
+    return /synthetic later promotion failure/.test(caught.message);
+  });
+
+  assert.equal(error.recoveryPath, stageRoot);
+  assert.equal(readFileSync(oldPaths.plugins, "utf8"), "old:plugins\n");
+  assert.equal(readFileSync(resolve(stageRoot, "plugins/foreign.txt"), "utf8"), "foreign\n");
 });

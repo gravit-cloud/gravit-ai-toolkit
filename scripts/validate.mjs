@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const localSourceRoot = join(root, "sources/gravit-custom");
 const errors = [];
 const semver = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
@@ -79,15 +80,15 @@ function findFiles(directory, result = []) {
 for (const file of [
   ".claude-plugin/marketplace.json",
   ".agents/plugins/marketplace.json",
-  "plugins/gravit-custom/.claude-plugin/plugin.json",
-  "plugins/gravit-custom/.codex-plugin/plugin.json",
+  "sources/gravit-custom/.claude-plugin/plugin.json",
+  "sources/gravit-custom/.codex-plugin/plugin.json",
   "package.json",
   "renovate.json",
 ]) readJson(file);
 
 const packageManifest = readJson("package.json");
-const localClaudeManifest = readJson("plugins/gravit-custom/.claude-plugin/plugin.json");
-const localCodexManifest = readJson("plugins/gravit-custom/.codex-plugin/plugin.json");
+const localClaudeManifest = readJson("sources/gravit-custom/.claude-plugin/plugin.json");
+const localCodexManifest = readJson("sources/gravit-custom/.codex-plugin/plugin.json");
 for (const [label, version] of [
   ["gravit-custom Claude plugin", localClaudeManifest.version],
   ["gravit-custom Codex plugin", localCodexManifest.version],
@@ -131,7 +132,10 @@ for (const entry of codexPlugins) {
     errors.push(`Codex marketplace ${entry.name}: invalid installation policy`);
   }
 
-  const pluginRoot = join(root, "plugins", entry.name);
+  const generatedPluginRoot = join(root, "plugins", entry.name);
+  const pluginRoot = entry.name === "gravit-custom" && !existsSync(generatedPluginRoot)
+    ? localSourceRoot
+    : generatedPluginRoot;
   const manifestPath = join(pluginRoot, ".codex-plugin/plugin.json");
   if (!existsSync(manifestPath)) {
     errors.push(`plugins/${entry.name}: missing .codex-plugin/plugin.json`);

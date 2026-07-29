@@ -28,21 +28,24 @@ export function resolveLocalCatalogSources({ repositoryRoot, catalog }) {
   if (localPlugins.length === 0) return [];
 
   const absoluteRoot = resolve(repositoryRoot);
-  const fixtureRoot = resolve(absoluteRoot, "test/fixtures");
-  const safeFixtureRoot = assertRealInside(
-    absoluteRoot,
-    fixtureRoot,
-    "local fixture root",
-  );
   return localPlugins
     .map((plugin) => {
+      const boundaryName = plugin.source.path.startsWith("sources/")
+        ? "sources"
+        : "test/fixtures";
+      const sourceBoundary = resolve(absoluteRoot, boundaryName);
+      const safeSourceBoundary = assertRealInside(
+        absoluteRoot,
+        sourceBoundary,
+        "local source boundary",
+      );
       const sourcePath = assertInside(
-        fixtureRoot,
+        sourceBoundary,
         resolve(absoluteRoot, plugin.source.path),
         "local catalog source",
       );
       const safeSourcePath = assertRealInside(
-        safeFixtureRoot,
+        safeSourceBoundary,
         sourcePath,
         "local catalog source",
       );
