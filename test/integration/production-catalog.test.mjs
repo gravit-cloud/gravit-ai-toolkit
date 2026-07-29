@@ -197,18 +197,27 @@ test("production build promotes only complete managed registry artifacts", (cont
     resolve(sandbox.repositoryRoot, ".agents/plugins/marketplace.json"),
     "utf8",
   ));
-  assert.deepEqual(claudeMarketplace.plugins, [{
-    name: "local-plugin",
-    description: "Local production plugin",
-    source: "./plugins/local-plugin/targets/claude",
-    category: "development",
-  }]);
-  assert.deepEqual(codexMarketplace.plugins, [{
-    name: "local-plugin",
-    source: { source: "local", path: "./plugins/local-plugin/targets/codex" },
-    policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
-    category: "Development",
-  }]);
+  assert.deepEqual(claudeMarketplace, {
+    name: "fixture-marketplace",
+    owner: { name: "Gravit Cloud" },
+    description: "Kuratierter Gravit-Cloud-Marketplace für Claude Code und Codex.",
+    plugins: [{
+      name: "local-plugin",
+      description: "Local production plugin",
+      source: "./plugins/local-plugin/targets/claude",
+      category: "development",
+    }],
+  });
+  assert.deepEqual(codexMarketplace, {
+    name: "fixture-marketplace",
+    interface: { displayName: "Fixture Marketplace" },
+    plugins: [{
+      name: "local-plugin",
+      source: { source: "local", path: "./plugins/local-plugin/targets/codex" },
+      policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+      category: "Development",
+    }],
+  });
   assert.equal(JSON.stringify(claudeMarketplace).includes("sha"), false);
   assert.equal(JSON.stringify(claudeMarketplace).includes("ref"), false);
   assert.equal(JSON.stringify(codexMarketplace).includes("sha"), false);

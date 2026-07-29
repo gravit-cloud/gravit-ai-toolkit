@@ -454,6 +454,30 @@ test("marketplace entries use the exact generated host shapes", (context) => {
   assertHasError(errors, "codex marketplace fixture: category must be Development");
 });
 
+test("marketplace roots exactly match generated catalog metadata", (context) => {
+  const repositoryRoot = validRepository(context);
+  mutateJson(repositoryRoot, ".claude-plugin/marketplace.json", (marketplace) => {
+    marketplace.name = "renamed-marketplace";
+    marketplace.owner = { name: "Someone Else" };
+    marketplace.description = "Different description";
+    marketplace.homepage = "https://example.test";
+  });
+  mutateJson(repositoryRoot, ".agents/plugins/marketplace.json", (marketplace) => {
+    marketplace.name = "renamed-marketplace";
+    delete marketplace.interface;
+    marketplace.description = "Unexpected description";
+  });
+
+  const errors = validateRepository({ repositoryRoot });
+  assertHasError(errors, "Claude marketplace: unexpected root field homepage");
+  assertHasError(errors, "Claude marketplace: name must match catalog");
+  assertHasError(errors, "Claude marketplace: owner must match generated marketplace");
+  assertHasError(errors, "Claude marketplace: description must match generated marketplace");
+  assertHasError(errors, "Codex marketplace: unexpected root field description");
+  assertHasError(errors, "Codex marketplace: missing root field interface");
+  assertHasError(errors, "Codex marketplace: name must match catalog");
+});
+
 test("invalid executable paths are never passed to local syntax parsers", (context) => {
   const repositoryRoot = validRepository(context);
   const outside = resolve(repositoryRoot, "outside/evil.mjs");
@@ -581,6 +605,69 @@ test("maintained local source manifests stay version-aligned with package.json",
   const errors = validateRepository({ repositoryRoot });
   assertHasError(errors, "package.json and gravit-custom Claude plugin must have the same version");
   assertHasError(errors, "package.json and gravit-custom Codex plugin must have the same version");
+});
+
+test("an existing maintained source requires package and both host manifests", (context) => {
+  const repositoryRoot = validRepository(context);
+  mkdirSync(resolve(repositoryRoot, "sources/gravit-custom"), { recursive: true });
+
+  const errors = validateRepository({ repositoryRoot });
+  assertHasError(errors, "package.json: path does not exist");
+  assertHasError(
+    errors,
+    "sources/gravit-custom/.claude-plugin/plugin.json: path does not exist",
+  );
+  assertHasError(
+    errors,
+    "sources/gravit-custom/.codex-plugin/plugin.json: path does not exist",
+  );
+});
+
+test("either maintained host manifest requires its sibling", (context) => {
+  const repositoryRoot = validRepository(context);
+  writeJson(resolve(repositoryRoot, "package.json"), { version: "1.0.0" });
+  writeJson(resolve(repositoryRoot, "sources/gravit-custom/.claude-plugin/plugin.json"), {
+    version: "1.0.0",
+  });
+
+  let errors = validateRepository({ repositoryRoot });
+  assertHasError(
+    errors,
+    "sources/gravit-custom/.codex-plugin/plugin.json: path does not exist",
+  );
+
+  rmSync(resolve(repositoryRoot, "sources/gravit-custom/.claude-plugin"), {
+    recursive: true,
+  });
+  writeJson(resolve(repositoryRoot, "sources/gravit-custom/.codex-plugin/plugin.json"), {
+    version: "1.0.0",
+  });
+
+  errors = validateRepository({ repositoryRoot });
+  assertHasError(
+    errors,
+    "sources/gravit-custom/.claude-plugin/plugin.json: path does not exist",
+  );
+});
+
+test("a catalog-selected maintained source requires both host manifests", (context) => {
+  const repositoryRoot = validRepository(context);
+  mutateJson(repositoryRoot, "registry/catalog.json", (catalog) => {
+    catalog.plugins[0].source.path = "sources/gravit-custom";
+  });
+  mutateJson(repositoryRoot, "registry/lock.json", (lock) => {
+    lock.plugins.fixture.source.path = "sources/gravit-custom";
+  });
+
+  const errors = validateRepository({ repositoryRoot });
+  assertHasError(
+    errors,
+    "sources/gravit-custom/.claude-plugin/plugin.json: path does not exist",
+  );
+  assertHasError(
+    errors,
+    "sources/gravit-custom/.codex-plugin/plugin.json: path does not exist",
+  );
 });
 
 test("lock provenance must remain bound to the catalog", (context) => {

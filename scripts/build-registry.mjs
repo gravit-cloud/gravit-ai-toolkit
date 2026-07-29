@@ -22,6 +22,10 @@ import {
 } from "./lib/catalog.mjs";
 import { treeHash } from "./lib/hash.mjs";
 import { readJson, stableJson, writeJson } from "./lib/json.mjs";
+import {
+  createClaudeMarketplace,
+  createCodexMarketplace,
+} from "./lib/marketplaces.mjs";
 import { compareCodePoints } from "./lib/ordering.mjs";
 import {
   canonicalPath,
@@ -34,48 +38,6 @@ import { stageSource } from "./lib/source-loader.mjs";
 
 const PRODUCTION_ROOT_NAMES = [".claude-plugin", ".agents", "plugins"];
 const GENERATOR_ROOT = dirname(fileURLToPath(import.meta.url));
-const CATEGORY = Object.freeze({
-  cloud: "Cloud",
-  development: "Development",
-  productivity: "Productivity",
-  seo: "Productivity",
-});
-
-function titleCase(value) {
-  return value.split("-").map((part) => (
-    part.length === 0 ? part : part[0].toUpperCase() + part.slice(1)
-  )).join(" ");
-}
-
-function createClaudeMarketplace(catalog) {
-  return {
-    name: catalog.name,
-    owner: { name: "Gravit Cloud" },
-    description: "Kuratierter Gravit-Cloud-Marketplace für Claude Code und Codex.",
-    plugins: catalog.plugins.map((plugin) => ({
-      name: plugin.name,
-      description: plugin.description,
-      source: "./plugins/" + plugin.name + "/targets/claude",
-      category: plugin.category,
-    })),
-  };
-}
-
-function createCodexMarketplace(catalog) {
-  return {
-    name: catalog.name,
-    interface: { displayName: titleCase(catalog.name) },
-    plugins: catalog.plugins.map((plugin) => ({
-      name: plugin.name,
-      source: {
-        source: "local",
-        path: "./plugins/" + plugin.name + "/targets/codex",
-      },
-      policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
-      category: CATEGORY[plugin.category],
-    })),
-  };
-}
 
 function assertSameNames(actual, expected, label) {
   if (
