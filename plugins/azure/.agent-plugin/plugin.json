@@ -1,0 +1,1085 @@
+{
+  "components": [
+    {
+      "digest": "5a99f66ab8bef8f9799858205936e6dc9bda1aee589c7097f7301eaabbf169af",
+      "id": "airunway-aks-setup",
+      "path": "components/skills/airunway-aks-setup",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/airunway-aks-setup",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/airunway-aks-setup",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "7145f6fdf212d7d3a2496091212f744e7ec6262d5e0b61a906e701732bba9e2f",
+      "id": "appinsights-instrumentation",
+      "path": "components/skills/appinsights-instrumentation",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/appinsights-instrumentation",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/appinsights-instrumentation",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "12015cd7d3ce49bc597cba473cf1b533677593a5301735c14a4579e3e49b0e97",
+      "id": "asset-8bf729ffe074",
+      "path": "components/asset/asset-8bf729ffe074",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "asset"
+    },
+    {
+      "digest": "1ba44ae9d2777ba10c28e91506f1fe2819778862d782a68378db13ccb1e1c1e8",
+      "id": "azure-ai",
+      "path": "components/skills/azure-ai",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-ai",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-ai",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "d366412b3c5f26aaf410ef35f849c8e7b6347f09dd08ab3863f5c46fa4e8489e",
+      "id": "azure-aigateway",
+      "path": "components/skills/azure-aigateway",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-aigateway",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-aigateway",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "925a7ac6ea7c2837c7eaba460dc452b9b200878500ed5475c630892b28124207",
+      "id": "azure-app-onboard",
+      "path": "components/skills/azure-app-onboard",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-app-onboard",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-app-onboard",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "663b0920d700c09b215012f7f89f64c81e2ba3848000ea5dd3e82ab98908bd95",
+      "id": "azure-app-onboard-prereq",
+      "path": "components/skills/azure-app-onboard-prereq",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-app-onboard-prereq",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-app-onboard-prereq",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "a43bdbc148d3d4fc5a4a85f6dbd184623ad327b3e11b88e5bc3a717c865db1ce",
+      "id": "azure-cloud-migrate",
+      "path": "components/skills/azure-cloud-migrate",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-cloud-migrate",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-cloud-migrate",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "803addee195fe77552244e1dd38c692166f0f1d3aa5accce98529b0cf2afa88c",
+      "id": "azure-compliance",
+      "path": "components/skills/azure-compliance",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-compliance",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-compliance",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "5a67b9d252d025b4e4fb928767d5114ab9a30270144f52f0a2781cdeef1efd84",
+      "id": "azure-compute",
+      "path": "components/skills/azure-compute",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-compute",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-compute",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "70b10f61b27dda01c58658517b7f8a29883b873a034457554abfa575cd2a542b",
+      "id": "azure-cost",
+      "path": "components/skills/azure-cost",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-cost",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-cost",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "f2ae3193bd00b9ce66841c526d13e26f59a35c4bd7a3a9de4751ea0552f12ec9",
+      "id": "azure-deploy",
+      "path": "components/skills/azure-deploy",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-deploy",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-deploy",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "676011b3c4d2d1726bf5f3954eb79797a33e73f03993e37118e280338a2b2fe2",
+      "id": "azure-diagnostics",
+      "path": "components/skills/azure-diagnostics",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-diagnostics",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-diagnostics",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "71c081130b7fb5e74fc1ab418e60542c11f4d091846f25a4bebde9a3a51b4936",
+      "id": "azure-enterprise-infra-planner",
+      "path": "components/skills/azure-enterprise-infra-planner",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-enterprise-infra-planner",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-enterprise-infra-planner",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "5bf9a3a1aa568f7c12ab6f5ff2a1fbe49a1d1af6d091b49b219c9c8fcc0b95ff",
+      "id": "azure-kubernetes",
+      "path": "components/skills/azure-kubernetes",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-kubernetes",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-kubernetes",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "b7a411cf73875682965a1ef10a7278e0fa53dac0c37d65c65e4ff9a223f74667",
+      "id": "azure-kubernetes-automatic-readiness",
+      "path": "components/skills/azure-kubernetes-automatic-readiness",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-kubernetes-automatic-readiness",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-kubernetes-automatic-readiness",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "944de5b32a6e50d337af9493e229d680bfe621d7fda6f9c865b5f84d63c64e01",
+      "id": "azure-kusto",
+      "path": "components/skills/azure-kusto",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-kusto",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-kusto",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "c575d5667d36b0cabad6a276d811dd40c4bf214f1b1013ca5ec10b1543113a88",
+      "id": "azure-messaging",
+      "path": "components/skills/azure-messaging",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-messaging",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-messaging",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "cb15bfe2ab09f1af13510514231efc26b3c74534a10f39a81cde6ad99143cfcc",
+      "id": "azure-prepare",
+      "path": "components/skills/azure-prepare",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-prepare",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-prepare",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "d94449f58df4d493454e94f44b61d6195b6c6c3c78475e9c5af3f33d49a85316",
+      "id": "azure-quotas",
+      "path": "components/skills/azure-quotas",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-quotas",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-quotas",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "f08c41df1f03b2f51528e547afb56cdfd33fd8f84281cdba63b65e140df3316b",
+      "id": "azure-reliability",
+      "path": "components/skills/azure-reliability",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-reliability",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-reliability",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "1809726bf992acc86ab826e26e59acd396b50de9024a84efce29c5cf054f5494",
+      "id": "azure-resource-lookup",
+      "path": "components/skills/azure-resource-lookup",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-resource-lookup",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-resource-lookup",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "d1ae0dbc866699069ef1092f43b5a9a9bad19fb2634a0695fccd0b780e75da41",
+      "id": "azure-resource-visualizer",
+      "path": "components/skills/azure-resource-visualizer",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-resource-visualizer",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-resource-visualizer",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "e016e0b897d65fbe5e4506713d9ec2e5e87a4ea43a051039517e5c75bf86915f",
+      "id": "azure-storage",
+      "path": "components/skills/azure-storage",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-storage",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-storage",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "6bca721b277f98eec53b6b7eb88255d25b58c9f37b4dc964c6a0370a9cbad586",
+      "id": "azure-upgrade",
+      "path": "components/skills/azure-upgrade",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-upgrade",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-upgrade",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "184d895c7e9a3fc7a93bda18067f1ca4302cef2c543452d5839543c842a2ebd5",
+      "id": "azure-validate",
+      "path": "components/skills/azure-validate",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-validate",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-validate",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "c4e63a27e2688966a5f4e4fd693e7b37d6d8e6ce177026e91d8e05b685a26492",
+      "id": "capacity",
+      "path": "components/skills/capacity",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/capacity",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/capacity",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "c6a6493bfe195919f9fe9d807841b57f7d99865062fb050fa579330f3065e40f",
+      "id": "customize",
+      "path": "components/skills/customize",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/customize",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/customize",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "755dc1e31c8b701f5f46a9b7360c8e5318a688e7a35554cdb5851d09215643e4",
+      "id": "deploy-model",
+      "path": "components/skills/deploy-model",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/deploy-model",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/deploy-model",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "db2018a790ba560d849c04e0cb81dc18203048f0f5058b38a06a11e6a85cc1fd",
+      "id": "entra-agent-id",
+      "path": "components/skills/entra-agent-id",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/entra-agent-id",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/entra-agent-id",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "9e0ba37f72adc960e176ae67666dbd8964a791778295891176cb0a8797369590",
+      "id": "entra-app-registration",
+      "path": "components/skills/entra-app-registration",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/entra-app-registration",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/entra-app-registration",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "0ac85c701719c2c744c16103cc522535646e1791f63d817c030f128e6daa77f8",
+      "id": "executable-3cfb0a3c9667",
+      "path": "components/executable/executable-3cfb0a3c9667",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/hooks/scripts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/hooks/scripts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "executable"
+    },
+    {
+      "digest": "f75385c54fa29799311abf9229c1f5188ff1106bfda6097fd6e837fedd8bd137",
+      "id": "finetuning",
+      "path": "components/skills/finetuning",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/finetuning",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/finetuning",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "5f2b2acf6f447be9f31d7a5c0b9e30df970880a764de528e4bc3d5e1762b31bf",
+      "id": "hook-a28e4c3135b2",
+      "path": "components/hook/hook-a28e4c3135b2",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "codex": {
+          "path": "targets/codex/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "hook"
+    },
+    {
+      "digest": "3c7512981b3bc4d9f9595daa577b088c1a4e971eb29719caf450ee81b701e2c7",
+      "id": "mcp-d5d3368a61f8",
+      "path": "components/mcp/mcp-d5d3368a61f8",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/.mcp.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "codex": {
+          "path": "targets/codex/.mcp.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "mcp"
+    },
+    {
+      "digest": "6fa3789be8eadfdf0ddcdab2134b4ab2463660e96d47149fc0545e68b206aa5f",
+      "id": "microsoft-foundry",
+      "path": "components/skills/microsoft-foundry",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/microsoft-foundry",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/microsoft-foundry",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "70902ea7ad654134ed9f12840fb726adc6077a456c9a5c02541b3b77f4d9d8a9",
+      "id": "preset",
+      "path": "components/skills/preset",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/preset",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/preset",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "702d4bc94a7eae1e53e9afce4699c45b7cd2ac10945245005688addd6dac9d0a",
+      "id": "python-appservice-deploy",
+      "path": "components/skills/python-appservice-deploy",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/python-appservice-deploy",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/python-appservice-deploy",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    }
+  ],
+  "distributionVersion": "1.2.5-gravit.1",
+  "name": "azure",
+  "schemaVersion": 1,
+  "targets": {
+    "claude": {
+      "components": {
+        "airunway-aks-setup": {
+          "path": "targets/claude/skills/airunway-aks-setup",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "appinsights-instrumentation": {
+          "path": "targets/claude/skills/appinsights-instrumentation",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-8bf729ffe074": {
+          "path": "targets/claude/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-ai": {
+          "path": "targets/claude/skills/azure-ai",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-aigateway": {
+          "path": "targets/claude/skills/azure-aigateway",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-app-onboard": {
+          "path": "targets/claude/skills/azure-app-onboard",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-app-onboard-prereq": {
+          "path": "targets/claude/skills/azure-app-onboard-prereq",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-cloud-migrate": {
+          "path": "targets/claude/skills/azure-cloud-migrate",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-compliance": {
+          "path": "targets/claude/skills/azure-compliance",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-compute": {
+          "path": "targets/claude/skills/azure-compute",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-cost": {
+          "path": "targets/claude/skills/azure-cost",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-deploy": {
+          "path": "targets/claude/skills/azure-deploy",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-diagnostics": {
+          "path": "targets/claude/skills/azure-diagnostics",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-enterprise-infra-planner": {
+          "path": "targets/claude/skills/azure-enterprise-infra-planner",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-kubernetes": {
+          "path": "targets/claude/skills/azure-kubernetes",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-kubernetes-automatic-readiness": {
+          "path": "targets/claude/skills/azure-kubernetes-automatic-readiness",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-kusto": {
+          "path": "targets/claude/skills/azure-kusto",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-messaging": {
+          "path": "targets/claude/skills/azure-messaging",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-prepare": {
+          "path": "targets/claude/skills/azure-prepare",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-quotas": {
+          "path": "targets/claude/skills/azure-quotas",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-reliability": {
+          "path": "targets/claude/skills/azure-reliability",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-resource-lookup": {
+          "path": "targets/claude/skills/azure-resource-lookup",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-resource-visualizer": {
+          "path": "targets/claude/skills/azure-resource-visualizer",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-storage": {
+          "path": "targets/claude/skills/azure-storage",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-upgrade": {
+          "path": "targets/claude/skills/azure-upgrade",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-validate": {
+          "path": "targets/claude/skills/azure-validate",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "capacity": {
+          "path": "targets/claude/skills/capacity",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "customize": {
+          "path": "targets/claude/skills/customize",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "deploy-model": {
+          "path": "targets/claude/skills/deploy-model",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "entra-agent-id": {
+          "path": "targets/claude/skills/entra-agent-id",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "entra-app-registration": {
+          "path": "targets/claude/skills/entra-app-registration",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-3cfb0a3c9667": {
+          "path": "targets/claude/hooks/scripts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "finetuning": {
+          "path": "targets/claude/skills/finetuning",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "hook-a28e4c3135b2": {
+          "path": "targets/claude/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "mcp-d5d3368a61f8": {
+          "path": "targets/claude/.mcp.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "microsoft-foundry": {
+          "path": "targets/claude/skills/microsoft-foundry",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "preset": {
+          "path": "targets/claude/skills/preset",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "python-appservice-deploy": {
+          "path": "targets/claude/skills/python-appservice-deploy",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "digest": "7061948061abc5f4823d6c903ece6449338ec24de15bd6e009bcd6ccb323b386",
+      "path": "targets/claude"
+    },
+    "codex": {
+      "components": {
+        "airunway-aks-setup": {
+          "path": "targets/codex/skills/airunway-aks-setup",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "appinsights-instrumentation": {
+          "path": "targets/codex/skills/appinsights-instrumentation",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "asset-8bf729ffe074": {
+          "path": "targets/codex/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-ai": {
+          "path": "targets/codex/skills/azure-ai",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-aigateway": {
+          "path": "targets/codex/skills/azure-aigateway",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-app-onboard": {
+          "path": "targets/codex/skills/azure-app-onboard",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-app-onboard-prereq": {
+          "path": "targets/codex/skills/azure-app-onboard-prereq",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-cloud-migrate": {
+          "path": "targets/codex/skills/azure-cloud-migrate",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-compliance": {
+          "path": "targets/codex/skills/azure-compliance",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-compute": {
+          "path": "targets/codex/skills/azure-compute",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-cost": {
+          "path": "targets/codex/skills/azure-cost",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-deploy": {
+          "path": "targets/codex/skills/azure-deploy",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-diagnostics": {
+          "path": "targets/codex/skills/azure-diagnostics",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-enterprise-infra-planner": {
+          "path": "targets/codex/skills/azure-enterprise-infra-planner",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-kubernetes": {
+          "path": "targets/codex/skills/azure-kubernetes",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-kubernetes-automatic-readiness": {
+          "path": "targets/codex/skills/azure-kubernetes-automatic-readiness",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-kusto": {
+          "path": "targets/codex/skills/azure-kusto",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-messaging": {
+          "path": "targets/codex/skills/azure-messaging",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-prepare": {
+          "path": "targets/codex/skills/azure-prepare",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-quotas": {
+          "path": "targets/codex/skills/azure-quotas",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-reliability": {
+          "path": "targets/codex/skills/azure-reliability",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-resource-lookup": {
+          "path": "targets/codex/skills/azure-resource-lookup",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-resource-visualizer": {
+          "path": "targets/codex/skills/azure-resource-visualizer",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-storage": {
+          "path": "targets/codex/skills/azure-storage",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-upgrade": {
+          "path": "targets/codex/skills/azure-upgrade",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-validate": {
+          "path": "targets/codex/skills/azure-validate",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "capacity": {
+          "path": "targets/codex/skills/capacity",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "customize": {
+          "path": "targets/codex/skills/customize",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "deploy-model": {
+          "path": "targets/codex/skills/deploy-model",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "entra-agent-id": {
+          "path": "targets/codex/skills/entra-agent-id",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "entra-app-registration": {
+          "path": "targets/codex/skills/entra-app-registration",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "executable-3cfb0a3c9667": {
+          "path": "targets/codex/hooks/scripts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "finetuning": {
+          "path": "targets/codex/skills/finetuning",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "hook-a28e4c3135b2": {
+          "path": "targets/codex/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "mcp-d5d3368a61f8": {
+          "path": "targets/codex/.mcp.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "microsoft-foundry": {
+          "path": "targets/codex/skills/microsoft-foundry",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "preset": {
+          "path": "targets/codex/skills/preset",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "python-appservice-deploy": {
+          "path": "targets/codex/skills/python-appservice-deploy",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "digest": "39d1d153b0645914aff02181ef74572e97c67717ea90680a79285d3554dfb22b",
+      "path": "targets/codex"
+    }
+  }
+}

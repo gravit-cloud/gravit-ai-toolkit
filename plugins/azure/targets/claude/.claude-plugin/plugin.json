@@ -1,0 +1,11 @@
+{
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json",
+  "name": "azure",
+  "skills": "./skills/",
+  "version": "1.2.5-gravit.1"
+}

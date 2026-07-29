@@ -17,9 +17,11 @@ import {
   assertInside,
   assertRealInside,
   assertRegistryName,
+  pathIsInside,
   walkFiles,
 } from "./path-safety.mjs";
 import { compareCodePoints } from "./ordering.mjs";
+import { assertHostSkillName, skillComponentId } from "./skill-identity.mjs";
 
 function rejectSymbolicLink(path) {
   if (lstatSync(path).isSymbolicLink()) {
@@ -99,6 +101,7 @@ export function discoverSkills({ sourceRoot, declaredSkills }) {
 
   const sourceDirectories = new Set();
   const names = new Set();
+  const ids = new Set();
   return result
     .filter((skill) => {
       if (sourceDirectories.has(skill.sourceDirectory)) return false;
@@ -113,7 +116,10 @@ export function discoverSkills({ sourceRoot, declaredSkills }) {
     .map((skill) => {
       if (names.has(skill.name)) throw new Error("duplicate skill name: " + skill.name);
       names.add(skill.name);
-      return skill;
+      const id = skillComponentId(skill.name);
+      if (ids.has(id)) throw new Error("duplicate skill component id: " + id);
+      ids.add(id);
+      return { ...skill, id };
     });
 }
 
@@ -153,6 +159,43 @@ function renderedOwner(skillRoots, absoluteTarget) {
     .sort((left, right) => right.sourceDirectory.length - left.sourceDirectory.length)[0];
 }
 
+function mappedOwner(mappings, field, absoluteTarget) {
+  return mappings
+    .filter((entry) => pathIsInside(entry[field], absoluteTarget))
+    .sort((left, right) => right[field].length - left[field].length)[0];
+}
+
+function normalizedResourceMappings(resourceMappings) {
+  if (!Array.isArray(resourceMappings)) {
+    throw new Error("skill resource mappings must be an array");
+  }
+  return resourceMappings.map((mapping) => {
+    if (
+      !mapping
+      || typeof mapping !== "object"
+      || Array.isArray(mapping)
+      || typeof mapping.sourcePath !== "string"
+      || typeof mapping.destinationPath !== "string"
+    ) {
+      throw new Error("skill resource mapping requires sourcePath and destinationPath");
+    }
+    for (const [label, path] of [
+      ["source", mapping.sourcePath],
+      ["destination", mapping.destinationPath],
+    ]) {
+      if (!existsSync(path) || lstatSync(path).isSymbolicLink()) {
+        throw new Error("skill resource mapping " + label + " must be a real path: " + path);
+      }
+    }
+    return {
+      sourcePath: realpathSync(mapping.sourcePath),
+      // Keep the lexical destination spelling so relative links remain inside
+      // the rendered tree even on systems where /tmp aliases /private/tmp.
+      destinationPath: resolve(mapping.destinationPath),
+    };
+  });
+}
+
 const LINK_DESTINATION_TYPES = new Set([
   "definitionDestinationString",
   "resourceDestinationString",
@@ -171,8 +214,10 @@ function markdownBodyOffset(markdown) {
 function markdownLinkDestinations(markdown) {
   const bodyOffset = markdownBodyOffset(markdown);
   const body = markdown.slice(bodyOffset);
+  const bomOffset = body.startsWith("\uFEFF") ? 1 : 0;
+  const parsedBody = body.slice(bomOffset);
   const events = postprocess(
-    parseMarkdown().document().write(preprocess()(body, "utf8", true)),
+    parseMarkdown().document().write(preprocess()(parsedBody, "utf8", true)),
   );
   const escapes = events
     .filter(([kind, token]) => kind === "exit" && LINK_ESCAPE_TYPES.has(token.type))
@@ -184,7 +229,7 @@ function markdownLinkDestinations(markdown) {
   return events
     .filter(([kind, token]) => kind === "exit" && LINK_DESTINATION_TYPES.has(token.type))
     .map(([, token]) => ({
-      end: bodyOffset + token.end.offset,
+      end: bodyOffset + bomOffset + token.end.offset,
       escapes: escapes
         .filter((escape) => (
           escape.start >= token.start.offset && escape.end <= token.end.offset
@@ -194,8 +239,8 @@ function markdownLinkDestinations(markdown) {
           end: escape.end - token.start.offset,
           start: escape.start - token.start.offset,
         })),
-      start: bodyOffset + token.start.offset,
-      wrapped: body[token.start.offset - 1] === "<",
+      start: bodyOffset + bomOffset + token.start.offset,
+      wrapped: parsedBody[token.start.offset - 1] === "<",
     }))
     .sort((left, right) => right.start - left.start);
 }
@@ -333,7 +378,14 @@ function renderedOwnerRelativePath(link, ownerRelativePath) {
   return encodedPath(ownerRelativePath);
 }
 
-function rewriteLinks({ markdown, sourceMarkdownFile, destinationMarkdownFile, skills, destinationRoot }) {
+function rewriteLinks({
+  markdown,
+  sourceMarkdownFile,
+  destinationMarkdownFile,
+  skills,
+  destinationRoot,
+  resourceMappings,
+}) {
   const skillRoots = skills.map((skill) => ({
     skill,
     sourceDirectory: realpathSync(skill.sourceDirectory),
@@ -349,6 +401,25 @@ function rewriteLinks({ markdown, sourceMarkdownFile, destinationMarkdownFile, s
     const ownershipTarget = exists ? realpathSync(absoluteTarget) : absoluteTarget;
     const owner = renderedOwner(skillRoots, ownershipTarget);
     if (!owner) {
+      const mapped = exists
+        ? mappedOwner(resourceMappings, "sourcePath", ownershipTarget)
+        : undefined;
+      if (mapped) {
+        const mappedTarget = assertInside(
+          mapped.destinationPath,
+          resolve(mapped.destinationPath, relative(mapped.sourcePath, ownershipTarget)),
+          "rendered resource link target",
+        );
+        if (!existsSync(mappedTarget)) {
+          throw new Error("unresolved mapped skill link: " + targetPath);
+        }
+        assertRealInside(mapped.destinationPath, mappedTarget, "rendered resource link target");
+        let rewritten = relative(dirname(destinationMarkdownFile), mappedTarget)
+          .replaceAll("\\", "/");
+        rewritten = encodedPath(rewritten);
+        if (!rewritten.startsWith(".")) rewritten = "./" + rewritten;
+        return rewritten + suffix;
+      }
       if (exists) throw new Error("unmapped local skill link: " + targetPath);
       return undefined;
     }
@@ -382,7 +453,7 @@ function rewriteLinks({ markdown, sourceMarkdownFile, destinationMarkdownFile, s
   });
 }
 
-function validateLocalMarkdownLinks(destinationRoot) {
+function validateLocalMarkdownLinks(destinationRoot, resourceMappings) {
   for (const filePath of walkFiles(destinationRoot)) {
     if (![".md", ".markdown"].includes(extname(filePath).toLowerCase())) continue;
     const markdown = readFileSync(filePath, "utf8");
@@ -390,20 +461,31 @@ function validateLocalMarkdownLinks(destinationRoot) {
       const rawTarget = markdown.slice(destination.start, destination.end);
       const link = localLink(rawTarget, destination);
       if (!link) continue;
-      const absoluteTarget = assertInside(
-        destinationRoot,
-        resolve(dirname(filePath), link.targetPath),
-        "rendered local Markdown link",
-      );
+      const absoluteTarget = resolve(dirname(filePath), link.targetPath);
       if (!existsSync(absoluteTarget)) {
         throw new Error(
           "unresolved local Markdown link: " + filePath + " -> " + link.targetPath,
         );
       }
+      if (pathIsInside(destinationRoot, absoluteTarget)) {
+        assertRealInside(
+          destinationRoot,
+          absoluteTarget,
+          "rendered local Markdown link",
+        );
+        continue;
+      }
+      const mapped = mappedOwner(resourceMappings, "destinationPath", absoluteTarget);
+      if (!mapped) {
+        throw new Error(
+          "rendered local Markdown link escapes mapped outputs: "
+            + filePath + " -> " + link.targetPath,
+        );
+      }
       assertRealInside(
-        destinationRoot,
+        mapped.destinationPath,
         absoluteTarget,
-        "rendered local Markdown link",
+        "rendered local Markdown resource link",
       );
     }
   }
@@ -421,11 +503,21 @@ function validateRenderedSkills(destinationRoot) {
   }
 }
 
-export function renderSkills({ skills, destinationRoot, target }) {
+export function renderSkills({ skills, destinationRoot, target, resourceMappings = [] }) {
   if (!["neutral", "claude", "codex"].includes(target)) {
     throw new Error("unsupported skill target: " + target);
   }
-  for (const skill of skills) assertRegistryName(skill.name, "skill name");
+  for (const skill of skills) {
+    assertHostSkillName(skill.name);
+    const expectedId = skillComponentId(skill.name);
+    if (skill.id !== expectedId) {
+      throw new Error(
+        "skill component id must match host skill name: " + skill.name,
+      );
+    }
+    assertRegistryName(skill.id, "skill component id");
+  }
+  const mappings = normalizedResourceMappings(resourceMappings);
 
   mkdirSync(destinationRoot, { recursive: true });
   const rendered = [];
@@ -473,6 +565,7 @@ export function renderSkills({ skills, destinationRoot, target }) {
       destinationMarkdownFile: destinationFile,
       skills,
       destinationRoot,
+      resourceMappings: mappings,
     });
     if (target === "codex" && renderedSkillFiles.has(destinationFile)) {
       markdown = codexMarkdown(markdown);
@@ -480,7 +573,7 @@ export function renderSkills({ skills, destinationRoot, target }) {
     writeFileSync(destinationFile, markdown);
   }
 
-  validateLocalMarkdownLinks(destinationRoot);
+  validateLocalMarkdownLinks(destinationRoot, mappings);
   validateRenderedSkills(destinationRoot);
 
   return rendered;

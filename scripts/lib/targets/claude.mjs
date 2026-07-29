@@ -10,7 +10,7 @@ import { normalizeHooks, renderHooks } from "../hooks.mjs";
 import { removeUndefined, writeJson } from "../json.mjs";
 import { normalizeMcp, writeMcpConfig } from "../mcp.mjs";
 import { compareCodePoints } from "../ordering.mjs";
-import { assertInside, walkFiles } from "../path-safety.mjs";
+import { assertInside, pathsOverlap, walkFiles } from "../path-safety.mjs";
 import { renderSkills } from "../skills.mjs";
 
 const ROOTS = {
@@ -56,6 +56,16 @@ function nativeDestination({ component, targetRoot }) {
   }
   const root = ROOTS[component.type];
   if (!root) throw new Error("unsupported Claude native component: " + component.type);
+  if (
+    component.sourceFormat === "path"
+    && ["asset", "executable"].includes(component.type)
+  ) {
+    return assertInside(
+      targetRoot,
+      resolve(targetRoot, relativeSourcePath(component)),
+      "target component",
+    );
+  }
   if (component.sourceFormat === "inline") {
     return assertInside(
       targetRoot,
@@ -89,25 +99,39 @@ function commandOutputs({ component, targetRoot }) {
   };
 }
 
-function assertUniqueOutputs(outputs) {
-  const seen = new Map();
-  for (const { component, destination } of outputs.sort((left, right) => (
+function assertUniqueOutputs({ outputs, targetRoot }) {
+  const reserved = [
+    resolve(targetRoot, ".claude-plugin"),
+    resolve(targetRoot, ".mcp.json"),
+    resolve(targetRoot, "hooks/hooks.json"),
+    resolve(targetRoot, "skills"),
+  ];
+  const ordered = outputs.sort((left, right) => (
     compareCodePoints(left.destination, right.destination)
-  ))) {
-    if (seen.has(destination)) {
+  ));
+  for (const { component, destination } of ordered) {
+    if (reserved.some((path) => pathsOverlap(path, destination))) {
       throw new Error(
-        "duplicate target component destination: " + destination
-          + " (" + seen.get(destination) + ", " + component.id + ")",
+        "resource target overlaps reserved namespace: " + relativeSourcePath(component),
       );
     }
-    seen.set(destination, component.id);
+  }
+  for (const [index, left] of ordered.entries()) {
+    for (const right of ordered.slice(index + 1)) {
+      if (pathsOverlap(left.destination, right.destination)) {
+        throw new Error(
+          "duplicate target component destination: " + left.destination
+            + " (" + left.component.id + ", " + right.component.id + ")",
+        );
+      }
+    }
   }
 }
 
-function mergeHooks(records) {
+function mergeHooks(records, options) {
   const hooks = {};
   for (const record of records) {
-    const normalized = normalizeHooks(record);
+    const normalized = normalizeHooks(record, options);
     for (const event of Object.keys(normalized.hooks).sort(compareCodePoints)) {
       hooks[event] = [...(hooks[event] || []), ...normalized.hooks[event]];
     }
@@ -158,17 +182,48 @@ export function renderClaudeTarget({ plugin, inventory, neutralComponents, bundl
     nativePlans.push({ component: record, destination });
   }
 
-  assertUniqueOutputs([
-    ...nativePlans,
-    ...commandPlans.flatMap(({ component, files }) => (
-      files.map(([, destination]) => ({ component, destination }))
-    )),
-  ]);
+  assertUniqueOutputs({
+    outputs: [
+      ...nativePlans,
+      ...commandPlans.flatMap(({ component, files }) => (
+        files.map(([, destination]) => ({ component, destination }))
+      )),
+    ],
+    targetRoot,
+  });
+
+  const manifestPaths = new Map();
+  const resourceMappings = [];
+  for (const plan of nativePlans) {
+    materializeComponent({
+      component: plan.component,
+      bundleRoot,
+      destination: plan.destination,
+    });
+    const neutral = neutralComponents.find(({ id }) => id === plan.component.id);
+    components[plan.component.id] = {
+      ...neutral.targets.claude,
+      path: targetPath(bundleRoot, plan.destination),
+    };
+    manifestPaths.set(plan.component.id, renderedFiles(plan.destination).map((path) => (
+      manifestPath(targetRoot, path)
+    )));
+    if (
+      plan.component.sourceFormat === "path"
+      && ["asset", "executable"].includes(plan.component.type)
+    ) {
+      resourceMappings.push({
+        sourcePath: plan.component.sourcePath,
+        destinationPath: plan.destination,
+      });
+    }
+  }
 
   const renderedSkills = renderSkills({
     skills: inventory.skills,
     destinationRoot: resolve(targetRoot, "skills"),
     target: "claude",
+    resourceMappings,
   });
   for (const skill of renderedSkills) {
     const neutral = neutralComponents.find(({ id }) => id === skill.id);
@@ -195,26 +250,18 @@ export function renderClaudeTarget({ plugin, inventory, neutralComponents, bundl
     };
   }
 
-  const manifestPaths = new Map();
-  for (const plan of nativePlans) {
-    materializeComponent({
-      component: plan.component,
-      bundleRoot,
-      destination: plan.destination,
-    });
-    const neutral = neutralComponents.find(({ id }) => id === plan.component.id);
-    components[plan.component.id] = {
-      ...neutral.targets.claude,
-      path: targetPath(bundleRoot, plan.destination),
-    };
-    manifestPaths.set(plan.component.id, renderedFiles(plan.destination).map((path) => (
-      manifestPath(targetRoot, path)
-    )));
-  }
-
+  const executableFiles = nativePlans
+    .filter(({ component }) => component.type === "executable")
+    .flatMap(({ destination }) => renderedFiles(destination))
+    .map((path) => relative(targetRoot, path).replaceAll("\\", "/"))
+    .sort(compareCodePoints);
   if (hooks.length > 0) {
     const hookPath = resolve(targetRoot, "hooks/hooks.json");
-    writeJson(hookPath, renderHooks({ config: mergeHooks(hooks), target: "claude" }));
+    writeJson(hookPath, renderHooks({
+      config: mergeHooks(hooks, { executableFiles }),
+      target: "claude",
+      executableFiles,
+    }));
     for (const record of hooks) {
       const neutral = neutralComponents.find(({ id }) => id === record.id);
       components[record.id] = {

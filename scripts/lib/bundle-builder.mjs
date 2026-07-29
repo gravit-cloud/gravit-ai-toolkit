@@ -1,7 +1,9 @@
 import {
+  cpSync,
   existsSync,
   lstatSync,
   mkdirSync,
+  readdirSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -13,7 +15,11 @@ import { treeHash } from "./hash.mjs";
 import { inventorySource } from "./inventory.mjs";
 import { writeJson } from "./json.mjs";
 import { compareCodePoints } from "./ordering.mjs";
-import { assertRegistryName, pathIsInside } from "./path-safety.mjs";
+import {
+  assertRegistryName,
+  canonicalPath,
+  pathIsInside,
+} from "./path-safety.mjs";
 import { accountComponents } from "./provenance.mjs";
 import { renderSkills } from "./skills.mjs";
 import { renderClaudeTarget } from "./targets/claude.mjs";
@@ -23,6 +29,71 @@ const TARGET_RENDERERS = {
   claude: renderClaudeTarget,
   codex: renderCodexTarget,
 };
+const EXTERNAL_LICENSE_NAME = /^license(?:\.(?:md|rst|txt))?$/i;
+
+function externalLicenseSource({ plugin, sourceRoot }) {
+  if (plugin.source?.type !== "github") return undefined;
+  const sourceStats = lstatSync(sourceRoot);
+  if (sourceStats.isSymbolicLink() || !sourceStats.isDirectory()) {
+    throw new Error("external source root must be a real directory: " + sourceRoot);
+  }
+  const canonicalSourceRoot = realpathSync(sourceRoot);
+  const candidates = readdirSync(sourceRoot, { withFileTypes: true })
+    .filter(({ name }) => EXTERNAL_LICENSE_NAME.test(name))
+    .sort((left, right) => compareCodePoints(left.name, right.name));
+  if (candidates.length === 0) {
+    throw new Error("external source must contain one top-level license");
+  }
+  if (candidates.length > 1) {
+    throw new Error(
+      "external source has ambiguous top-level licenses: "
+        + candidates.map(({ name }) => name).join(", "),
+    );
+  }
+  const candidate = candidates[0];
+  const sourcePath = resolve(sourceRoot, candidate.name);
+  const stats = lstatSync(sourcePath);
+  const expectedCanonical = resolve(canonicalSourceRoot, candidate.name);
+  if (
+    candidate.isSymbolicLink()
+    || !candidate.isFile()
+    || stats.isSymbolicLink()
+    || !stats.isFile()
+    || canonicalPath(sourcePath) !== expectedCanonical
+    || !pathIsInside(canonicalSourceRoot, expectedCanonical)
+  ) {
+    throw new Error("external license must be a real regular file: " + sourcePath);
+  }
+  return sourcePath;
+}
+
+function materializeExternalLicense({ sourcePath, bundleRoot }) {
+  if (!sourcePath) return;
+  const bundleStats = lstatSync(bundleRoot);
+  if (bundleStats.isSymbolicLink() || !bundleStats.isDirectory()) {
+    throw new Error("bundle root must be a real directory: " + bundleRoot);
+  }
+  const canonicalBundleRoot = realpathSync(bundleRoot);
+  const destination = resolve(bundleRoot, "LICENSE");
+  const expectedCanonical = resolve(canonicalBundleRoot, "LICENSE");
+  if (
+    !pathIsInside(bundleRoot, destination)
+    || !pathIsInside(canonicalBundleRoot, expectedCanonical)
+    || canonicalPath(destination) !== expectedCanonical
+    || existsSync(destination)
+  ) {
+    throw new Error("external license destination is unsafe: " + destination);
+  }
+  cpSync(sourcePath, destination, { errorOnExist: true, force: false });
+  const destinationStats = lstatSync(destination);
+  if (
+    destinationStats.isSymbolicLink()
+    || !destinationStats.isFile()
+    || realpathSync(destination) !== expectedCanonical
+  ) {
+    throw new Error("external license destination is unsafe: " + destination);
+  }
+}
 
 function relativeBundlePath(bundleRoot, path) {
   return relative(bundleRoot, path).replaceAll("\\", "/");
@@ -97,12 +168,13 @@ function assertAdapterResult({ plugin, target, bundleRoot, neutralComponents, re
 }
 
 export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
-  const inventory = inventorySource({ sourceRoot });
-  for (const skill of inventory.skills) assertRegistryName(skill.name, "skill name");
+  const externalLicense = externalLicenseSource({ plugin, sourceRoot });
+  const inventory = inventorySource({ sourceRoot, resources: plugin.resources });
+  for (const skill of inventory.skills) assertRegistryName(skill.id, "skill component id");
 
   const accounting = accountComponents({
     components: [
-      ...inventory.skills.map((skill) => ({ id: skill.name, type: "skill" })),
+      ...inventory.skills.map((skill) => ({ id: skill.id, type: "skill" })),
       ...inventory.components,
     ],
     targets: plugin.targets,
@@ -111,24 +183,38 @@ export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
   const accountingById = new Map(accounting.map((component) => [component.id, component]));
 
   mkdirSync(bundleRoot, { recursive: true });
+  materializeExternalLicense({ sourcePath: externalLicense, bundleRoot });
   const neutralRoot = resolve(bundleRoot, "components");
+  const materialized = [];
+  const resourceMappings = [];
+  for (const component of inventory.components) {
+    const directory = copyComponent({ component, bundleRoot, neutralRoot });
+    materialized.push({
+      id: component.id,
+      type: component.type,
+      directory,
+    });
+    if (
+      component.sourceFormat === "path"
+      && ["asset", "executable"].includes(component.type)
+    ) {
+      resourceMappings.push({
+        sourcePath: component.sourcePath,
+        destinationPath: directory,
+      });
+    }
+  }
   const renderedSkills = renderSkills({
     skills: inventory.skills,
     destinationRoot: resolve(neutralRoot, "skills"),
     target: "neutral",
+    resourceMappings,
   });
-  const materialized = renderedSkills.map((skill) => ({
-    id: skill.name,
+  materialized.push(...renderedSkills.map((skill) => ({
+    id: skill.id,
     type: "skill",
     directory: skill.directory,
-  }));
-  for (const component of inventory.components) {
-    materialized.push({
-      id: component.id,
-      type: component.type,
-      directory: copyComponent({ component, bundleRoot, neutralRoot }),
-    });
-  }
+  })));
 
   const targetNames = [...plugin.targets].sort(compareCodePoints);
   const neutralComponents = materialized

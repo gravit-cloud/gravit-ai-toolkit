@@ -261,12 +261,17 @@ function strictWalk(root) {
 }
 
 function markdownDestinations(markdown) {
+  const bomOffset = markdown.startsWith("\uFEFF") ? 1 : 0;
+  const parsedMarkdown = markdown.slice(bomOffset);
   const events = postprocess(
-    parseMarkdown().document().write(preprocess()(markdown, "utf8", true)),
+    parseMarkdown().document().write(preprocess()(parsedMarkdown, "utf8", true)),
   );
   return events
     .filter(([kind, token]) => kind === "exit" && LINK_DESTINATION_TYPES.has(token.type))
-    .map(([, token]) => markdown.slice(token.start.offset, token.end.offset));
+    .map(([, token]) => markdown.slice(
+      bomOffset + token.start.offset,
+      bomOffset + token.end.offset,
+    ));
 }
 
 function localMarkdownPath(rawTarget) {
@@ -282,7 +287,7 @@ function localMarkdownPath(rawTarget) {
   }
 }
 
-function validateMarkdownLinks({ root, file, errors }) {
+function validateMarkdownLinks({ root, linkBoundary, file, errors }) {
   const relativeFile = normalizedRelative(root, file);
   const markdown = readFileSync(file, "utf8");
   let destinations;
@@ -306,7 +311,7 @@ function validateMarkdownLinks({ root, file, errors }) {
       continue;
     }
     const absoluteTarget = resolve(dirname(file), target);
-    if (!pathIsInside(root, absoluteTarget)) {
+    if (!pathIsInside(linkBoundary, absoluteTarget)) {
       errors.push(`${relativeFile}: local Markdown link escapes skill tree -> ${target}`);
       continue;
     }
@@ -315,7 +320,10 @@ function validateMarkdownLinks({ root, file, errors }) {
       errors.push(`${relativeFile}: broken local Markdown link -> ${target}`);
       continue;
     }
-    const expectedCanonical = resolve(realpathSync(root), relative(root, absoluteTarget));
+    const expectedCanonical = resolve(
+      realpathSync(linkBoundary),
+      relative(linkBoundary, absoluteTarget),
+    );
     if (
       stats.isSymbolicLink()
       || canonicalPath(absoluteTarget) !== expectedCanonical
@@ -339,17 +347,47 @@ export function validateRecursiveSkills(targetSkillsRoot) {
   } catch (error) {
     return [messageOf(error).replaceAll(root, ".")];
   }
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const entrypoint = resolve(root, entry.name, "SKILL.md");
+    const stats = statEntry(entrypoint);
+    if (!stats || stats.isSymbolicLink() || !stats.isFile()) {
+      errors.push(`${entry.name}/SKILL.md: missing canonical skill entrypoint`);
+    }
+  }
   const isCodex = root.replaceAll("\\", "/").includes("/targets/codex/skills");
+  const isTargetSkillRoot = /\/targets\/(?:claude|codex)\/skills$/u.test(
+    root.replaceAll("\\", "/"),
+  );
+  const linkBoundary = isTargetSkillRoot ? dirname(root) : root;
   const names = new Map();
   for (const file of files) {
     if ([".md", ".markdown"].includes(extname(file).toLowerCase())) {
-      validateMarkdownLinks({ root, file, errors });
+      validateMarkdownLinks({ root, linkBoundary, file, errors });
     }
     if (basename(file) !== "SKILL.md") continue;
     const relativeFile = normalizedRelative(root, file);
+    const rawSkillMarkdown = readFileSync(file, "utf8");
+    const skillMarkdown = rawSkillMarkdown.startsWith("\uFEFF")
+      ? rawSkillMarkdown.slice(1)
+      : rawSkillMarkdown;
+    const hasFrontmatter = (
+      skillMarkdown.startsWith("---\n")
+      || skillMarkdown.startsWith("---\r\n")
+    );
+    const relativeDirectory = normalizedRelative(root, dirname(file));
+    const isCanonicalEntrypoint = !relativeDirectory.includes("/");
+    if (!hasFrontmatter) {
+      if (isCanonicalEntrypoint) {
+        errors.push(
+          `${relativeFile}: invalid frontmatter (frontmatter must start and end with ---)`,
+        );
+      }
+      continue;
+    }
     let attributes;
     try {
-      ({ attributes } = parseFrontmatter(readFileSync(file, "utf8")));
+      ({ attributes } = parseFrontmatter(skillMarkdown));
     } catch (error) {
       errors.push(`${relativeFile}: invalid frontmatter (${messageOf(error)})`);
       continue;
@@ -357,7 +395,7 @@ export function validateRecursiveSkills(targetSkillsRoot) {
     if (!attributes.name) errors.push(`${relativeFile}: missing frontmatter name`);
     if (!attributes.description) errors.push(`${relativeFile}: missing frontmatter description`);
     if (attributes.name) {
-      if (PROTOTYPE_NAMES.has(attributes.name)) {
+      if (PROTOTYPE_NAMES.has(attributes.name) && attributes.name !== "prototype") {
         errors.push(`${relativeFile}: prototype-like skill name ${attributes.name}`);
       } else if (!/^[a-z0-9][a-z0-9-]*$/.test(attributes.name)) {
         errors.push(
@@ -1070,15 +1108,59 @@ function runtimeComponentFiles({ pluginRoot, manifest }) {
   const records = new Map();
   for (const component of manifest.components || []) {
     if (!["app", "hook", "mcp"].includes(component.type)) continue;
-    for (const path of componentMaterializationPaths({ pluginRoot, component })) {
+    const materializations = [];
+    const neutral = trustedComponentPath({
+      pluginRoot,
+      configuredPath: component.path,
+      containmentRoot: resolve(pluginRoot, "components"),
+    });
+    if (neutral) materializations.push({ path: neutral, target: "claude", projection: false });
+    for (const [target, disposition] of Object.entries(component.targets || {})) {
+      const path = trustedComponentPath({
+        pluginRoot,
+        configuredPath: disposition?.path,
+        containmentRoot: resolve(pluginRoot, `targets/${target}`),
+      });
+      if (path) materializations.push({ path, target, projection: true });
+    }
+    for (const { path, target, projection } of materializations) {
       const stats = lstatSync(path);
       const files = stats.isFile() ? [path] : strictWalk(path);
       for (const file of files.filter((file) => extname(file).toLowerCase() === ".json")) {
-        records.set(`${component.type}\0${file}`, { file, type: component.type });
+        records.set(`${component.type}\0${target}\0${file}`, {
+          file,
+          projection,
+          type: component.type,
+          target,
+        });
       }
     }
   }
   return [...records.values()].sort((left, right) => compareCodePoints(left.file, right.file));
+}
+
+function executableTargetFiles({ pluginRoot, manifest }) {
+  const result = new Map();
+  for (const component of manifest.components || []) {
+    if (component.type !== "executable") continue;
+    for (const [target, disposition] of Object.entries(component.targets || {})) {
+      const targetRoot = resolve(pluginRoot, `targets/${target}`);
+      const path = trustedComponentPath({
+        pluginRoot,
+        configuredPath: disposition?.path,
+        containmentRoot: targetRoot,
+      });
+      if (!path) continue;
+      const stats = lstatSync(path);
+      const files = stats.isFile() ? [path] : strictWalk(path);
+      const declared = result.get(target) || new Set();
+      for (const file of files) declared.add(normalizedRelative(targetRoot, file));
+      result.set(target, declared);
+    }
+  }
+  return new Map([...result].map(([target, files]) => (
+    [target, [...files].sort(compareCodePoints)]
+  )));
 }
 
 function executableComponentFiles({ pluginRoot, manifest }) {
@@ -1246,7 +1328,11 @@ function validatePlugin({ repositoryRoot, plugin, lock, lockEntry, processData, 
       errors.push(`${plugin.name}: external LICENSE must not be empty`);
     }
   } else validateLocalSource({ repositoryRoot, plugin, errors });
-  for (const { file, type } of runtimeComponentFiles({ pluginRoot, manifest })) {
+  const executableFilesByTarget = executableTargetFiles({ pluginRoot, manifest });
+  const sourceExecutableFiles = sortedUnique(
+    [...executableFilesByTarget.values()].flat(),
+  );
+  for (const { file, projection, type, target } of runtimeComponentFiles({ pluginRoot, manifest })) {
     const label = normalizedRelative(repositoryRoot, file);
     const json = readJsonFile(file, label, errors);
     if (json !== undefined) {
@@ -1259,6 +1345,11 @@ function validatePlugin({ repositoryRoot, plugin, lock, lockEntry, processData, 
         addCaught(errors, label, () => normalizeHooks({
           sourceFormat: "path",
           sourcePath: file,
+        }, {
+          target,
+          executableFiles: projection
+            ? executableFilesByTarget.get(target) || []
+            : sourceExecutableFiles,
         }));
       }
       validateRuntimeJson(

@@ -1,0 +1,21 @@
+{
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "capabilities": [],
+    "category": "Productivity",
+    "defaultPrompt": [
+      "Use claude-seo to help with this task."
+    ],
+    "developerName": "Gravit Cloud",
+    "displayName": "claude-seo",
+    "longDescription": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
+    "shortDescription": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks."
+  },
+  "name": "claude-seo",
+  "skills": "./skills/",
+  "version": "2.2.4-gravit.1"
+}

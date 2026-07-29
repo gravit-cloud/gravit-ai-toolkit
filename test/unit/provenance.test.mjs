@@ -436,6 +436,22 @@ test("lock creation requires configured targets to exactly match target results"
   );
 });
 
+test("lock provenance accepts catalog resources without weakening unknown fields", (context) => {
+  const withResources = lockFixture(context);
+  withResources.plugin.resources = [
+    { type: "executable", path: "scripts" },
+    { type: "asset", path: "schema/templates.json" },
+  ];
+  assert.doesNotThrow(() => createLockEntry(withResources));
+
+  const unknownField = lockFixture(context);
+  unknownField.plugin.resourceRoots = ["scripts"];
+  assert.throws(
+    () => createLockEntry(unknownField),
+    /unknown plugin field: resourceRoots/,
+  );
+});
+
 test("lock creation hashes only an existing real bundle directory", (context) => {
   const withFile = lockFixture(context);
   const bundleFile = resolve(withFile.bundleRoot, "bundle-file");

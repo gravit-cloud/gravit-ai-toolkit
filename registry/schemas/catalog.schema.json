@@ -53,6 +53,11 @@
             "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*))(?:\\.(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*)))*)?$"
           }
         },
+        "resources": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/resource" }
+        },
         "targetPolicies": {
           "type": "object",
           "additionalProperties": false,
@@ -101,6 +106,26 @@
             "skills": { "enum": ["preserve", "transform"] }
           }
         }
+      }
+    },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "allOf": [
+        { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+        { "not": { "pattern": "\\\\" } },
+        { "not": { "pattern": "//|/$" } },
+        { "not": { "pattern": "(?:^|/)\\.\\.?(?:/|$)" } },
+        { "not": { "pattern": "[\\u0000-\\u001f]" } }
+      ]
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "enum": ["asset", "executable"] },
+        "path": { "$ref": "#/$defs/safePath" }
       }
     },
     "targetPolicy": {

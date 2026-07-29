@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { lstatSync, readFileSync } from "node:fs";
 import { basename, extname, relative, resolve } from "node:path";
 import {
   assertJsonSingletonComponent,
@@ -12,7 +12,7 @@ import { normalizeHooks, renderHooks } from "../hooks.mjs";
 import { removeUndefined, writeJson } from "../json.mjs";
 import { normalizeMcp, writeMcpConfig } from "../mcp.mjs";
 import { compareCodePoints } from "../ordering.mjs";
-import { assertInside } from "../path-safety.mjs";
+import { assertInside, pathsOverlap, walkFiles } from "../path-safety.mjs";
 import { renderSkills } from "../skills.mjs";
 
 const CATEGORY = {
@@ -41,6 +41,16 @@ function relativeSourcePath(component) {
 function nativeDestination({ component, targetRoot }) {
   if (component.type === "app") return resolve(targetRoot, ".app.json");
   const root = component.type === "asset" ? "assets" : "bin";
+  if (
+    component.sourceFormat === "path"
+    && ["asset", "executable"].includes(component.type)
+  ) {
+    return assertInside(
+      targetRoot,
+      resolve(targetRoot, relativeSourcePath(component)),
+      "target component",
+    );
+  }
   if (component.sourceFormat === "inline") {
     return assertInside(targetRoot, resolve(targetRoot, root, component.id + ".json"), "target component");
   }
@@ -61,10 +71,10 @@ function commandSkillName(sourcePath) {
   return stem;
 }
 
-function mergeHooks(records) {
+function mergeHooks(records, options) {
   const hooks = {};
   for (const record of records) {
-    const normalized = normalizeHooks(record);
+    const normalized = normalizeHooks(record, options);
     for (const event of Object.keys(normalized.hooks).sort(compareCodePoints)) {
       hooks[event] = [...(hooks[event] || []), ...normalized.hooks[event]];
     }
@@ -117,20 +127,58 @@ export function renderCodexTarget({ plugin, inventory, neutralComponents, bundle
     }
   }
 
-  const destinations = new Set();
-  for (const { component, destination } of nativePlans.sort((left, right) => (
+  const reserved = [
+    resolve(targetRoot, ".codex-plugin"),
+    resolve(targetRoot, ".mcp.json"),
+    resolve(targetRoot, "hooks/hooks.json"),
+    skillRoot,
+  ];
+  const orderedNativePlans = nativePlans.sort((left, right) => (
     compareCodePoints(left.destination, right.destination)
-  ))) {
-    if (destinations.has(destination)) {
-      throw new Error("duplicate target component destination: " + destination);
+  ));
+  for (const { component, destination } of orderedNativePlans) {
+    if (reserved.some((path) => pathsOverlap(path, destination))) {
+      throw new Error(
+        "resource target overlaps reserved namespace: " + relativeSourcePath(component),
+      );
     }
-    destinations.add(destination);
+  }
+  for (const [index, left] of orderedNativePlans.entries()) {
+    for (const right of orderedNativePlans.slice(index + 1)) {
+      if (pathsOverlap(left.destination, right.destination)) {
+        throw new Error("duplicate target component destination: " + left.destination);
+      }
+    }
+  }
+
+  const resourceMappings = [];
+  for (const plan of nativePlans) {
+    materializeComponent({
+      component: plan.component,
+      bundleRoot,
+      destination: plan.destination,
+    });
+    const neutral = neutralComponents.find(({ id }) => id === plan.component.id);
+    components[plan.component.id] = {
+      ...neutral.targets.codex,
+      path: targetPath(bundleRoot, plan.destination),
+    };
+    if (
+      plan.component.sourceFormat === "path"
+      && ["asset", "executable"].includes(plan.component.type)
+    ) {
+      resourceMappings.push({
+        sourcePath: plan.component.sourcePath,
+        destinationPath: plan.destination,
+      });
+    }
   }
 
   const renderedSkills = renderSkills({
     skills: inventory.skills,
     destinationRoot: skillRoot,
     target: "codex",
+    resourceMappings,
   });
   for (const skill of renderedSkills) {
     const neutral = neutralComponents.find(({ id }) => id === skill.id);
@@ -154,22 +202,20 @@ export function renderCodexTarget({ plugin, inventory, neutralComponents, bundle
     };
   }
 
-  for (const plan of nativePlans) {
-    materializeComponent({
-      component: plan.component,
-      bundleRoot,
-      destination: plan.destination,
-    });
-    const neutral = neutralComponents.find(({ id }) => id === plan.component.id);
-    components[plan.component.id] = {
-      ...neutral.targets.codex,
-      path: targetPath(bundleRoot, plan.destination),
-    };
-  }
-
+  const executableFiles = nativePlans
+    .filter(({ component }) => component.type === "executable")
+    .flatMap(({ destination }) => (
+      lstatSync(destination).isDirectory() ? walkFiles(destination) : [destination]
+    ))
+    .map((path) => relative(targetRoot, path).replaceAll("\\", "/"))
+    .sort(compareCodePoints);
   if (hooks.length > 0) {
     const hookPath = resolve(targetRoot, "hooks/hooks.json");
-    writeJson(hookPath, renderHooks({ config: mergeHooks(hooks), target: "codex" }));
+    writeJson(hookPath, renderHooks({
+      config: mergeHooks(hooks, { executableFiles }),
+      target: "codex",
+      executableFiles,
+    }));
     for (const record of hooks) {
       const neutral = neutralComponents.find(({ id }) => id === record.id);
       components[record.id] = {

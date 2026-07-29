@@ -47,10 +47,18 @@ function validRepository(context) {
   writeJson(resolve(repositoryRoot, "sources/fixture/hooks/hooks.json"), {
     hooks: {
       SessionStart: [{
-        hooks: [{ type: "command", command: "node relative-helper.mjs" }],
+        hooks: [{
+          type: "command",
+          command: 'bash "${CLAUDE_PLUGIN_ROOT}/bin/helper.sh"',
+        }],
       }],
     },
   });
+  mkdirSync(resolve(repositoryRoot, "sources/fixture/bin"), { recursive: true });
+  writeFileSync(
+    resolve(repositoryRoot, "sources/fixture/bin/helper.sh"),
+    "#!/usr/bin/env bash\nexit 0\n",
+  );
   mkdirSync(resolve(repositoryRoot, "registry"), { recursive: true });
   writeFileSync(resolve(repositoryRoot, "registry/catalog.json"), JSON.stringify({
     schemaVersion: 1,
@@ -119,12 +127,31 @@ function assertNoError(errors, fragment) {
 test("recursive skill validation reports duplicate names with sorted relative paths", (context) => {
   const skillsRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
   context.after(() => rmSync(skillsRoot, { recursive: true, force: true }));
+  writeSkill(skillsRoot, "parent", "parent");
   writeSkill(skillsRoot, "parent/copied-child", "child");
   writeSkill(skillsRoot, "child", "child");
 
   assert.deepEqual(validateRecursiveSkills(skillsRoot), [
     "duplicate skill name child: child/SKILL.md, parent/copied-child/SKILL.md",
   ]);
+});
+
+test("recursive validation resolves BOM and non-BOM Markdown link offsets", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-bom-skills-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const root = resolve(parent, "targets/codex/skills");
+  writeSkill(root, "fixture", "fixture");
+  writeFileSync(resolve(root, "fixture/reference.md"), "# Reference\n");
+  writeFileSync(
+    resolve(root, "fixture/bom.md"),
+    "\uFEFFRead [reference](./reference.md).\n",
+  );
+  writeFileSync(
+    resolve(root, "fixture/plain.md"),
+    "Read [reference](./reference.md).\n",
+  );
+
+  assert.deepEqual(validateRecursiveSkills(root), []);
 });
 
 test("repository validation detects a bundle mutation after lock creation", (context) => {
@@ -141,6 +168,20 @@ test("a generated fixture repository passes every offline gate", (context) => {
   const repositoryRoot = validRepository(context);
 
   assert.deepEqual(validateRepository({ repositoryRoot }), []);
+});
+
+test("target hooks require their exact target root placeholder", (context) => {
+  const repositoryRoot = validRepository(context);
+  mutateJson(repositoryRoot, "plugins/fixture/targets/codex/hooks/hooks.json", (hooks) => {
+    hooks.hooks.SessionStart[0].hooks[0].command =
+      'bash "${CLAUDE_PLUGIN_ROOT}/bin/helper.sh"';
+  });
+  refreshGeneratedDigests(repositoryRoot);
+
+  assertHasError(
+    validateRepository({ repositoryRoot }),
+    "blocked hook command runtime",
+  );
 });
 
 test("recursive skills report invalid frontmatter, true-like Codex flags, and nested links", (context) => {
@@ -162,13 +203,28 @@ test("recursive skills report invalid frontmatter, true-like Codex flags, and ne
     "Read [missing](./missing.md).\n",
   );
   mkdirSync(resolve(root, "invalid"));
-  writeFileSync(resolve(root, "invalid/SKILL.md"), "# No frontmatter\n");
+  writeFileSync(resolve(root, "invalid/SKILL.md"), "---\nname: invalid\n");
+  mkdirSync(resolve(root, "broken/internal"));
+  writeFileSync(resolve(root, "broken/internal/SKILL.md"), "# Internal resource\n");
+  mkdirSync(resolve(root, "broken/malformed"));
+  writeFileSync(
+    resolve(root, "broken/malformed/SKILL.md"),
+    "\uFEFF---\nname: malformed\n",
+  );
+  mkdirSync(resolve(root, "routable"));
+  writeFileSync(resolve(root, "routable/SKILL.md"), "# Missing frontmatter\n");
+  mkdirSync(resolve(root, "missing-root"));
+  writeFileSync(resolve(root, "missing-root/reference.md"), "# Missing root skill\n");
 
   const errors = validateRecursiveSkills(root);
   assertHasError(errors, "broken/SKILL.md: missing frontmatter description");
   assertHasError(errors, "disable-model-invocation must not be true-like in Codex");
   assertHasError(errors, "broken local Markdown link -> ./missing.md");
   assertHasError(errors, "invalid/SKILL.md: invalid frontmatter");
+  assertHasError(errors, "broken/malformed/SKILL.md: invalid frontmatter");
+  assertHasError(errors, "routable/SKILL.md: invalid frontmatter");
+  assertHasError(errors, "missing-root/SKILL.md: missing canonical skill entrypoint");
+  assertNoError(errors, "broken/internal/SKILL.md: invalid frontmatter");
   assert.deepEqual(errors, [...errors].sort());
 });
 
@@ -740,11 +796,14 @@ test("offline syntax checks invoke only bounded local parsers", (context) => {
   });
 
   assert.deepEqual(errors, []);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].command, process.execPath);
-  assert.deepEqual(calls[0].args.slice(0, 1), ["--check"]);
-  assert.equal(calls[0].options.timeout, 5_000);
-  assert.equal(calls[0].options.shell, undefined);
+  assert.equal(calls.length, 4);
+  assert.equal(calls.filter(({ command }) => command === process.execPath).length, 1);
+  assert.equal(calls.filter(({ command }) => command === "bash").length, 3);
+  for (const call of calls) {
+    assert.deepEqual(call.args.slice(0, 1), [call.command === "bash" ? "-n" : "--check"]);
+    assert.equal(call.options.timeout, 5_000);
+    assert.equal(call.options.shell, undefined);
+  }
 });
 
 test("compareLock rejects same-version bundle drift and cannot skip current verification", (context) => {

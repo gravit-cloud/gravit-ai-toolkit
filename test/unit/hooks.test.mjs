@@ -20,10 +20,10 @@ function inlineRecord(inline) {
   return { sourceFormat: "inline", inline };
 }
 
-function normalizeCommand(command) {
+function normalizeCommand(command, options) {
   return normalizeHooks(inlineRecord({
     SessionStart: [{ hooks: [{ type: "command", command }] }],
-  })).hooks.SessionStart[0].hooks[0].command;
+  }), options).hooks.SessionStart[0].hooks[0].command;
 }
 
 test("renders exact plugin-root references for each host", () => {
@@ -292,6 +292,101 @@ test("rejects blocked shell launchers without inspecting their embedded payloads
       command,
     );
   }
+});
+
+test("permits only an exact declared executable-resource shell script to bash", () => {
+  const command = 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh"';
+  const executableFiles = ["hooks/scripts/track-telemetry.sh"];
+  assert.equal(normalizeCommand(command, { executableFiles }), command);
+
+  for (const command of [
+    'bash "${CLAUDE_PLUGIN_ROOT}/./hooks/scripts/track-telemetry.sh"',
+    'bash "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh" ',
+    "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.py",
+    "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/../track-telemetry.sh",
+    "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh extra",
+    "bash -x ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh",
+    "bash hooks/scripts/track-telemetry.sh",
+    "sh ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh",
+  ]) {
+    assert.throws(
+      () => normalizeCommand(command, { executableFiles }),
+      /blocked hook command runtime/,
+      command,
+    );
+  }
+
+  assert.throws(
+    () => normalizeCommand(command, {
+      executableFiles: ["hooks/scripts/another-helper.sh"],
+    }),
+    /blocked hook command runtime/,
+  );
+});
+
+for (const [name, command, executableFiles] of [
+  [
+    "single-quoted bash script paths",
+    "bash '${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh'",
+    ["hooks/scripts/track-telemetry.sh"],
+  ],
+  [
+    "the wrong source root placeholder",
+    'bash "${PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh"',
+    ["hooks/scripts/track-telemetry.sh"],
+  ],
+  [
+    "noncanonical whitespace before the source root argument",
+    'bash  "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh"',
+    ["hooks/scripts/track-telemetry.sh"],
+  ],
+  [
+    "escaped source root placeholders whose escape is lost by tokenization",
+    'bash "\\${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh"',
+    ["hooks/scripts/track-telemetry.sh"],
+  ],
+  [
+    "paths absent from the declared executable-resource file set",
+    'bash "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh"',
+    ["hooks/scripts"],
+  ],
+]) {
+  test("rejects " + name, () => {
+    assert.throws(
+      () => normalizeCommand(command, { executableFiles }),
+      /blocked hook command runtime/,
+    );
+  });
+}
+
+test("renders and revalidates the exact target-specific bash root placeholder", () => {
+  const executableFiles = ["hooks/scripts/track-telemetry.sh"];
+  const config = normalizeHooks(inlineRecord({
+    SessionStart: [{ hooks: [{
+      type: "command",
+      command: 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh"',
+    }] }],
+  }), { executableFiles });
+
+  assert.equal(
+    renderHooks({ config, target: "codex", executableFiles })
+      .hooks.SessionStart[0].hooks[0].command,
+    'bash "${PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh"',
+  );
+  assert.equal(
+    normalizeCommand(
+      'bash "${PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh"',
+      { executableFiles, target: "codex" },
+    ),
+    'bash "${PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh"',
+  );
+  assert.throws(
+    () => normalizeCommand(
+      'bash "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-telemetry.sh"',
+      { executableFiles, target: "codex" },
+    ),
+    /blocked hook command runtime/,
+  );
 });
 
 test("rejects shell control prefixes before inspecting their embedded payloads", () => {
