@@ -315,6 +315,15 @@ export function materializeComponent(input) {
   return destination;
 }
 
+export function assertJsonSingletonComponent(component) {
+  validateComponent(component);
+  if (component.sourceFormat === "inline") return component;
+  if (!lstatSync(component.sourcePath).isFile()) {
+    throw new Error(component.type + " component must be a regular JSON file");
+  }
+  return component;
+}
+
 function commandFilesInDirectory(directory, result = []) {
   for (const entry of readdirSync(directory, { withFileTypes: true })
     .sort((left, right) => compareCodePoints(left.name, right.name))) {
