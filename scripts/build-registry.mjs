@@ -1,23 +1,242 @@
 #!/usr/bin/env node
-import { rmSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import {
+  lstatSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+} from "node:fs";
+import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { withAtomicOutput } from "./lib/atomic-output.mjs";
+import {
+  promoteManagedPaths,
+  withAtomicOutput,
+} from "./lib/atomic-output.mjs";
 import { buildPluginBundle } from "./lib/bundle-builder.mjs";
 import {
   loadCatalog,
   resolveCatalogPath,
   resolveLocalCatalogSources,
 } from "./lib/catalog.mjs";
+import { treeHash } from "./lib/hash.mjs";
+import { readJson, stableJson, writeJson } from "./lib/json.mjs";
+import { compareCodePoints } from "./lib/ordering.mjs";
 import {
   canonicalPath,
   pathIsInside,
   pathIsStrictlyInside,
   pathsOverlap,
 } from "./lib/path-safety.mjs";
+import { assertVersionChange, createLockEntry } from "./lib/provenance.mjs";
 import { stageSource } from "./lib/source-loader.mjs";
 
 const PRODUCTION_ROOT_NAMES = [".claude-plugin", ".agents", "plugins"];
+const GENERATOR_ROOT = dirname(fileURLToPath(import.meta.url));
+const CATEGORY = Object.freeze({
+  cloud: "Cloud",
+  development: "Development",
+  productivity: "Productivity",
+  seo: "Productivity",
+});
+
+function titleCase(value) {
+  return value.split("-").map((part) => (
+    part.length === 0 ? part : part[0].toUpperCase() + part.slice(1)
+  )).join(" ");
+}
+
+function createClaudeMarketplace(catalog) {
+  return {
+    name: catalog.name,
+    owner: { name: "Gravit Cloud" },
+    description: "Kuratierter Gravit-Cloud-Marketplace für Claude Code und Codex.",
+    plugins: catalog.plugins.map((plugin) => ({
+      name: plugin.name,
+      description: plugin.description,
+      source: "./plugins/" + plugin.name + "/targets/claude",
+      category: plugin.category,
+    })),
+  };
+}
+
+function createCodexMarketplace(catalog) {
+  return {
+    name: catalog.name,
+    interface: { displayName: titleCase(catalog.name) },
+    plugins: catalog.plugins.map((plugin) => ({
+      name: plugin.name,
+      source: {
+        source: "local",
+        path: "./plugins/" + plugin.name + "/targets/codex",
+      },
+      policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+      category: CATEGORY[plugin.category],
+    })),
+  };
+}
+
+function assertSameNames(actual, expected, label) {
+  if (
+    actual.length !== expected.length
+    || actual.some((name, index) => name !== expected[index])
+  ) {
+    throw new Error(label + " names do not match the production catalog");
+  }
+}
+
+function validateStagedProduction({ stageRoot, catalog, lock }) {
+  const expectedNames = catalog.plugins.map(({ name }) => name);
+  const pluginDirectories = readdirSync(resolve(stageRoot, "plugins"), {
+    withFileTypes: true,
+  });
+  if (pluginDirectories.some((entry) => !entry.isDirectory() || entry.isSymbolicLink())) {
+    throw new Error("staged plugins must contain only real plugin directories");
+  }
+  assertSameNames(
+    pluginDirectories.map(({ name }) => name).sort(compareCodePoints),
+    [...expectedNames].sort(compareCodePoints),
+    "staged plugin",
+  );
+
+  for (const plugin of catalog.plugins) {
+    for (const target of plugin.targets) {
+      const manifestPath = resolve(
+        stageRoot,
+        "plugins",
+        plugin.name,
+        "targets",
+        target,
+        "." + target + "-plugin/plugin.json",
+      );
+      const manifest = readJson(manifestPath);
+      if (manifest.name !== plugin.name) {
+        throw new Error(plugin.name + ": staged " + target + " manifest name mismatch");
+      }
+    }
+  }
+
+  const claudeMarketplace = readJson(resolve(stageRoot, ".claude-plugin/marketplace.json"));
+  const codexMarketplace = readJson(resolve(stageRoot, ".agents/plugins/marketplace.json"));
+  assertSameNames(
+    claudeMarketplace.plugins.map(({ name }) => name),
+    expectedNames,
+    "Claude marketplace",
+  );
+  assertSameNames(
+    codexMarketplace.plugins.map(({ name }) => name),
+    expectedNames,
+    "Codex marketplace",
+  );
+  for (const plugin of catalog.plugins) {
+    const claude = claudeMarketplace.plugins.find(({ name }) => name === plugin.name);
+    const codex = codexMarketplace.plugins.find(({ name }) => name === plugin.name);
+    if (claude.source !== "./plugins/" + plugin.name + "/targets/claude") {
+      throw new Error(plugin.name + ": invalid staged Claude marketplace path");
+    }
+    if (codex.source?.path !== "./plugins/" + plugin.name + "/targets/codex") {
+      throw new Error(plugin.name + ": invalid staged Codex marketplace path");
+    }
+  }
+  assertSameNames(
+    Object.keys(lock.plugins).sort(compareCodePoints),
+    [...expectedNames].sort(compareCodePoints),
+    "registry lock",
+  );
+  const stagedLock = readJson(resolve(stageRoot, "registry/lock.json"));
+  if (stableJson(stagedLock) !== stableJson(lock)) {
+    throw new Error("staged registry lock differs from validated lock data");
+  }
+}
+
+function previousLock(repositoryRoot) {
+  const path = resolve(repositoryRoot, "registry/lock.json");
+  let stats;
+  try {
+    stats = lstatSync(path);
+  } catch (error) {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  }
+  const canonicalRepository = realpathSync(repositoryRoot);
+  const expected = resolve(
+    canonicalRepository,
+    relative(resolve(repositoryRoot), path),
+  );
+  if (
+    stats.isSymbolicLink()
+    || !stats.isFile()
+    || canonicalPath(path) !== expected
+  ) {
+    throw new Error(
+      "existing registry lock uses an unsafe symbolic path: " + path,
+    );
+  }
+  const lock = JSON.parse(readFileSync(path, "utf8"));
+  if (!lock || typeof lock !== "object" || Array.isArray(lock) || !lock.plugins) {
+    throw new Error("existing registry lock is malformed");
+  }
+  return lock;
+}
+
+function buildBundles({
+  catalog,
+  repositoryRoot,
+  stageRoot,
+  fetchGitHub,
+  generatorDigest,
+}) {
+  const sourceStage = resolve(stageRoot, ".sources");
+  const builtPlugins = [];
+  for (const plugin of catalog.plugins) {
+    const sourceRoot = stageSource({
+      plugin,
+      repositoryRoot,
+      destinationRoot: sourceStage,
+      fetchGitHub,
+    });
+    const bundleRoot = resolve(stageRoot, "plugins", plugin.name);
+    const manifest = buildPluginBundle({ plugin, sourceRoot, bundleRoot });
+    const lockEntry = generatorDigest === undefined
+      ? undefined
+      : createLockEntry({
+        plugin,
+        source: plugin.source,
+        bundleRoot,
+        components: manifest.components.map(({ id, type, digest }) => ({
+          id,
+          type,
+          digest,
+        })),
+        targets: manifest.targets,
+        generatorDigest,
+      });
+    builtPlugins.push({ name: plugin.name, manifest, lockEntry });
+  }
+  rmSync(sourceStage, { recursive: true, force: true });
+  return builtPlugins;
+}
+
+function directoryIdentity(path) {
+  const stats = lstatSync(path);
+  if (!stats.isDirectory() || stats.isSymbolicLink()) {
+    throw new Error("temporary registry stage must be a real directory: " + path);
+  }
+  return { device: stats.dev, inode: stats.ino };
+}
+
+function removeOwnedStage(path, claim) {
+  const stats = lstatSync(path);
+  if (
+    stats.isSymbolicLink()
+    || !stats.isDirectory()
+    || stats.dev !== claim.device
+    || stats.ino !== claim.inode
+  ) {
+    throw new Error("temporary registry stage ownership changed: " + path);
+  }
+  rmSync(path, { recursive: true, force: true });
+}
 
 function assertSafeOutput({
   repositoryRoot,
@@ -103,39 +322,126 @@ export function buildRegistry({
   catalogPath,
   outputRoot,
   fetchGitHub,
+  production = false,
+  promote = promoteManagedPaths,
 }) {
-  const catalog = loadCatalog({ repositoryRoot, catalogPath });
-  const canonicalCatalogPath = resolveCatalogPath({ repositoryRoot, catalogPath });
-  const localSources = resolveLocalCatalogSources({ repositoryRoot, catalog });
-  const safeOutputRoot = assertSafeOutput({
-    repositoryRoot,
+  const lexicalRepository = resolve(repositoryRoot);
+  const catalog = loadCatalog({ repositoryRoot: lexicalRepository, catalogPath });
+  const canonicalCatalogPath = resolveCatalogPath({
+    repositoryRoot: lexicalRepository,
     catalogPath,
-    canonicalCatalogPath,
-    outputRoot,
-    localSources,
   });
-  const builtPlugins = [];
-  withAtomicOutput({
-    finalRoot: safeOutputRoot,
-    build(stage) {
-      const sourceStage = resolve(stage, ".sources");
-      for (const plugin of catalog.plugins) {
-        const sourceRoot = stageSource({
-          plugin,
-          repositoryRoot,
-          destinationRoot: sourceStage,
+  const localSources = resolveLocalCatalogSources({
+    repositoryRoot: lexicalRepository,
+    catalog,
+  });
+  let safeOutputRoot;
+  let builtPlugins;
+
+  if (production) {
+    const repositoryStats = lstatSync(lexicalRepository);
+    if (!repositoryStats.isDirectory() || repositoryStats.isSymbolicLink()) {
+      throw new Error("production repository root must be a real directory");
+    }
+    if (
+      resolve(outputRoot) !== lexicalRepository
+      || realpathSync(resolve(outputRoot)) !== realpathSync(lexicalRepository)
+    ) {
+      throw new Error("production output must be the repository root");
+    }
+    safeOutputRoot = lexicalRepository;
+    const existingLock = previousLock(lexicalRepository);
+    const generatorDigest = treeHash(GENERATOR_ROOT);
+    const stageRoot = mkdtempSync(resolve(
+      dirname(lexicalRepository),
+      "." + basename(lexicalRepository) + ".registry-stage-",
+    ));
+    const stageClaim = directoryIdentity(stageRoot);
+    let activeError;
+    try {
+      builtPlugins = buildBundles({
+        catalog,
+        repositoryRoot: lexicalRepository,
+        stageRoot,
+        fetchGitHub,
+        generatorDigest,
+      });
+      const lock = {
+        schemaVersion: 1,
+        generatorDigest,
+        plugins: Object.fromEntries(builtPlugins.map(({ name, lockEntry }) => [
+          name,
+          lockEntry,
+        ])),
+      };
+      for (const plugin of builtPlugins) {
+        assertVersionChange({
+          previousEntry: existingLock?.plugins?.[plugin.name],
+          nextEntry: plugin.lockEntry,
+        });
+      }
+      writeJson(
+        resolve(stageRoot, ".claude-plugin/marketplace.json"),
+        createClaudeMarketplace(catalog),
+      );
+      writeJson(
+        resolve(stageRoot, ".agents/plugins/marketplace.json"),
+        createCodexMarketplace(catalog),
+      );
+      writeJson(resolve(stageRoot, "registry/lock.json"), lock);
+      validateStagedProduction({ stageRoot, catalog, lock });
+      promote({ repositoryRoot: lexicalRepository, stageRoot });
+    } catch (error) {
+      activeError = error;
+      throw error;
+    } finally {
+      const recoveryPaths = activeError && typeof activeError === "object"
+        ? [
+          activeError.recoveryPath,
+          ...(Array.isArray(activeError.additionalRecoveryPaths)
+            ? activeError.additionalRecoveryPaths
+            : []),
+        ].filter((path) => typeof path === "string")
+        : [];
+      const preserveStage = recoveryPaths.some((path) => (
+        pathIsInside(stageRoot, path) || pathIsInside(path, stageRoot)
+      ));
+      if (!preserveStage) {
+        try {
+          removeOwnedStage(stageRoot, stageClaim);
+        } catch (cleanupError) {
+          if (!activeError) throw cleanupError;
+          const error = new AggregateError(
+            [activeError, cleanupError],
+            "registry build failed and its owned stage could not be cleaned; recovery data remains at "
+              + stageRoot,
+          );
+          error.recoveryPath = stageRoot;
+          throw error;
+        }
+      }
+    }
+  } else {
+    safeOutputRoot = assertSafeOutput({
+      repositoryRoot: lexicalRepository,
+      catalogPath,
+      canonicalCatalogPath,
+      outputRoot,
+      localSources,
+    });
+    withAtomicOutput({
+      finalRoot: safeOutputRoot,
+      build(stageRoot) {
+        builtPlugins = buildBundles({
+          catalog,
+          repositoryRoot: lexicalRepository,
+          stageRoot,
           fetchGitHub,
         });
-        const manifest = buildPluginBundle({
-          plugin,
-          sourceRoot,
-          bundleRoot: resolve(stage, "plugins", plugin.name),
-        });
-        builtPlugins.push({ name: plugin.name, manifest });
-      }
-      rmSync(sourceStage, { recursive: true, force: true });
-    },
-  });
+      },
+    });
+  }
+
   return {
     catalogName: catalog.name,
     outputRoot: safeOutputRoot,

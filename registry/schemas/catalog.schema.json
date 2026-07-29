@@ -69,7 +69,7 @@
               "required": ["type", "path"],
               "properties": {
                 "type": { "const": "local" },
-                "path": { "type": "string", "pattern": "^test/fixtures/" },
+                "path": { "type": "string", "pattern": "^(?:sources|test/fixtures)/" },
                 "root": { "type": "string", "default": "." }
               }
             },

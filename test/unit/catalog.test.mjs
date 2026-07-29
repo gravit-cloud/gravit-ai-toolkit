@@ -187,3 +187,47 @@ test("rejects local sources outside the real test fixture root", (context) => {
     /local catalog source escapes source root/,
   );
 });
+
+test("accepts sources as a local boundary and rejects lexical or canonical escape", (context) => {
+  const sandboxRepository = mkdtempSync(resolve(tmpdir(), "registry-sources-catalog-"));
+  context.after(() => rmSync(sandboxRepository, { recursive: true, force: true }));
+  const sourcesRoot = resolve(sandboxRepository, "sources");
+  const safeSource = resolve(sourcesRoot, "safe-source");
+  const outsideSource = resolve(sandboxRepository, "outside-source");
+  mkdirSync(safeSource, { recursive: true });
+  mkdirSync(outsideSource);
+
+  writeFileSync(
+    resolve(sandboxRepository, "safe-catalog.json"),
+    JSON.stringify(fixtureCatalog("sources/safe-source")),
+  );
+  assert.equal(loadCatalog({
+    repositoryRoot: sandboxRepository,
+    catalogPath: "safe-catalog.json",
+  }).plugins[0].source.path, "sources/safe-source");
+
+  writeFileSync(
+    resolve(sandboxRepository, "traversal-catalog.json"),
+    JSON.stringify(fixtureCatalog("sources/../outside-source")),
+  );
+  assert.throws(
+    () => loadCatalog({
+      repositoryRoot: sandboxRepository,
+      catalogPath: "traversal-catalog.json",
+    }),
+    /local catalog source escapes source root/,
+  );
+
+  symlinkSync(outsideSource, resolve(sourcesRoot, "linked-source"));
+  writeFileSync(
+    resolve(sandboxRepository, "symlink-catalog.json"),
+    JSON.stringify(fixtureCatalog("sources/linked-source")),
+  );
+  assert.throws(
+    () => loadCatalog({
+      repositoryRoot: sandboxRepository,
+      catalogPath: "symlink-catalog.json",
+    }),
+    /local catalog source escapes source root/,
+  );
+});

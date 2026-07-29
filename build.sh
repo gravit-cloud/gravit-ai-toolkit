@@ -1,18 +1,26 @@
 #!/usr/bin/env bash
 # Build distribution packages for the LOCAL "gravit-custom" plugin.
-# Linked marketplace plugins are NOT
-# built here — they are fetched from their own repos via .claude-plugin/marketplace.json.
+# Linked marketplace plugins are NOT built here; the neutral registry sync
+# materializes them from registry/catalog.json.
 #
-# Creates individual skill zips and a dual Claude Code/Codex plugin bundle.
+# Creates individual skill zips and a universal Claude/Codex registry bundle.
 #
 # Artifact strategy: only versioned archives are produced. They are gitignored and
 # attached to GitHub Releases by .github/workflows/release.yml.
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-CUSTOM_DIR="$REPO_ROOT/plugins/gravit-custom"
+SOURCE_DIR="$REPO_ROOT/sources/gravit-custom"
+GENERATED_DIR="$REPO_ROOT/plugins/gravit-custom"
 DIST_DIR="$REPO_ROOT/dist"
-VERSION=$(grep '"version"' "$CUSTOM_DIR/.claude-plugin/plugin.json" | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/')
+VERSION=$(grep '"version"' "$SOURCE_DIR/.claude-plugin/plugin.json" | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/')
+
+if [ ! -f "$GENERATED_DIR/.agent-plugin/plugin.json" ] \
+  || [ ! -f "$GENERATED_DIR/targets/claude/.claude-plugin/plugin.json" ] \
+  || [ ! -f "$GENERATED_DIR/targets/codex/.codex-plugin/plugin.json" ]; then
+  echo "Missing generated gravit-custom bundle. Run npm run plugins:sync first." >&2
+  exit 1
+fi
 
 _CLEANUP_DIRS=()
 cleanup() {
@@ -20,10 +28,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Discover every skill (any plugins/gravit-custom/skills/<name>/ containing a
+# Discover every maintained skill (any sources/gravit-custom/skills/<name>/ containing a
 # SKILL.md) — no manual list to keep in sync.
 SKILLS=()
-for dir in "$CUSTOM_DIR"/skills/*/; do
+for dir in "$SOURCE_DIR"/skills/*/; do
   [ -f "${dir}SKILL.md" ] || continue
   SKILLS+=("$(basename "$dir")")
 done
@@ -40,21 +48,18 @@ for skill in "${SKILLS[@]}"; do
     echo "  - $skill"
     TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/gravit-custom.XXXXXX")
     _CLEANUP_DIRS+=("$TMPDIR")
-    cp -r "$CUSTOM_DIR/skills/$skill" "$TMPDIR/$skill"
+    cp -r "$SOURCE_DIR/skills/$skill" "$TMPDIR/$skill"
     cp "$REPO_ROOT/LICENSE" "$TMPDIR/LICENSE"
     (cd "$TMPDIR" && zip -rq "$DIST_DIR/${skill}-v${VERSION}.zip" "$skill/" LICENSE -x "*.DS_Store")
 done
 
-# Complete plugin bundle (Claude Code plugin install)
+# Complete universal plugin bundle (including both target projections)
 echo "Building gravit-custom bundle..."
 TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/gravit-custom.XXXXXX")
 _CLEANUP_DIRS+=("$TMPDIR")
 BUNDLE="$TMPDIR/gravit-custom"
-mkdir -p "$BUNDLE"
-cp -r "$CUSTOM_DIR/.claude-plugin" "$BUNDLE/.claude-plugin"
-cp -r "$CUSTOM_DIR/.codex-plugin"  "$BUNDLE/.codex-plugin"
-cp -r "$CUSTOM_DIR/skills"         "$BUNDLE/skills"
-cp    "$REPO_ROOT/LICENSE"         "$BUNDLE/LICENSE"
+cp -r "$GENERATED_DIR" "$BUNDLE"
+cp "$REPO_ROOT/LICENSE" "$BUNDLE/LICENSE"
 (cd "$TMPDIR" && zip -rq "$DIST_DIR/gravit-custom-v${VERSION}.zip" "gravit-custom/" -x "*.DS_Store")
 
 echo ""
@@ -66,6 +71,6 @@ for skill in "${SKILLS[@]}"; do
     echo "  ${skill}-v${VERSION}.zip  (${SIZE})"
 done
 echo ""
-echo "Plugin bundle (Claude Code + Codex):"
+echo "Universal plugin bundle (Claude Code + Codex targets):"
 SIZE=$(du -h "$DIST_DIR/gravit-custom-v${VERSION}.zip" | cut -f1)
 echo "  gravit-custom-v${VERSION}.zip  (${SIZE})"

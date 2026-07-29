@@ -1,15 +1,310 @@
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  realpathSync,
   renameSync,
   rmSync,
   rmdirSync,
 } from "node:fs";
-import { basename, dirname, resolve } from "node:path";
+import { basename, dirname, relative, resolve } from "node:path";
 import { compareCodePoints } from "./ordering.mjs";
-import { pathIsInside } from "./path-safety.mjs";
+import {
+  assertInside,
+  canonicalPath,
+  pathIsInside,
+  pathsOverlap,
+  walkFiles,
+} from "./path-safety.mjs";
+
+export const MANAGED_REGISTRY_PATHS = Object.freeze([
+  "plugins",
+  ".claude-plugin/marketplace.json",
+  ".agents/plugins/marketplace.json",
+  "registry/lock.json",
+]);
+
+function pathEntryExists(path) {
+  try {
+    lstatSync(path);
+    return true;
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+function identity(path) {
+  const stats = lstatSync(path);
+  return { device: stats.dev, inode: stats.ino };
+}
+
+function sameIdentity(path, expected) {
+  if (!pathEntryExists(path)) return false;
+  const actual = identity(path);
+  return actual.device === expected.device && actual.inode === expected.inode;
+}
+
+function assertRealDirectory(path, label) {
+  const stats = lstatSync(path);
+  if (!stats.isDirectory() || stats.isSymbolicLink()) {
+    throw new Error(label + " must be a real directory: " + path);
+  }
+  return realpathSync(path);
+}
+
+function assertUnpivoted(root, candidate, label) {
+  const lexicalRoot = resolve(root);
+  const lexicalCandidate = assertInside(lexicalRoot, resolve(candidate), label);
+  const canonicalRoot = realpathSync(lexicalRoot);
+  const expected = resolve(canonicalRoot, relative(lexicalRoot, lexicalCandidate));
+  const actual = canonicalPath(lexicalCandidate);
+  if (actual !== expected || !pathIsInside(canonicalRoot, actual)) {
+    throw new Error("unsafe symbolic path pivot for " + label + ": " + lexicalCandidate);
+  }
+  return lexicalCandidate;
+}
+
+function assertManagedArtifact(path, relativePath, label) {
+  const stats = lstatSync(path);
+  if (stats.isSymbolicLink()) {
+    throw new Error("symbolic links are not allowed in " + label + ": " + relativePath);
+  }
+  const expectsFile = relativePath.endsWith(".json");
+  if (expectsFile ? !stats.isFile() : !stats.isDirectory()) {
+    throw new Error(
+      label + " has wrong artifact type: " + relativePath,
+    );
+  }
+  if (stats.isDirectory()) walkFiles(path);
+}
+
+function ensureManagedParent({ repositoryRoot, target, createdDirectories }) {
+  const parent = dirname(target);
+  const nested = relative(repositoryRoot, parent);
+  if (nested === "") return;
+  let current = repositoryRoot;
+  for (const segment of nested.split(/[\\/]/)) {
+    current = resolve(current, segment);
+    if (pathEntryExists(current)) continue;
+    mkdirSync(current);
+    createdDirectories.push({ path: current, claim: identity(current) });
+  }
+}
+
+function removeCreatedDirectories(createdDirectories, rollbackErrors) {
+  for (const directory of [...createdDirectories].reverse()) {
+    try {
+      if (!sameIdentity(directory.path, directory.claim)) {
+        if (pathEntryExists(directory.path)) {
+          throw new Error(
+            "created managed parent ownership changed: " + directory.path,
+          );
+        }
+        continue;
+      }
+      const entries = readdirSync(directory.path);
+      if (entries.length > 0) {
+        throw new Error(
+          "created managed parent contains unexpected entries: " + directory.path,
+        );
+      }
+      rmdirSync(directory.path);
+    } catch (error) {
+      rollbackErrors.push(error);
+    }
+  }
+}
+
+function removeOwnedTransactionRoot(transactionRoot, transactionClaim) {
+  if (!sameIdentity(transactionRoot, transactionClaim)) {
+    throw new Error("registry transaction root ownership changed: " + transactionRoot);
+  }
+  rmSync(transactionRoot, { recursive: true, force: true });
+}
+
+function managedRecoveryPaths({ stageRoot, pending }) {
+  const paths = [];
+  if (pathEntryExists(stageRoot)) paths.push(stageRoot);
+  for (const item of pending) {
+    if (pathEntryExists(item.target)) paths.push(item.target);
+  }
+  return [...new Set(paths)];
+}
+
+export function promoteManagedPaths({
+  repositoryRoot,
+  stageRoot,
+  rename = renameSync,
+}) {
+  const lexicalRepository = resolve(repositoryRoot);
+  const lexicalStage = resolve(stageRoot);
+  const canonicalRepository = assertRealDirectory(
+    lexicalRepository,
+    "repository root",
+  );
+  const canonicalStage = assertRealDirectory(lexicalStage, "registry stage root");
+  if (
+    pathsOverlap(lexicalRepository, lexicalStage)
+    || pathsOverlap(canonicalRepository, canonicalStage)
+  ) {
+    throw new Error("unsafe managed registry stage overlaps repository");
+  }
+
+  const pending = MANAGED_REGISTRY_PATHS.map((relativePath, index) => {
+    const source = assertUnpivoted(
+      lexicalStage,
+      resolve(lexicalStage, relativePath),
+      "staged artifact",
+    );
+    const target = assertUnpivoted(
+      lexicalRepository,
+      resolve(lexicalRepository, relativePath),
+      "managed artifact",
+    );
+    if (!pathEntryExists(source)) {
+      throw new Error("missing staged artifact: " + relativePath);
+    }
+    assertManagedArtifact(source, relativePath, "staged artifact");
+    const hadTarget = pathEntryExists(target);
+    if (hadTarget) assertManagedArtifact(target, relativePath, "managed artifact");
+    return {
+      relativePath,
+      source,
+      target,
+      index,
+      hadTarget,
+      sourceClaim: identity(source),
+      targetClaim: hadTarget ? identity(target) : undefined,
+      backupMoved: false,
+      promoted: false,
+    };
+  });
+
+  const transactionRoot = mkdtempSync(resolve(
+    dirname(lexicalRepository),
+    "." + basename(lexicalRepository) + ".promote-",
+  ));
+  const transactionClaim = identity(transactionRoot);
+  const createdDirectories = [];
+  let publicationStarted = false;
+
+  try {
+    for (const item of pending) {
+      item.backup = assertInside(
+        transactionRoot,
+        resolve(transactionRoot, "backup", String(item.index)),
+        "managed backup",
+      );
+      mkdirSync(dirname(item.backup), { recursive: true });
+      ensureManagedParent({
+        repositoryRoot: lexicalRepository,
+        target: item.target,
+        createdDirectories,
+      });
+      assertUnpivoted(lexicalRepository, item.target, "managed artifact");
+      if (!sameIdentity(item.source, item.sourceClaim)) {
+        throw new Error("staged artifact ownership changed: " + item.relativePath);
+      }
+      if (item.hadTarget) {
+        if (!sameIdentity(item.target, item.targetClaim)) {
+          throw new Error("managed artifact ownership changed: " + item.relativePath);
+        }
+        rename(item.target, item.backup);
+        item.backupMoved = true;
+      } else if (pathEntryExists(item.target)) {
+        throw new Error("managed artifact appeared during promotion: " + item.relativePath);
+      }
+      publicationStarted = true;
+      rename(item.source, item.target);
+      item.promoted = true;
+    }
+  } catch (promotionError) {
+    const rollbackErrors = [];
+    for (const item of [...pending].reverse()) {
+      try {
+        if (item.promoted) {
+          if (!sameIdentity(item.target, item.sourceClaim)) {
+            throw new Error(
+              "promoted artifact ownership changed: " + item.relativePath,
+            );
+          }
+          if (pathEntryExists(item.source)) {
+            throw new Error(
+              "staged recovery path reappeared: " + item.relativePath,
+            );
+          }
+          rename(item.target, item.source);
+          item.promoted = false;
+        }
+        if (item.backupMoved) {
+          if (pathEntryExists(item.target)) {
+            throw new Error(
+              "managed artifact blocks rollback: " + item.relativePath,
+            );
+          }
+          if (!sameIdentity(item.backup, item.targetClaim)) {
+            throw new Error(
+              "managed backup ownership changed: " + item.relativePath,
+            );
+          }
+          rename(item.backup, item.target);
+          item.backupMoved = false;
+        }
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
+    removeCreatedDirectories(createdDirectories, rollbackErrors);
+    if (rollbackErrors.length > 0) {
+      const error = new AggregateError(
+        [promotionError, ...rollbackErrors],
+        "registry promotion and rollback failed; backups remain at " + transactionRoot,
+      );
+      error.recoveryPath = transactionRoot;
+      error.additionalRecoveryPaths = managedRecoveryPaths({
+        stageRoot: lexicalStage,
+        pending,
+      });
+      throw error;
+    }
+    try {
+      removeOwnedTransactionRoot(transactionRoot, transactionClaim);
+    } catch (cleanupError) {
+      const error = new AggregateError(
+        [promotionError, cleanupError],
+        "registry promotion rolled back but transaction cleanup failed; recovery data remains at "
+          + transactionRoot,
+      );
+      error.recoveryPath = transactionRoot;
+      error.additionalRecoveryPaths = [lexicalStage];
+      throw error;
+    }
+    if (publicationStarted) {
+      const error = new AggregateError(
+        [promotionError],
+        "registry promotion failed and rolled back: " + promotionError.message
+          + "; staged recovery data retained at " + lexicalStage,
+      );
+      error.recoveryPath = lexicalStage;
+      throw error;
+    }
+    throw promotionError;
+  }
+
+  try {
+    removeOwnedTransactionRoot(transactionRoot, transactionClaim);
+  } catch (cleanupError) {
+    const error = new AggregateError(
+      [cleanupError],
+      "registry promotion succeeded but backups remain at " + transactionRoot,
+    );
+    error.recoveryPath = transactionRoot;
+    throw error;
+  }
+}
 
 function removeIfPresent(path, remove = rmSync) {
   if (existsSync(path)) remove(path, { recursive: true, force: true });
