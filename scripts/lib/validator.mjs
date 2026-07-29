@@ -677,6 +677,61 @@ const HOST_REFERENCES = {
   ],
 };
 
+const OPENCLAW_FORBIDDEN_HOST_FIELDS = new Set([
+  "agents",
+  "hooks",
+  "lspServers",
+  "apps",
+  "outputStyles",
+  "channels",
+  "settings",
+  "experimental",
+]);
+
+const OPENCLAW_FORBIDDEN_TARGET_PATHS = [
+  "agents",
+  "hooks",
+  ".lsp.json",
+  ".app.json",
+  "output-styles",
+  "monitors",
+  "themes",
+  "channels",
+  "settings.json",
+];
+
+function validateOpenClawCompatibilityTarget({
+  pluginRoot,
+  plugin,
+  targetRoot,
+  manifest,
+  host,
+  errors,
+}) {
+  for (const field of OPENCLAW_FORBIDDEN_HOST_FIELDS) {
+    if (Object.hasOwn(host, field)) {
+      errors.push(`${plugin.name} openclaw host manifest must not declare ${field}`);
+    }
+  }
+  const componentRoots = targetComponentProjectionRoots({
+    pluginRoot,
+    plugin,
+    manifest,
+    target: "openclaw",
+    targetRoot,
+    errors,
+  });
+  for (const path of OPENCLAW_FORBIDDEN_TARGET_PATHS) {
+    const candidate = resolve(targetRoot, path);
+    const stats = statEntry(candidate);
+    if (!stats) continue;
+    const files = stats.isDirectory() ? walkFiles(candidate) : [candidate];
+    if (files.some((file) => !componentRoots.some((root) => pathIsInside(root, file)))) {
+      errors.push(`${plugin.name} openclaw target must not contain ${path}`);
+    }
+  }
+}
+
 function dispositionPaths({ manifest, target, type }) {
   return (manifest.components || [])
     .filter((component) => component.type === type)
@@ -706,6 +761,16 @@ function validateHostManifest({ pluginRoot, plugin, manifest, target, errors }) 
   if (host.name !== plugin.name) errors.push(`${plugin.name} ${target}: host manifest name mismatch`);
   if (host.version !== plugin.distributionVersion) {
     errors.push(`${plugin.name} ${target}: host manifest version mismatch`);
+  }
+  if (target === "openclaw") {
+    validateOpenClawCompatibilityTarget({
+      pluginRoot,
+      plugin,
+      targetRoot,
+      manifest,
+      host,
+      errors,
+    });
   }
   const referenceSpecs = [...HOST_REFERENCES[target]];
   if (target === "claude") {

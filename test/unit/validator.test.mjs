@@ -31,7 +31,7 @@ function writeSkill(root, relativeDirectory, name) {
   );
 }
 
-function validRepository(context) {
+function validRepository(context, { includeOpenClaw = false } = {}) {
   const parent = mkdtempSync(resolve(tmpdir(), "registry-validator-"));
   context.after(() => rmSync(parent, { recursive: true, force: true }));
   const repositoryRoot = resolve(parent, "repository");
@@ -80,7 +80,17 @@ function validRepository(context) {
         path: "source-only-context.txt",
         digest: sourceContextHash(sourceContextPath),
       }],
-      targets: ["claude", "codex"],
+      targets: includeOpenClaw ? ["claude", "codex", "openclaw"] : ["claude", "codex"],
+      ...(includeOpenClaw ? {
+        adapterOptions: { openclaw: { bundleFormat: "codex" } },
+        targetPolicies: {
+          openclaw: {
+            unsupported: {
+              hook: "openclaw-does-not-run-claude-hook-json",
+            },
+          },
+        },
+      } : {}),
       policies: { default: "transform-or-fail", skills: "transform" },
     }],
   }));
@@ -92,6 +102,67 @@ function validRepository(context) {
   });
   return repositoryRoot;
 }
+
+test("OpenClaw rejects every unsupported host binding and target root", (context) => {
+  const repositoryRoot = validRepository(context, { includeOpenClaw: true });
+  const targetRoot = "plugins/fixture/targets/openclaw";
+  mutateJson(repositoryRoot, targetRoot + "/.codex-plugin/plugin.json", (host) => {
+    host.agents = ["./agents/reviewer.md"];
+    host.hooks = "./hooks/hooks.json";
+    host.lspServers = "./.lsp.json";
+    host.apps = "./.app.json";
+    host.outputStyles = ["./output-styles/terse.md"];
+    host.channels = ["./channels/alerts.json"];
+    host.settings = "./settings.json";
+    host.experimental = {
+      monitors: "./monitors/monitors.json",
+      themes: "./themes/",
+    };
+  });
+  for (const [path, contents] of [
+    ["agents/reviewer.md", "# reviewer\n"],
+    ["hooks/hooks.json", "{}\n"],
+    [".lsp.json", "{}\n"],
+    [".app.json", "{}\n"],
+    ["output-styles/terse.md", "# terse\n"],
+    ["monitors/monitors.json", "{}\n"],
+    ["themes/theme.json", "{}\n"],
+    ["channels/alerts.json", "{}\n"],
+    ["settings.json", "{}\n"],
+  ]) {
+    const destination = resolve(repositoryRoot, targetRoot, path);
+    mkdirSync(resolve(destination, ".."), { recursive: true });
+    writeFileSync(destination, contents);
+  }
+  refreshGeneratedDigests(repositoryRoot);
+
+  const errors = validateRepository({ repositoryRoot });
+  for (const field of [
+    "agents",
+    "hooks",
+    "lspServers",
+    "apps",
+    "outputStyles",
+    "channels",
+    "settings",
+    "experimental",
+  ]) {
+    assertHasError(errors, `openclaw host manifest must not declare ${field}`);
+  }
+  for (const path of [
+    "agents",
+    "hooks",
+    ".lsp.json",
+    ".app.json",
+    "output-styles",
+    "monitors",
+    "themes",
+    "channels",
+    "settings.json",
+  ]) {
+    assertHasError(errors, `openclaw target must not contain ${path}`);
+  }
+});
 
 function readJson(repositoryRoot, relativePath) {
   return JSON.parse(readFileSync(resolve(repositoryRoot, relativePath), "utf8"));
