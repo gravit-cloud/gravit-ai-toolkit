@@ -164,15 +164,16 @@ test("production catalog is neutral and fully pinned", () => {
   }
 });
 
-test("current repository validation remains usable before generated cutover", () => {
+test("current repository validation fails closed before generated cutover", () => {
   const result = spawnSync(
     process.execPath,
     ["scripts/validate.mjs"],
     { cwd: repositoryRoot, encoding: "utf8" },
   );
 
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /Validation passed/);
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  assert.match(result.stderr, /registry\/lock\.json/);
+  assert.equal(result.stdout, "");
 });
 
 test("production build promotes only complete managed registry artifacts", (context) => {
