@@ -57,6 +57,7 @@ function promoteIntoReservedOutput({
     }
     removeDirectory(stage);
   } catch (promotionError) {
+    const hadPublicMoves = movedEntries.length > 0;
     const recoveryErrors = [];
     for (const entry of movedEntries.reverse()) {
       try {
@@ -88,7 +89,7 @@ function promoteIntoReservedOutput({
       ));
     }
 
-    if (recoveryErrors.length === 0) throw promotionError;
+    if (!hadPublicMoves && recoveryErrors.length === 0) throw promotionError;
     throw retainedAbsentOutputError({
       promotionError,
       recoveryErrors,
