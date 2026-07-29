@@ -240,6 +240,39 @@ test("absent-only atomic promotion rolls moved entries back after a later move f
   context.after(() => rmSync(parent, { recursive: true, force: true }));
   const finalRoot = resolve(parent, "output");
   const promotionError = new Error("synthetic second-entry promotion failure");
+  let stageRoot;
+  let error;
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build(stage) {
+      stageRoot = stage;
+      writeFileSync(resolve(stage, "a.txt"), "a\n");
+      writeFileSync(resolve(stage, "b.txt"), "b\n");
+    },
+  }, {
+    renameSync(source, destination) {
+      if (destination === resolve(finalRoot, "b.txt")) throw promotionError;
+      return renameSync(source, destination);
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.deepEqual(error.errors, [promotionError]);
+  assert.equal(error.recoveryPath, stageRoot);
+  assert.deepEqual(readdirSync(stageRoot), ["a.txt", "b.txt"]);
+  assert.equal(existsSync(finalRoot), false);
+  assert.deepEqual(readdirSync(parent), [basename(stageRoot)]);
+});
+
+test("absent-only first-entry failure safely cleans the unpublished stage", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-first-move-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  const promotionError = new Error("synthetic first-entry promotion failure");
 
   assert.throws(() => withAtomicOutput({
     finalRoot,
@@ -250,7 +283,7 @@ test("absent-only atomic promotion rolls moved entries back after a later move f
     },
   }, {
     renameSync(source, destination) {
-      if (destination === resolve(finalRoot, "b.txt")) throw promotionError;
+      if (destination === resolve(finalRoot, "a.txt")) throw promotionError;
       return renameSync(source, destination);
     },
   }), (error) => error === promotionError);
@@ -265,6 +298,7 @@ test("absent-only promotion rolls back when its empty stage cannot be removed", 
   const finalRoot = resolve(parent, "output");
   const stageCleanupError = new Error("synthetic empty-stage cleanup failure");
   let stageRoot;
+  let error;
 
   assert.throws(() => withAtomicOutput({
     finalRoot,
@@ -279,10 +313,56 @@ test("absent-only promotion rolls back when its empty stage cannot be removed", 
       if (path === stageRoot) throw stageCleanupError;
       return rmdirSync(path);
     },
-  }), (error) => error === stageCleanupError);
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
 
+  assert.deepEqual(error.errors, [stageCleanupError]);
+  assert.equal(error.recoveryPath, stageRoot);
+  assert.deepEqual(readdirSync(stageRoot), ["a.txt", "b.txt"]);
   assert.equal(existsSync(finalRoot), false);
-  assert.deepEqual(readdirSync(parent), []);
+  assert.deepEqual(readdirSync(parent), [basename(stageRoot)]);
+});
+
+test("absent-only rollback retains a foreign file nested in a moved directory", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-nested-foreign-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  const promotionError = new Error("synthetic later promotion failure");
+  let stageRoot;
+  let error;
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build(stage) {
+      stageRoot = stage;
+      mkdirSync(resolve(stage, "a"));
+      writeFileSync(resolve(stage, "a", "owned.txt"), "owned\n");
+      writeFileSync(resolve(stage, "b.txt"), "b\n");
+    },
+  }, {
+    renameSync(source, destination) {
+      if (destination === resolve(finalRoot, "b.txt")) {
+        writeFileSync(resolve(finalRoot, "a", "foreign.txt"), "foreign\n");
+        throw promotionError;
+      }
+      return renameSync(source, destination);
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError;
+  });
+
+  assert.deepEqual(error.errors, [promotionError]);
+  assert.equal(error.recoveryPath, stageRoot);
+  assert.equal(Object.hasOwn(error, "additionalRecoveryPaths"), false);
+  assert.equal(readFileSync(resolve(stageRoot, "a", "owned.txt"), "utf8"), "owned\n");
+  assert.equal(readFileSync(resolve(stageRoot, "a", "foreign.txt"), "utf8"), "foreign\n");
+  assert.equal(readFileSync(resolve(stageRoot, "b.txt"), "utf8"), "b\n");
+  assert.equal(existsSync(finalRoot), false);
+  assert.deepEqual(readdirSync(parent), [basename(stageRoot)]);
 });
 
 test("absent-only rollback preserves recovery data and an unexpected foreign entry", (context) => {
@@ -315,6 +395,7 @@ test("absent-only rollback preserves recovery data and an unexpected foreign ent
   assert.equal(error.errors[0], promotionError);
   assert.match(error.message, /recovery data retained/);
   assert.match(basename(error.recoveryPath), /^\.output\.stage-/);
+  assert.deepEqual(error.additionalRecoveryPaths, [finalRoot]);
   assert.deepEqual(readdirSync(error.recoveryPath), ["a.txt", "b.txt"]);
   assert.equal(readFileSync(resolve(finalRoot, "foreign.txt"), "utf8"), "foreign\n");
   assert.deepEqual(readdirSync(finalRoot), ["foreign.txt"]);
@@ -353,12 +434,13 @@ test("absent-only rollback failure retains both staged and promoted recovery dat
   assert.equal(error.errors[0], promotionError);
   assert.equal(error.errors[1], rollbackError);
   assert.equal(error.recoveryPath, stageRoot);
+  assert.deepEqual(error.additionalRecoveryPaths, [finalRoot]);
   assert.deepEqual(readdirSync(stageRoot), ["b.txt"]);
   assert.equal(readFileSync(resolve(finalRoot, "a.txt"), "utf8"), "a\n");
   assert.deepEqual(readdirSync(finalRoot), ["a.txt"]);
 });
 
-test("absent-only cleanup failure retains and reports the rolled-back stage", (context) => {
+test("absent-only recovery stages are never offered to recursive cleanup", (context) => {
   const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-cleanup-"));
   context.after(() => rmSync(parent, { recursive: true, force: true }));
   const finalRoot = resolve(parent, "output");
@@ -366,6 +448,7 @@ test("absent-only cleanup failure retains and reports the rolled-back stage", (c
   const cleanupError = new Error("synthetic stage cleanup failure");
   let stageRoot;
   let error;
+  let cleanupAttempted = false;
 
   assert.throws(() => withAtomicOutput({
     finalRoot,
@@ -381,7 +464,10 @@ test("absent-only cleanup failure retains and reports the rolled-back stage", (c
       return renameSync(source, destination);
     },
     rmSync(path, options) {
-      if (path === stageRoot) throw cleanupError;
+      if (path === stageRoot) {
+        cleanupAttempted = true;
+        throw cleanupError;
+      }
       return rmSync(path, options);
     },
   }), (caught) => {
@@ -389,9 +475,9 @@ test("absent-only cleanup failure retains and reports the rolled-back stage", (c
     return caught instanceof AggregateError;
   });
 
-  assert.equal(error.errors[0], promotionError);
-  assert.equal(error.errors[1], cleanupError);
+  assert.deepEqual(error.errors, [promotionError]);
   assert.equal(error.recoveryPath, stageRoot);
+  assert.equal(cleanupAttempted, false);
   assert.deepEqual(readdirSync(stageRoot), ["a.txt", "b.txt"]);
   assert.equal(existsSync(finalRoot), false);
 });
