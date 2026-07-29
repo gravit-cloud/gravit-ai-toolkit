@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -59,6 +60,11 @@ function validRepository(context) {
     resolve(repositoryRoot, "sources/fixture/bin/helper.sh"),
     "#!/usr/bin/env bash\nexit 0\n",
   );
+  const sourceContextPath = resolve(
+    repositoryRoot,
+    "sources/fixture/source-only-context.txt",
+  );
+  writeFileSync(sourceContextPath, "classification only\n");
   mkdirSync(resolve(repositoryRoot, "registry"), { recursive: true });
   writeFileSync(resolve(repositoryRoot, "registry/catalog.json"), JSON.stringify({
     schemaVersion: 1,
@@ -70,6 +76,10 @@ function validRepository(context) {
       distributionVersion: "1.0.0-gravit.1",
       runtimeDependencies: { "@fixture/mcp": "1.4.2" },
       source: { type: "local", path: "sources/fixture", root: "." },
+      sourceContext: [{
+        path: "source-only-context.txt",
+        digest: treeHash(sourceContextPath),
+      }],
       targets: ["claude", "codex"],
       policies: { default: "transform-or-fail", skills: "transform" },
     }],
@@ -154,6 +164,71 @@ test("recursive validation resolves BOM and non-BOM Markdown link offsets", (con
   assert.deepEqual(validateRecursiveSkills(root), []);
 });
 
+test("recursive validation permits only explicitly owned component projection roots", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-owned-links-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const targetRoot = resolve(parent, "targets/codex");
+  const skillsRoot = resolve(targetRoot, "skills");
+  const assetsRoot = resolve(targetRoot, "assets");
+  writeSkill(skillsRoot, "fixture", "fixture");
+  mkdirSync(resolve(targetRoot, ".codex-plugin"), { recursive: true });
+  writeFileSync(resolve(targetRoot, ".codex-plugin/plugin.json"), "{}\n");
+  writeFileSync(resolve(targetRoot, "package.json"), "{}\n");
+  mkdirSync(assetsRoot);
+  writeFileSync(resolve(assetsRoot, "icon.svg"), "<svg/>\n");
+  symlinkSync("../package.json", resolve(assetsRoot, "metadata-link"));
+  mkdirSync(resolve(targetRoot, "unsupported"));
+  writeFileSync(resolve(targetRoot, "unsupported/payload.txt"), "unsupported\n");
+  mkdirSync(resolve(targetRoot, "assets-prefix"));
+  writeFileSync(resolve(targetRoot, "assets-prefix/payload.txt"), "prefix\n");
+  const skill = resolve(skillsRoot, "fixture/SKILL.md");
+
+  writeFileSync(skill, readFileSync(skill, "utf8") + [
+    "[asset](../../assets/icon.svg)",
+    "[host](../../.codex-plugin/plugin.json)",
+    "[metadata](../../package.json)",
+    "[unsupported](../../unsupported/payload.txt)",
+    "[prefix](../../assets-prefix/payload.txt)",
+    "[symlink](../../assets/metadata-link)",
+    "[escape](../../../../outside.txt)",
+    "",
+  ].join("\n"));
+
+  const errors = validateRecursiveSkills(skillsRoot, {
+    target: "codex",
+    allowedComponentRoots: [skillsRoot, assetsRoot],
+  });
+  assertNoError(errors, "../../assets/icon.svg");
+  for (const path of [
+    "../../.codex-plugin/plugin.json",
+    "../../package.json",
+    "../../unsupported/payload.txt",
+    "../../assets-prefix/payload.txt",
+    "../../../../outside.txt",
+  ]) {
+    assertHasError(errors, `local Markdown link is outside owned components -> ${path}`);
+  }
+  assertHasError(errors, "unsafe local Markdown link -> ../../assets/metadata-link");
+});
+
+test("repository validation rejects a skill link to generated host metadata", (context) => {
+  const repositoryRoot = validRepository(context);
+  const skill = resolve(
+    repositoryRoot,
+    "plugins/fixture/targets/codex/skills/child/SKILL.md",
+  );
+  writeFileSync(
+    skill,
+    readFileSync(skill, "utf8") + "\n[host metadata](../../.codex-plugin/plugin.json)\n",
+  );
+  refreshGeneratedDigests(repositoryRoot);
+
+  assertHasError(
+    validateRepository({ repositoryRoot }),
+    "local Markdown link is outside owned components -> ../../.codex-plugin/plugin.json",
+  );
+});
+
 test("repository validation detects a bundle mutation after lock creation", (context) => {
   const repositoryRoot = validRepository(context);
   writeFileSync(
@@ -168,6 +243,23 @@ test("a generated fixture repository passes every offline gate", (context) => {
   const repositoryRoot = validRepository(context);
 
   assert.deepEqual(validateRepository({ repositoryRoot }), []);
+  const manifest = readJson(
+    repositoryRoot,
+    "plugins/fixture/.agent-plugin/plugin.json",
+  );
+  const lock = readJson(repositoryRoot, "registry/lock.json");
+  assert.equal(JSON.stringify(manifest).includes("source-only-context"), false);
+  assert.equal(JSON.stringify(lock).includes("source-only-context"), false);
+  for (const target of ["claude", "codex"]) {
+    assert.equal(existsSync(resolve(
+      repositoryRoot,
+      `plugins/fixture/targets/${target}/source-only-context.txt`,
+    )), false);
+  }
+  assert.equal(existsSync(resolve(
+    repositoryRoot,
+    "plugins/fixture/components/source-only-context.txt",
+  )), false);
 });
 
 test("target hooks require their exact target root placeholder", (context) => {
@@ -216,7 +308,7 @@ test("recursive skills report invalid frontmatter, true-like Codex flags, and ne
   mkdirSync(resolve(root, "missing-root"));
   writeFileSync(resolve(root, "missing-root/reference.md"), "# Missing root skill\n");
 
-  const errors = validateRecursiveSkills(root);
+  const errors = validateRecursiveSkills(root, { target: "codex" });
   assertHasError(errors, "broken/SKILL.md: missing frontmatter description");
   assertHasError(errors, "disable-model-invocation must not be true-like in Codex");
   assertHasError(errors, "broken local Markdown link -> ./missing.md");

@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -36,8 +38,21 @@ function writeSourceFile(source, relativePath, contents = "{}\n") {
   writeFileSync(filePath, contents);
 }
 
+function contextEntry(source, path) {
+  return { path, digest: treeHash(resolve(source, path)) };
+}
+
+function fixtureSourceContext(source = fixture) {
+  return ["LICENSE", "README.md"]
+    .filter((path) => existsSync(resolve(source, path)))
+    .map((path) => contextEntry(source, path));
+}
+
 test("inventories every known component type exactly once", () => {
-  const inventory = inventorySource({ sourceRoot: fixture });
+  const inventory = inventorySource({
+    sourceRoot: fixture,
+    sourceContext: fixtureSourceContext(),
+  });
   assert.deepEqual(
     [...new Set(inventory.components.map((component) => component.type))].sort(),
     [
@@ -79,10 +94,14 @@ test("inventories every known component type exactly once", () => {
 });
 
 test("expands string, array, and inline component declarations without duplicate paths", () => {
-  const manifests = inventorySource({ sourceRoot: fixture }).manifests;
+  const manifests = inventorySource({
+    sourceRoot: fixture,
+    sourceContext: fixtureSourceContext(),
+  }).manifests;
   const inlineCommand = { name: "inline-release", prompt: "Release safely" };
   const inventory = inventorySource({
     sourceRoot: fixture,
+    sourceContext: fixtureSourceContext(),
     manifestOverrides: {
       claude: {
         ...manifests.claude,
@@ -112,38 +131,42 @@ test("honors an explicit declared skill selection", () => {
     inventorySource({
       sourceRoot: fixture,
       declaredSkills: "./skills/fixture",
+      sourceContext: fixtureSourceContext(),
     }).skills.map((skill) => skill.name),
     ["fixture"],
   );
   assert.throws(
-    () => inventorySource({ sourceRoot: fixture, declaredSkills: "../outside" }),
+    () => inventorySource({
+      sourceRoot: fixture,
+      declaredSkills: "../outside",
+      sourceContext: fixtureSourceContext(),
+    }),
     /declared skill escapes source root/,
   );
 });
 
-test("explicit host skill selection classifies only unselected skill-tree content", (context) => {
+test("explicit host skill selection requires digest-bound context for every unselected peer", (context) => {
   const selected = temporarySource(context, { skills: ["./skills/selected"] });
   writeSourceFile(
     selected,
     "skills/selected/SKILL.md",
     "---\nname: selected\ndescription: Selected skill\n---\n",
   );
-  writeSourceFile(selected, "skills/unselected/README.md", "Not selected\n");
-  assert.deepEqual(
-    inventorySource({ sourceRoot: selected }).skills.map(({ name }) => name),
-    ["selected"],
-  );
-
-  const undeclared = temporarySource(context);
   writeSourceFile(
-    undeclared,
-    "skills/selected/SKILL.md",
-    "---\nname: selected\ndescription: Selected skill\n---\n",
+    selected,
+    ".agents/skills/hidden/SKILL.md",
+    "---\nname: hidden\ndescription: Hidden alternate-host skill\n---\n",
   );
-  writeSourceFile(undeclared, "skills/unselected/README.md", "Unaccounted\n");
   assert.throws(
-    () => inventorySource({ sourceRoot: undeclared }),
-    /unaccounted source file: skills\/unselected\/README\.md/,
+    () => inventorySource({ sourceRoot: selected }),
+    /unaccounted source file: \.agents\/skills\/hidden\/SKILL\.md/,
+  );
+  assert.deepEqual(
+    inventorySource({
+      sourceRoot: selected,
+      sourceContext: [contextEntry(selected, ".agents")],
+    }).skills.map(({ name }) => name),
+    ["selected"],
   );
 });
 
@@ -164,7 +187,10 @@ test("overlapping explicit parent and child skill paths discover each skill once
   writeSourceFile(source, "skills/unselected/README.md", "Not selected\n");
 
   assert.deepEqual(
-    inventorySource({ sourceRoot: source }).skills.map(({ name }) => name).sort(),
+    inventorySource({
+      sourceRoot: source,
+      sourceContext: [contextEntry(source, "skills/unselected")],
+    }).skills.map(({ name }) => name).sort(),
     ["child", "parent"],
   );
 });
@@ -214,7 +240,7 @@ test("inventories only explicitly declared generic resources", (context) => {
         { type: "asset", path: "schema" },
       ],
     }),
-    /unknown top-level source entry: unknown-peer/,
+    /unaccounted source file: unknown-peer\/runtime\.py/,
   );
 });
 
@@ -272,7 +298,10 @@ test("generic resources reject malformed, escaping, symbolic, and overlapping pa
 });
 
 test("rejects unknown Claude, experimental, and Codex component fields", () => {
-  const manifests = inventorySource({ sourceRoot: fixture }).manifests;
+  const manifests = inventorySource({
+    sourceRoot: fixture,
+    sourceContext: fixtureSourceContext(),
+  }).manifests;
   assert.throws(
     () => inventorySource({
       sourceRoot: fixture,
@@ -306,12 +335,16 @@ test("rejects unknown Claude, experimental, and Codex component fields", () => {
 });
 
 test("manifest allowlists reject every non-allowlisted key spelling", () => {
-  const manifests = inventorySource({ sourceRoot: fixture }).manifests;
+  const manifests = inventorySource({
+    sourceRoot: fixture,
+    sourceContext: fixtureSourceContext(),
+  }).manifests;
   for (const [host, label] of [["claude", "Claude"], ["codex", "Codex"]]) {
     for (const key of ["UnknownRuntime", "_runtime", "$runtime"]) {
       assert.throws(
         () => inventorySource({
           sourceRoot: fixture,
+          sourceContext: fixtureSourceContext(),
           manifestOverrides: {
             [host]: { ...manifests[host], [key]: "./runtime.json" },
           },
@@ -321,6 +354,7 @@ test("manifest allowlists reject every non-allowlisted key spelling", () => {
     }
     assert.doesNotThrow(() => inventorySource({
       sourceRoot: fixture,
+      sourceContext: fixtureSourceContext(),
       manifestOverrides: {
         [host]: {
           ...manifests[host],
@@ -336,7 +370,8 @@ test("experimental declarations suppress their conventional component roots", (c
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const source = resolve(root, "source");
   cpSync(fixture, source, { recursive: true });
-  const manifests = inventorySource({ sourceRoot: source }).manifests;
+  const sourceContext = fixtureSourceContext(source);
+  const manifests = inventorySource({ sourceRoot: source, sourceContext }).manifests;
   rmSync(resolve(source, "themes"), { recursive: true });
   rmSync(resolve(source, "monitors/monitors.json"));
   writeFileSync(resolve(source, "alternate-theme.json"), "{\"name\":\"alternate\"}\n");
@@ -344,6 +379,7 @@ test("experimental declarations suppress their conventional component roots", (c
 
   const declared = inventorySource({
     sourceRoot: source,
+    sourceContext,
     manifestOverrides: {
       claude: {
         ...manifests.claude,
@@ -365,6 +401,7 @@ test("experimental declarations suppress their conventional component roots", (c
   rmSync(resolve(source, "monitors/custom.json"));
   const disabled = inventorySource({
     sourceRoot: source,
+    sourceContext,
     manifestOverrides: {
       claude: {
         ...manifests.claude,
@@ -387,13 +424,20 @@ test("rejects unknown top-level roots but permits declared roots and standard re
   writeFileSync(resolve(source, "runtime/component.json"), "{}\n");
 
   assert.throws(
-    () => inventorySource({ sourceRoot: source }),
-    /unknown top-level source entry: runtime/,
+    () => inventorySource({
+      sourceRoot: source,
+      sourceContext: fixtureSourceContext(source),
+    }),
+    /unaccounted source file: runtime\/component\.json/,
   );
 
-  const manifests = inventorySource({ sourceRoot: fixture }).manifests;
+  const manifests = inventorySource({
+    sourceRoot: fixture,
+    sourceContext: fixtureSourceContext(),
+  }).manifests;
   const declared = inventorySource({
     sourceRoot: source,
+    sourceContext: fixtureSourceContext(source),
     manifestOverrides: {
       claude: {
         ...manifests.claude,
@@ -413,6 +457,7 @@ test("rejects unknown top-level roots but permits declared roots and standard re
   assert.throws(
     () => inventorySource({
       sourceRoot: source,
+      sourceContext: fixtureSourceContext(source),
       manifestOverrides: {
         claude: {
           ...manifests.claude,
@@ -420,167 +465,162 @@ test("rejects unknown top-level roots but permits declared roots and standard re
         },
       },
     }),
-    /unknown top-level source entry: runtime/,
+    /unaccounted source file: runtime\/unaccounted\.json/,
   );
 });
 
-test("permits named upstream documents without allowing extension peers", (context) => {
-  for (const [document, peer] of [
-    ["CITATION.cff", "runtime.cff"],
-    ["CONTRIBUTORS.md", "runtime.md"],
-    ["PRIVACY.md", "private-data.md"],
-    ["RELEASE-NOTES.md", "RUNTIME-NOTES.md"],
-  ]) {
-    const root = mkdtempSync(resolve(tmpdir(), "inventory-document-"));
-    context.after(() => rmSync(root, { recursive: true, force: true }));
-    const source = resolve(root, "source");
-    cpSync(fixture, source, { recursive: true });
-    writeFileSync(resolve(source, document), "Upstream document\n");
-
-    assert.doesNotThrow(() => inventorySource({ sourceRoot: source }), document);
-
-    writeFileSync(resolve(source, peer), "Unknown peer\n");
-    assert.throws(
-      () => inventorySource({ sourceRoot: source }),
-      new RegExp("unknown top-level source entry: " + peer.replace(".", "\\.")),
-    );
-  }
-});
-
-test("permits exact repository lifecycle scripts without allowing script peers", (context) => {
-  for (const [script, peer] of [
-    ["install.sh", "setup.sh"],
-    ["install.ps1", "setup.ps1"],
-    ["uninstall.sh", "remove.sh"],
-    ["uninstall.ps1", "remove.ps1"],
-  ]) {
-    const root = mkdtempSync(resolve(tmpdir(), "inventory-lifecycle-"));
-    context.after(() => rmSync(root, { recursive: true, force: true }));
-    const source = resolve(root, "source");
-    cpSync(fixture, source, { recursive: true });
-    writeFileSync(resolve(source, script), "Repository setup helper\n");
-
-    assert.doesNotThrow(() => inventorySource({ sourceRoot: source }), script);
-
-    writeFileSync(resolve(source, peer), "Unknown script\n");
-    assert.throws(
-      () => inventorySource({ sourceRoot: source }),
-      new RegExp("unknown top-level source entry: " + peer.replace(".", "\\.")),
-    );
-  }
-});
-
-test("permits the exact upstream Claude marketplace document without allowing peers", (context) => {
-  const source = temporarySource(context);
-  writeSourceFile(source, ".claude-plugin/marketplace.json");
-
-  assert.doesNotThrow(() => inventorySource({ sourceRoot: source }));
-
-  writeSourceFile(source, ".claude-plugin/catalog.json");
-  assert.throws(
-    () => inventorySource({ sourceRoot: source }),
-    /unaccounted source file: \.claude-plugin\/catalog\.json/,
-  );
-});
-
-test("permits exact agent source-context roots and CONTEXT.md", (context) => {
+test("digest-bound source context is classification-only and unknown peers still fail", (context) => {
   const source = temporarySource(context);
   writeSourceFile(source, ".agents/adr/0001-example.md", "# Decision\n");
-  writeSourceFile(source, ".out-of-scope/example.md", "# Rejected\n");
-  writeSourceFile(source, "CONTEXT.md", "# Context\n");
+  writeSourceFile(source, "docs/architecture.md", "# Architecture\n");
+  writeSourceFile(source, "package.json", "{}\n");
+  const sourceContext = [".agents", "docs", "package.json"]
+    .map((path) => contextEntry(source, path));
 
-  assert.doesNotThrow(() => inventorySource({ sourceRoot: source }));
+  const inventory = inventorySource({ sourceRoot: source, sourceContext });
+  assert.deepEqual(inventory.components, []);
+  assert.deepEqual(inventory.skills, []);
+  assert.equal(JSON.stringify(inventory).includes("architecture.md"), false);
 
-  writeSourceFile(source, ".agent-notes/example.md", "# Unknown\n");
+  writeSourceFile(source, "runtime/new-peer.js", "export {};\n");
   assert.throws(
-    () => inventorySource({ sourceRoot: source }),
-    /unknown top-level source entry: \.agent-notes/,
+    () => inventorySource({ sourceRoot: source, sourceContext }),
+    /unaccounted source file: runtime\/new-peer\.js/,
   );
 });
 
-test("permits only exact repository tooling scripts", (context) => {
-  const source = temporarySource(context);
-  for (const script of [
-    "bump-version.sh",
-    "link-skills.sh",
-    "lint-shell.sh",
-    "list-skills.sh",
-    "package-codex-plugin.sh",
-    "sync-to-codex-plugin.sh",
+test("source context digests bind content, additions, and removals", (context) => {
+  for (const mutation of [
+    (source) => writeSourceFile(source, "docs/guide.md", "changed\n"),
+    (source) => writeSourceFile(source, "docs/new.md", "new\n"),
+    (source) => rmSync(resolve(source, "docs/guide.md")),
   ]) {
-    writeSourceFile(source, `scripts/${script}`, "#!/bin/sh\n");
-  }
-
-  assert.deepEqual(inventorySource({ sourceRoot: source }).components, []);
-
-  writeSourceFile(source, "scripts/runtime.sh", "#!/bin/sh\n");
-  assert.throws(
-    () => inventorySource({ sourceRoot: source }),
-    /unknown top-level source entry: scripts|unaccounted source file: scripts\/runtime\.sh/,
-  );
-});
-
-test("permits exact alternate-host Azure metadata without allowing peers", (context) => {
-  const populate = (source) => {
-    writeSourceFile(source, ".cursor-plugin/marketplace.json");
-    writeSourceFile(source, "landing-page/index.md", "# Site source\n");
-    writeSourceFile(source, "apm.yml", "name: fixture\n");
-    writeSourceFile(source, "gemini-extension.json");
-    writeSourceFile(source, "plugin.json");
-    writeSourceFile(source, "hooks/cursor-hooks.json");
-    writeSourceFile(source, "hooks/hooks.json");
-  };
-  const source = temporarySource(context);
-  populate(source);
-  assert.doesNotThrow(() => inventorySource({ sourceRoot: source }));
-
-  for (const [path, error] of [
-    ["cursor-plugin.json", /unknown top-level source entry: cursor-plugin\.json/],
-    ["hooks/other-hooks.json", /unaccounted source file: hooks\/other-hooks\.json/],
-  ]) {
-    const withPeer = temporarySource(context);
-    populate(withPeer);
-    writeSourceFile(withPeer, path);
-    assert.throws(() => inventorySource({ sourceRoot: withPeer }), error);
+    const source = temporarySource(context);
+    writeSourceFile(source, "docs/guide.md", "original\n");
+    writeSourceFile(source, "docs/keep.md", "keep\n");
+    const sourceContext = [contextEntry(source, "docs")];
+    mutation(source);
+    assert.throws(
+      () => inventorySource({ sourceRoot: source, sourceContext }),
+      /source context digest mismatch: docs/,
+    );
   }
 });
 
-test("permits only exact unselected Superpowers host context without inventorying it", (context) => {
-  const populate = (source) => {
-    writeSourceFile(source, ".codex-plugin/plugin.json", JSON.stringify({
-      name: "coverage",
-      version: "1.0.0",
-      hooks: {},
-    }));
-    writeSourceFile(source, ".kimi-plugin/plugin.json");
-    writeSourceFile(source, ".opencode/INSTALL.md", "# Install\n");
-    writeSourceFile(source, ".pi/extensions/superpowers.ts", "export {};\n");
-    writeSourceFile(source, ".pre-commit-config.yaml", "repos: []\n");
-    writeSourceFile(source, ".version-bump.json");
-    writeSourceFile(source, "hooks/hooks.json");
-    writeSourceFile(source, "hooks/hooks-cursor.json");
-    writeSourceFile(source, "hooks/run-hook.cmd", "@echo off\n");
-    writeSourceFile(source, "hooks/session-start", "#!/usr/bin/env bash\n");
-  };
-  const source = temporarySource(context);
-  populate(source);
+test("source context rejects malformed, unsafe, symbolic, special, and overlapping paths", (context) => {
+  const malformed = temporarySource(context);
+  writeSourceFile(malformed, "docs/guide.md", "guide\n");
+  for (const sourceContext of [
+    {},
+    [{ path: "docs" }],
+    [{ path: "docs", digest: "A".repeat(64) }],
+    [{ path: "../outside", digest: "a".repeat(64) }],
+    [{ path: "docs", digest: "a".repeat(64), type: "metadata" }],
+  ]) {
+    assert.throws(
+      () => inventorySource({ sourceRoot: malformed, sourceContext }),
+      /source context/,
+    );
+  }
 
-  const inventory = inventorySource({ sourceRoot: source });
-  assert.deepEqual(
-    inventory.components.map(({ sourceFormat, type }) => `${type}:${sourceFormat}`),
-    ["hook:inline"],
+  const overlap = temporarySource(context);
+  writeSourceFile(overlap, "docs/nested/guide.md", "guide\n");
+  assert.throws(
+    () => inventorySource({
+      sourceRoot: overlap,
+      sourceContext: [
+        contextEntry(overlap, "docs"),
+        contextEntry(overlap, "docs/nested"),
+      ],
+    }),
+    /overlapping source context paths: docs, docs\/nested/,
   );
 
-  for (const [path, expected] of [
-    [".other-host/plugin.json", /unknown top-level source entry: \.other-host/],
-    [".pre-commit-config.yml", /unknown top-level source entry: \.pre-commit-config\.yml/],
-    [".version-bump.yaml", /unknown top-level source entry: \.version-bump\.yaml/],
-    ["hooks/other-hook.cmd", /unaccounted source file: hooks\/other-hook\.cmd/],
-  ]) {
-    const withPeer = temporarySource(context);
-    populate(withPeer);
-    writeSourceFile(withPeer, path);
-    assert.throws(() => inventorySource({ sourceRoot: withPeer }), expected, path);
+  const symbolic = temporarySource(context);
+  writeSourceFile(symbolic, "real/guide.md", "guide\n");
+  symlinkSync("real", resolve(symbolic, "docs"), "dir");
+  assert.throws(
+    () => inventorySource({
+      sourceRoot: symbolic,
+      sourceContext: [{ path: "docs", digest: "a".repeat(64) }],
+    }),
+    /symbolic links are not allowed|source context escapes source root/,
+  );
+
+  const nestedSymbolic = temporarySource(context);
+  writeSourceFile(nestedSymbolic, "docs/guide.md", "guide\n");
+  symlinkSync("guide.md", resolve(nestedSymbolic, "docs/alias.md"));
+  assert.throws(
+    () => inventorySource({
+      sourceRoot: nestedSymbolic,
+      sourceContext: [{ path: "docs", digest: "a".repeat(64) }],
+    }),
+    /symbolic links are not allowed/,
+  );
+
+  const special = temporarySource(context);
+  mkdirSync(resolve(special, "docs"));
+  const fifo = resolve(special, "docs/events");
+  const mkfifo = spawnSync("mkfifo", [fifo], { encoding: "utf8" });
+  if (mkfifo.status === 0) {
+    assert.throws(
+      () => inventorySource({
+        sourceRoot: special,
+        sourceContext: [{ path: "docs", digest: "a".repeat(64) }],
+      }),
+      /special filesystem entries are not allowed|tree hash root must be a file or directory/,
+    );
+  }
+});
+
+test("source context cannot overlap manifests, a license, skills, resources, or components", (context) => {
+  const cases = [
+    {
+      path: ".claude-plugin",
+      error: /source context overlaps upstream manifest/,
+    },
+    {
+      path: "LICENSE",
+      sourceType: "github",
+      setup(source) { writeSourceFile(source, "LICENSE", "license\n"); },
+      error: /source context overlaps redistributed license/,
+    },
+    {
+      path: "skills/fixture",
+      setup(source) {
+        writeSourceFile(
+          source,
+          "skills/fixture/SKILL.md",
+          "---\nname: fixture\ndescription: Fixture\n---\n",
+        );
+      },
+      error: /source context overlaps inventoried skill/,
+    },
+    {
+      path: "scripts",
+      resources: [{ type: "executable", path: "scripts" }],
+      setup(source) { writeSourceFile(source, "scripts/runtime.sh", "#!/bin/sh\n"); },
+      error: /source context overlaps inventoried component/,
+    },
+    {
+      path: "assets",
+      setup(source) { writeSourceFile(source, "assets/icon.svg", "<svg/>\n"); },
+      error: /source context overlaps inventoried component/,
+    },
+  ];
+  for (const fixtureCase of cases) {
+    const source = temporarySource(context);
+    fixtureCase.setup?.(source);
+    assert.throws(
+      () => inventorySource({
+        sourceRoot: source,
+        sourceType: fixtureCase.sourceType,
+        resources: fixtureCase.resources,
+        sourceContext: [contextEntry(source, fixtureCase.path)],
+      }),
+      fixtureCase.error,
+      fixtureCase.path,
+    );
   }
 });
 
@@ -589,7 +629,10 @@ test("skips only the exact root AGENTS.md to CLAUDE.md document alias", (context
   writeSourceFile(source, "CLAUDE.md", "# Instructions\n");
   symlinkSync("CLAUDE.md", resolve(source, "AGENTS.md"));
 
-  const inventory = inventorySource({ sourceRoot: source });
+  const inventory = inventorySource({
+    sourceRoot: source,
+    sourceContext: [contextEntry(source, "CLAUDE.md")],
+  });
   assert.deepEqual(inventory.components, []);
   assert.deepEqual(inventory.skills, []);
 
@@ -719,7 +762,10 @@ test("a skill covers nested resources but not siblings in the skills root", (con
 });
 
 test("rejects malformed inline payloads and escaping component paths", () => {
-  const manifests = inventorySource({ sourceRoot: fixture }).manifests;
+  const manifests = inventorySource({
+    sourceRoot: fixture,
+    sourceContext: fixtureSourceContext(),
+  }).manifests;
   assert.throws(
     () => inventorySource({
       sourceRoot: fixture,
@@ -775,7 +821,10 @@ test("rejects component roots and nested files reached through symbolic links", 
 test("inventorying executable content never runs it", () => {
   const helper = resolve(fixture, "bin/helper");
   const before = readFileSync(helper, "utf8");
-  const executable = inventorySource({ sourceRoot: fixture }).components
+  const executable = inventorySource({
+    sourceRoot: fixture,
+    sourceContext: fixtureSourceContext(),
+  }).components
     .find(({ type }) => type === "executable");
 
   assert.equal(executable.metadata.relativePath, "bin");

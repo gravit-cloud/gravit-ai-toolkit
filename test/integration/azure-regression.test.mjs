@@ -6,6 +6,50 @@ import { parseFrontmatter } from "../../scripts/lib/frontmatter.mjs";
 import { validateRecursiveSkills } from "../../scripts/lib/validator.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
+const EXPECTED_AZURE_SKILLS = [
+  "airunway-aks-setup",
+  "appinsights-instrumentation",
+  "azure-ai",
+  "azure-aigateway",
+  "azure-app-onboard",
+  "azure-app-onboard-prereq",
+  "azure-cloud-migrate",
+  "azure-compliance",
+  "azure-compute",
+  "azure-cost",
+  "azure-deploy",
+  "azure-diagnostics",
+  "azure-enterprise-infra-planner",
+  "azure-kubernetes",
+  "azure-kubernetes-automatic-readiness",
+  "azure-kusto",
+  "azure-messaging",
+  "azure-prepare",
+  "azure-quotas",
+  "azure-reliability",
+  "azure-resource-lookup",
+  "azure-resource-visualizer",
+  "azure-storage",
+  "azure-upgrade",
+  "azure-validate",
+  "capacity",
+  "customize",
+  "deploy-model",
+  "entra-agent-id",
+  "entra-app-registration",
+  "finetuning",
+  "microsoft-foundry",
+  "preset",
+  "python-appservice-deploy",
+];
+
+function allowedComponentRoots(root, target) {
+  const manifest = JSON.parse(readFileSync(resolve(root, ".agent-plugin/plugin.json")));
+  return manifest.components
+    .map((component) => component.targets[target])
+    .filter((disposition) => ["preserved", "transformed"].includes(disposition.status))
+    .map((disposition) => resolve(root, disposition.path));
+}
 
 test("Azure Codex bundle contains pinned MCP and unique skills", () => {
   const root = resolve(repositoryRoot, "plugins/azure");
@@ -17,7 +61,10 @@ test("Azure Codex bundle contains pinned MCP and unique skills", () => {
   assert.match(mcp, /@azure\/mcp@2\.0\.5/);
   assert.doesNotMatch(mcp, /@latest/);
   assert.deepEqual(
-    validateRecursiveSkills(resolve(root, "targets/codex/skills")),
+    validateRecursiveSkills(resolve(root, "targets/codex/skills"), {
+      target: "codex",
+      allowedComponentRoots: allowedComponentRoots(root, "codex"),
+    }),
     [],
   );
 });
@@ -55,8 +102,10 @@ test("Azure target projections preserve exact runtime links and 34 unique public
         resolve(skillsRoot, entry.name, "SKILL.md"),
         "utf8",
       ).replace(/^\uFEFF/u, "")).attributes.name);
-    assert.equal(names.length, 34);
-    assert.equal(new Set(names).size, 34);
-    assert.deepEqual(validateRecursiveSkills(skillsRoot), []);
+    assert.deepEqual([...names].sort(), EXPECTED_AZURE_SKILLS);
+    assert.deepEqual(validateRecursiveSkills(skillsRoot, {
+      target,
+      allowedComponentRoots: allowedComponentRoots(root, target),
+    }), []);
   }
 });

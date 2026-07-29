@@ -34,6 +34,10 @@ function completePlugin() {
       path: "test/fixtures/complete-plugin",
       root: ".",
     },
+    sourceContext: ["LICENSE", "README.md"].map((path) => ({
+      path,
+      digest: treeHash(resolve(completeFixtureRoot, path)),
+    })),
     targets: ["codex", "claude"],
     policies: { default: "transform-or-fail", skills: "transform" },
     targetPolicies: {

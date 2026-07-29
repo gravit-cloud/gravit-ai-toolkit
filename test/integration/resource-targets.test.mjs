@@ -147,7 +147,15 @@ test("explicit resources preserve root layout, modes, and runtime reachability",
       walkFiles(skillRoot).filter((path) => path.endsWith("/SKILL.md")).length,
       1,
     );
-    assert.deepEqual(validateRecursiveSkills(skillRoot), []);
+    assert.deepEqual(validateRecursiveSkills(skillRoot, {
+      target,
+      allowedComponentRoots: manifest.components
+        .map((component) => component.targets[target])
+        .filter((disposition) => ["preserved", "transformed"].includes(
+          disposition.status,
+        ))
+        .map((disposition) => resolve(bundleRoot, disposition.path)),
+    }), []);
   }
 
   const targetPaths = manifest.components.flatMap(({ targets }) => (

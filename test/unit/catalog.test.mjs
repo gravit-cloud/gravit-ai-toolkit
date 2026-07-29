@@ -133,6 +133,38 @@ test("accepts only exact safe catalog resource declarations", () => {
   }
 });
 
+test("accepts only exact safe digest-bound source context declarations", () => {
+  const catalog = fixtureCatalog();
+  catalog.plugins[0].sourceContext = [
+    { path: ".agents", digest: "a".repeat(64) },
+    { path: "docs/architecture.md", digest: "b".repeat(64) },
+  ];
+  assert.doesNotThrow(() => validateCatalog(catalog));
+
+  for (const sourceContext of [
+    [{ path: "docs", digest: "A".repeat(64) }],
+    [{ path: "../outside", digest: "a".repeat(64) }],
+    [{ path: "/absolute", digest: "a".repeat(64) }],
+    [{ path: "C:\\outside", digest: "a".repeat(64) }],
+    [{ path: "docs/", digest: "a".repeat(64) }],
+    [{ path: "docs", digest: "a".repeat(64), type: "metadata" }],
+    [{ path: "docs" }],
+    [{ digest: "a".repeat(64) }],
+    [
+      { path: "docs", digest: "a".repeat(64) },
+      { path: "docs", digest: "b".repeat(64) },
+    ],
+    [
+      { path: "docs", digest: "a".repeat(64) },
+      { path: "docs/nested", digest: "b".repeat(64) },
+    ],
+  ]) {
+    const invalid = fixtureCatalog();
+    invalid.plugins[0].sourceContext = sourceContext;
+    assert.throws(() => validateCatalog(invalid), /invalid registry catalog|sourceContext/);
+  }
+});
+
 test("rejects malformed target policies and prototype-like keys", () => {
   const cases = [
     { future: { unsupported: {} } },

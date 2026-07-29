@@ -110,6 +110,9 @@ export function walkFiles(root, result = []) {
     }
     if (entry.isDirectory()) walkFiles(path, result);
     else if (entry.isFile()) result.push(path);
+    else {
+      throw new Error("special filesystem entries are not allowed in staged components: " + path);
+    }
   }
   return result.sort(compareCodePoints);
 }

@@ -7,6 +7,7 @@ import {
 } from "node:fs";
 import { isAbsolute, relative, resolve, win32 } from "node:path";
 import { treeHash, sha256 } from "./hash.mjs";
+import { externalLicenseSource } from "./external-license.mjs";
 import { stableJson } from "./json.mjs";
 import { compareCodePoints } from "./ordering.mjs";
 import {
@@ -22,7 +23,7 @@ import { declaredSkillPaths, discoverSkills } from "./skills.mjs";
 import {
   CLAUDE_COMPONENT_FIELDS,
   CODEX_COMPONENT_FIELDS,
-  readUpstreamManifests,
+  readUpstreamManifestEntries,
 } from "./upstream-manifest.mjs";
 
 const TYPE_CONFIG = {
@@ -76,121 +77,6 @@ const CONVENTIONAL_COMPONENTS = [
   ["asset", "assets"],
 ];
 
-// Host manifests and conventional component roots are classified even when a
-// particular plugin does not contain a declaration for them. Custom declared
-// roots are added dynamically below, so upstreams are not limited to these names.
-const KNOWN_TOP_LEVEL_DIRECTORIES = new Set([
-  ".claude-plugin",
-  ".codex-plugin",
-  "agents",
-  "assets",
-  "bin",
-  "channels",
-  "commands",
-  "hooks",
-  "monitors",
-  "output-styles",
-  "skills",
-  "themes",
-]);
-
-const KNOWN_TOP_LEVEL_FILES = new Set([
-  ".app.json",
-  ".lsp.json",
-  ".mcp.json",
-  "settings.json",
-]);
-
-// These roots contain repository metadata, documentation, examples, or tests;
-// they are source context rather than installable plugin components.
-const NON_COMPONENT_RESOURCE_DIRECTORIES = new Set([
-  ".agents",
-  ".changeset",
-  ".circleci",
-  ".cursor-plugin",
-  ".devcontainer",
-  ".github",
-  ".gitlab",
-  ".husky",
-  ".kimi-plugin",
-  ".opencode",
-  ".vscode",
-  ".out-of-scope",
-  ".pi",
-  "docs",
-  "examples",
-  "landing-page",
-  "test",
-  "tests",
-]);
-
-const NON_COMPONENT_METADATA_FILES = new Set([
-  ".editorconfig",
-  ".gitattributes",
-  ".gitignore",
-  ".markdownlint.json",
-  ".npmignore",
-  ".prettierignore",
-  ".prettierrc",
-  ".prettierrc.json",
-  ".prettierrc.yaml",
-  ".prettierrc.yml",
-  ".pre-commit-config.yaml",
-  ".version-bump.json",
-  "Cargo.lock",
-  "Cargo.toml",
-  "Gemfile",
-  "Gemfile.lock",
-  "Makefile",
-  "Taskfile.yaml",
-  "Taskfile.yml",
-  "apm.yml",
-  "bun.lock",
-  "bun.lockb",
-  "composer.json",
-  "composer.lock",
-  "deno.json",
-  "deno.jsonc",
-  "flake.lock",
-  "flake.nix",
-  "go.mod",
-  "go.sum",
-  "gemini-extension.json",
-  "jsconfig.json",
-  "package-lock.json",
-  "package.json",
-  "pnpm-lock.yaml",
-  "plugin.json",
-  "pyproject.toml",
-  "requirements-dev.txt",
-  "requirements.txt",
-  "renovate.json",
-  "install.ps1",
-  "install.sh",
-  "tsconfig.json",
-  "uninstall.ps1",
-  "uninstall.sh",
-  "uv.lock",
-  "yarn.lock",
-]);
-
-const NON_COMPONENT_HOST_FILES = new Set([
-  ".claude-plugin/marketplace.json",
-  "hooks/cursor-hooks.json",
-  "hooks/hooks-cursor.json",
-  "hooks/hooks.json",
-  "hooks/run-hook.cmd",
-  "hooks/session-start",
-  "scripts/bump-version.sh",
-  "scripts/link-skills.sh",
-  "scripts/lint-shell.sh",
-  "scripts/list-skills.sh",
-  "scripts/package-codex-plugin.sh",
-  "scripts/sync-to-codex-plugin.sh",
-]);
-
-const NON_COMPONENT_DOCUMENTATION_FILE = /^(?:(?:AGENTS|AUTHORS|CHANGELOG|CLAUDE|CODE_OF_CONDUCT|CONTEXT|CONTRIBUTING|CONTRIBUTORS|GEMINI|LICENSE|NOTICE|PRIVACY|README|SECURITY|SUPPORT|VERSION)(?:\.(?:md|rst|txt))?|CITATION\.cff)$/i;
-const EXACT_NON_COMPONENT_DOCUMENTATION_FILES = new Set(["RELEASE-NOTES.md"]);
 const AGENTS_ALIAS_NAME = "AGENTS.md";
 const AGENTS_ALIAS_TARGET_NAME = "CLAUDE.md";
 const AGENTS_ALIAS_TARGET_BYTES = Buffer.from(AGENTS_ALIAS_TARGET_NAME, "ascii");
@@ -209,13 +95,6 @@ function pathEntryExists(path) {
     if (error.code === "ENOENT") return false;
     throw error;
   }
-}
-
-function isNonComponentDocumentationFile(name) {
-  return (
-    EXACT_NON_COMPONENT_DOCUMENTATION_FILES.has(name)
-    || NON_COMPONENT_DOCUMENTATION_FILE.test(name)
-  );
 }
 
 function isExactAgentsDocumentAlias(sourceRoot, entryPath) {
@@ -269,6 +148,7 @@ function walkSourceFiles(sourceRoot, directory = sourceRoot, result = []) {
     }
     if (entry.isDirectory()) walkSourceFiles(absoluteRoot, entryPath, result);
     else if (entry.isFile()) result.push(entryPath);
+    else throw new Error("special filesystem entries are not allowed in staged components: " + entryPath);
   }
   return result.sort(compareCodePoints);
 }
@@ -300,144 +180,20 @@ function validateManifest(manifest, host) {
   }
 }
 
-function declaredPath(sourceRoot, configuredPath, label) {
-  const absoluteRoot = resolve(sourceRoot);
-  return assertInside(
-    absoluteRoot,
-    resolve(absoluteRoot, configuredPath),
-    label,
-  );
-}
-
-function declaredComponentPaths({ sourceRoot, manifests, skillPaths, resources }) {
-  const result = [];
-  for (const manifest of [manifests.claude, manifests.codex]) {
-    for (const [field, config] of Object.entries(TYPE_CONFIG)) {
-      for (const value of values(manifest[field])) {
-        if (typeof value === "string") {
-          result.push(declaredPath(sourceRoot, value, config.type + " component"));
-        }
-      }
-    }
-  }
-  for (const [field, config] of Object.entries(EXPERIMENTAL_TYPE_CONFIG)) {
-    for (const value of values(manifests.claude.experimental?.[field])) {
-      if (typeof value === "string") {
-        result.push(declaredPath(sourceRoot, value, config.type + " component"));
-      }
-    }
-  }
-  for (const value of skillPaths || []) {
-    result.push(declaredPath(sourceRoot, value, "declared skill"));
-  }
-  for (const resource of resources || []) result.push(resource.sourcePath);
-  return result;
-}
-
-function entryCoveredByDeclarations(entryPath, declarations) {
-  const relevant = declarations.filter((declaration) => (
-    pathIsInside(entryPath, declaration) || pathIsInside(declaration, entryPath)
-  ));
-  if (relevant.length === 0) return false;
-  const stats = lstatSync(entryPath);
-  const files = stats.isDirectory() ? walkFiles(entryPath) : [entryPath];
-  return files.every((filePath) => relevant.some((declaration) => (
-    pathIsInside(declaration, filePath)
-  )));
-}
-
-function assertKnownTopLevelEntries({ sourceRoot, manifests, skillPaths, resources }) {
-  const absoluteRoot = resolve(sourceRoot);
-  const declarations = declaredComponentPaths({
-    sourceRoot,
-    manifests,
-    skillPaths,
-    resources,
-  });
-  declarations.push(...[...NON_COMPONENT_HOST_FILES].map((file) => (
-    resolve(absoluteRoot, file)
-  )));
-  const entries = readdirSync(absoluteRoot, { withFileTypes: true })
-    .sort((left, right) => compareCodePoints(left.name, right.name));
-  for (const entry of entries) {
-    const entryPath = resolve(absoluteRoot, entry.name);
-    if (entry.isSymbolicLink()) {
-      if (
-        entry.name === AGENTS_ALIAS_NAME
-        && isExactAgentsDocumentAlias(absoluteRoot, entryPath)
-      ) {
-        continue;
-      }
-      throw new Error("symbolic links are not allowed in staged components: " + entryPath);
-    }
-    if (KNOWN_TOP_LEVEL_DIRECTORIES.has(entry.name)) {
-      if (!entry.isDirectory()) {
-        throw new Error("top-level source entry must be a directory: " + entry.name);
-      }
-      continue;
-    }
-    if (KNOWN_TOP_LEVEL_FILES.has(entry.name)) {
-      if (!entry.isFile()) {
-        throw new Error("top-level source entry must be a file: " + entry.name);
-      }
-      continue;
-    }
-    if (NON_COMPONENT_RESOURCE_DIRECTORIES.has(entry.name)) {
-      if (!entry.isDirectory()) {
-        throw new Error("non-component resource root must be a directory: " + entry.name);
-      }
-      continue;
-    }
-    if (
-      NON_COMPONENT_METADATA_FILES.has(entry.name)
-      || isNonComponentDocumentationFile(entry.name)
-    ) {
-      if (!entry.isFile()) {
-        throw new Error("non-component metadata entry must be a file: " + entry.name);
-      }
-      continue;
-    }
-    if (entryCoveredByDeclarations(entryPath, declarations)) continue;
-    throw new Error("unknown top-level source entry: " + entry.name);
-  }
-}
-
-function nonComponentCoveragePaths(sourceRoot) {
-  const absoluteRoot = resolve(sourceRoot);
-  const paths = [
-    resolve(absoluteRoot, ".claude-plugin/plugin.json"),
-    resolve(absoluteRoot, ".codex-plugin/plugin.json"),
-    ...[...NON_COMPONENT_HOST_FILES]
-      .map((file) => resolve(absoluteRoot, file)),
-    ...[...NON_COMPONENT_RESOURCE_DIRECTORIES]
-      .map((directory) => resolve(absoluteRoot, directory)),
-    ...[...NON_COMPONENT_METADATA_FILES]
-      .map((file) => resolve(absoluteRoot, file)),
-  ];
-  for (const entry of readdirSync(absoluteRoot, { withFileTypes: true })) {
-    if (entry.isFile() && isNonComponentDocumentationFile(entry.name)) {
-      paths.push(resolve(absoluteRoot, entry.name));
-    }
-  }
-  return paths;
-}
-
 function assertInventoryCoverage({
   sourceRoot,
   components,
   skills,
-  hasExplicitSkillSelection,
+  sourceContextPaths,
+  intrinsicContextPaths,
 }) {
-  const defaultSkillsRoot = resolve(sourceRoot, "skills");
   const coverageRoots = [
     ...components
       .filter(({ sourceFormat }) => sourceFormat === "path")
       .map(({ sourcePath }) => sourcePath),
     ...skills.map(({ sourceDirectory }) => sourceDirectory),
-    ...(hasExplicitSkillSelection && pathEntryExists(defaultSkillsRoot)
-      ? [defaultSkillsRoot]
-      : []),
-    ...nonComponentCoveragePaths(sourceRoot),
+    ...sourceContextPaths,
+    ...intrinsicContextPaths,
   ].map(canonicalPath);
   for (const filePath of walkSourceFiles(resolve(sourceRoot))) {
     const canonicalFile = canonicalPath(filePath);
@@ -524,7 +280,7 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
-function assertSafeResourcePath(path) {
+function assertSafeRelativePath(path, label) {
   const segments = typeof path === "string" ? path.split("/") : [];
   if (
     typeof path !== "string"
@@ -541,7 +297,7 @@ function assertSafeResourcePath(path) {
       || /[\u0000-\u001f]/.test(segment)
     ))
   ) {
-    throw new Error("resource path must be a safe relative path: " + String(path));
+    throw new Error(label + " must be a safe relative path: " + String(path));
   }
 }
 
@@ -556,7 +312,7 @@ function configuredResourceRecords({ sourceRoot, resources }) {
     ) {
       throw new Error("plugin resource must contain only type and path");
     }
-    assertSafeResourcePath(resource.path);
+    assertSafeRelativePath(resource.path, "resource path");
     return recordFor({ sourceRoot, type: resource.type, value: resource.path });
   });
   for (const [index, left] of records.entries()) {
@@ -604,6 +360,114 @@ function assertResourcesDisjoint({ resources, components, skills }) {
   }
 }
 
+function sourceContextRecord({ sourceRoot, entry }) {
+  if (
+    !isPlainObject(entry)
+    || Object.keys(entry).sort(compareCodePoints).join(",") !== "digest,path"
+    || typeof entry.digest !== "string"
+    || !/^[a-f0-9]{64}$/.test(entry.digest)
+  ) {
+    throw new Error("source context entry must contain only path and a SHA-256 digest");
+  }
+  assertSafeRelativePath(entry.path, "source context path");
+  const absoluteRoot = resolve(sourceRoot);
+  const sourcePath = assertInside(
+    absoluteRoot,
+    resolve(absoluteRoot, entry.path),
+    "source context",
+  );
+  if (!pathEntryExists(sourcePath)) {
+    throw new Error("source context path does not exist: " + entry.path);
+  }
+  const stats = lstatSync(sourcePath);
+  const canonicalRoot = realpathSync(absoluteRoot);
+  const canonicalSource = assertRealInside(absoluteRoot, sourcePath, "source context");
+  const expectedCanonical = resolve(canonicalRoot, entry.path);
+  if (stats.isSymbolicLink() || canonicalSource !== expectedCanonical) {
+    throw new Error("symbolic links are not allowed in source context: " + sourcePath);
+  }
+  if (!stats.isFile() && !stats.isDirectory()) {
+    throw new Error("special filesystem entries are not allowed in source context: " + sourcePath);
+  }
+  if (stats.isDirectory()) walkFiles(sourcePath);
+  const digest = treeHash(sourcePath);
+  if (digest !== entry.digest) {
+    throw new Error("source context digest mismatch: " + entry.path);
+  }
+  return {
+    canonicalPath: canonicalSource,
+    digest,
+    path: entry.path,
+    sourcePath,
+  };
+}
+
+function configuredSourceContextRecords({ sourceRoot, sourceContext }) {
+  if (sourceContext === undefined) return [];
+  if (!Array.isArray(sourceContext)) {
+    throw new Error("plugin source context must be an array");
+  }
+  const records = sourceContext
+    .map((entry) => sourceContextRecord({ sourceRoot, entry }))
+    .sort((left, right) => compareCodePoints(left.path, right.path));
+  for (const [index, left] of records.entries()) {
+    for (const right of records.slice(index + 1)) {
+      if (
+        pathsOverlap(left.sourcePath, right.sourcePath)
+        || pathsOverlap(left.canonicalPath, right.canonicalPath)
+      ) {
+        throw new Error(
+          "overlapping source context paths: " + [left.path, right.path].join(", "),
+        );
+      }
+    }
+  }
+  return records;
+}
+
+function contextOverlaps(context, path) {
+  return pathsOverlap(context.sourcePath, path)
+    || pathsOverlap(context.canonicalPath, realpathSync(path));
+}
+
+function assertSourceContextDisjoint({
+  sourceRoot,
+  sourceContext,
+  manifestPaths,
+  externalLicense,
+  components,
+  skills,
+  skillPaths,
+}) {
+  const pathComponents = components.filter(({ sourceFormat }) => sourceFormat === "path");
+  const declaredSkills = (skillPaths || []).map((path) => resolve(sourceRoot, path));
+  for (const context of sourceContext) {
+    for (const manifestPath of manifestPaths) {
+      if (contextOverlaps(context, manifestPath)) {
+        throw new Error("source context overlaps upstream manifest: " + context.path);
+      }
+    }
+    if (externalLicense && contextOverlaps(context, externalLicense)) {
+      throw new Error("source context overlaps redistributed license: " + context.path);
+    }
+    for (const skill of skills) {
+      if (contextOverlaps(context, skill.sourceDirectory)) {
+        throw new Error("source context overlaps inventoried skill: " + context.path);
+      }
+    }
+    for (const skillPath of declaredSkills) {
+      if (pathEntryExists(skillPath) && contextOverlaps(context, skillPath)) {
+        throw new Error("source context overlaps declared skill: " + context.path);
+      }
+    }
+    for (const component of pathComponents) {
+      if (contextOverlaps(context, component.sourcePath)) {
+        throw new Error("source context overlaps inventoried component: " + context.path);
+      }
+    }
+  }
+}
+
 function configuredSkillPaths(manifests, declaredSkills) {
   const inputs = declaredSkills === undefined
     ? [manifests.claude.skills, manifests.codex.skills]
@@ -623,11 +487,20 @@ function configuredSkillPaths(manifests, declaredSkills) {
 
 export function inventorySource({
   sourceRoot,
+  sourceType,
+  sourceContext,
   declaredSkills,
   manifestOverrides = {},
   resources,
 }) {
-  const loadedManifests = readUpstreamManifests(sourceRoot);
+  const manifestEntries = readUpstreamManifestEntries(sourceRoot);
+  const loadedManifests = {
+    claude: manifestEntries.claude.manifest,
+    codex: manifestEntries.codex.manifest,
+  };
+  const manifestPaths = [manifestEntries.claude.path, manifestEntries.codex.path]
+    .filter(Boolean);
+  const externalLicense = externalLicenseSource({ sourceType, sourceRoot });
   const manifests = {
     claude: manifestOverrides.claude ?? loadedManifests.claude,
     codex: manifestOverrides.codex ?? loadedManifests.codex,
@@ -636,12 +509,6 @@ export function inventorySource({
   validateManifest(manifests.codex, "Codex");
   const skillPaths = configuredSkillPaths(manifests, declaredSkills);
   const resourceRecords = configuredResourceRecords({ sourceRoot, resources });
-  assertKnownTopLevelEntries({
-    sourceRoot,
-    manifests,
-    skillPaths,
-    resources: resourceRecords,
-  });
 
   const components = [];
   const seen = new Set();
@@ -682,11 +549,25 @@ export function inventorySource({
   });
   assertResourcesDisjoint({ resources: resourceRecords, components, skills });
   for (const record of resourceRecords) addRecord(components, seen, record);
+  const sourceContextRecords = configuredSourceContextRecords({
+    sourceRoot,
+    sourceContext,
+  });
+  assertSourceContextDisjoint({
+    sourceRoot,
+    sourceContext: sourceContextRecords,
+    manifestPaths,
+    externalLicense,
+    components,
+    skills,
+    skillPaths,
+  });
   assertInventoryCoverage({
     sourceRoot,
     components,
     skills,
-    hasExplicitSkillSelection: skillPaths !== undefined,
+    sourceContextPaths: sourceContextRecords.map(({ sourcePath }) => sourcePath),
+    intrinsicContextPaths: [...manifestPaths, externalLicense].filter(Boolean),
   });
 
   return {

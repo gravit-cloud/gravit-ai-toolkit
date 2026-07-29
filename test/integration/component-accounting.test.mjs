@@ -49,6 +49,10 @@ function completePlugin() {
       path: "test/fixtures/complete-plugin",
       root: ".",
     },
+    sourceContext: ["LICENSE", "README.md"].map((path) => ({
+      path,
+      digest: treeHash(resolve(completeFixture, path)),
+    })),
     targets: ["codex", "claude"],
     policies: { default: "transform-or-fail", skills: "transform" },
     targetPolicies: {
@@ -188,7 +192,15 @@ test("keeps the public prototype skill name behind a safe component identity", (
   for (const target of ["claude", "codex"]) {
     const skillRoot = resolve(bundleRoot, "targets", target, "skills");
     assert.equal(existsSync(resolve(skillRoot, "prototype/SKILL.md")), true);
-    assert.deepEqual(validateRecursiveSkills(skillRoot), []);
+    assert.deepEqual(validateRecursiveSkills(skillRoot, {
+      target,
+      allowedComponentRoots: manifest.components
+        .map((component) => component.targets[target])
+        .filter((disposition) => ["preserved", "transformed"].includes(
+          disposition.status,
+        ))
+        .map((disposition) => resolve(bundleRoot, disposition.path)),
+    }), []);
     assert.equal(Object.hasOwn(manifest.targets[target].components, id), true);
     assert.equal(Object.hasOwn(manifest.targets[target].components, "prototype"), false);
   }
@@ -211,6 +223,7 @@ test("duplicate component IDs fail before a neutral manifest is exposed", (conte
   );
   writeFileSync(resolve(sourceRoot, "assets/icon.svg"), "<svg/>\n");
   const plugin = completePlugin();
+  delete plugin.sourceContext;
   plugin.name = "duplicate";
   plugin.targets = ["claude"];
   plugin.targetPolicies = {};

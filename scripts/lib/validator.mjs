@@ -287,7 +287,13 @@ function localMarkdownPath(rawTarget) {
   }
 }
 
-function validateMarkdownLinks({ root, linkBoundary, file, errors }) {
+function owningComponentRoot(allowedRoots, candidate) {
+  return allowedRoots
+    .filter((root) => pathIsInside(root.path, candidate))
+    .sort((left, right) => right.path.length - left.path.length)[0];
+}
+
+function validateMarkdownLinks({ root, allowedRoots, file, errors }) {
   const relativeFile = normalizedRelative(root, file);
   const markdown = readFileSync(file, "utf8");
   let destinations;
@@ -311,8 +317,11 @@ function validateMarkdownLinks({ root, linkBoundary, file, errors }) {
       continue;
     }
     const absoluteTarget = resolve(dirname(file), target);
-    if (!pathIsInside(linkBoundary, absoluteTarget)) {
-      errors.push(`${relativeFile}: local Markdown link escapes skill tree -> ${target}`);
+    const owner = owningComponentRoot(allowedRoots, absoluteTarget);
+    if (!owner) {
+      errors.push(
+        `${relativeFile}: local Markdown link is outside owned components -> ${target}`,
+      );
       continue;
     }
     const stats = statEntry(absoluteTarget);
@@ -321,8 +330,8 @@ function validateMarkdownLinks({ root, linkBoundary, file, errors }) {
       continue;
     }
     const expectedCanonical = resolve(
-      realpathSync(linkBoundary),
-      relative(linkBoundary, absoluteTarget),
+      owner.canonicalPath,
+      relative(owner.path, absoluteTarget),
     );
     if (
       stats.isSymbolicLink()
@@ -334,7 +343,10 @@ function validateMarkdownLinks({ root, linkBoundary, file, errors }) {
   }
 }
 
-export function validateRecursiveSkills(targetSkillsRoot) {
+export function validateRecursiveSkills(
+  targetSkillsRoot,
+  { target, allowedComponentRoots } = {},
+) {
   const errors = [];
   const root = resolve(targetSkillsRoot);
   const rootStats = statEntry(root);
@@ -347,6 +359,34 @@ export function validateRecursiveSkills(targetSkillsRoot) {
   } catch (error) {
     return [messageOf(error).replaceAll(root, ".")];
   }
+  if (target !== undefined && !TARGETS.has(target)) {
+    return [`${root}: unsupported skill validation target ${String(target)}`];
+  }
+  const configuredRoots = allowedComponentRoots === undefined
+    ? [root]
+    : allowedComponentRoots;
+  if (!Array.isArray(configuredRoots) || configuredRoots.length === 0) {
+    return [`${root}: allowed component projection roots must be a non-empty array`];
+  }
+  const allowedRoots = [];
+  for (const configuredRoot of configuredRoots) {
+    if (typeof configuredRoot !== "string") {
+      errors.push(`${root}: allowed component projection root must be a path`);
+      continue;
+    }
+    const path = resolve(configuredRoot);
+    const stats = statEntry(path);
+    if (!stats || stats.isSymbolicLink() || (!stats.isFile() && !stats.isDirectory())) {
+      errors.push(`${path}: allowed component projection root must be a real file or directory`);
+      continue;
+    }
+    const canonical = canonicalPath(path);
+    if (canonical !== realpathSync(path)) {
+      errors.push(`${path}: allowed component projection root must not use symbolic paths`);
+      continue;
+    }
+    allowedRoots.push({ canonicalPath: canonical, path });
+  }
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const entrypoint = resolve(root, entry.name, "SKILL.md");
@@ -355,15 +395,11 @@ export function validateRecursiveSkills(targetSkillsRoot) {
       errors.push(`${entry.name}/SKILL.md: missing canonical skill entrypoint`);
     }
   }
-  const isCodex = root.replaceAll("\\", "/").includes("/targets/codex/skills");
-  const isTargetSkillRoot = /\/targets\/(?:claude|codex)\/skills$/u.test(
-    root.replaceAll("\\", "/"),
-  );
-  const linkBoundary = isTargetSkillRoot ? dirname(root) : root;
+  const isCodex = target === "codex";
   const names = new Map();
   for (const file of files) {
     if ([".md", ".markdown"].includes(extname(file).toLowerCase())) {
-      validateMarkdownLinks({ root, linkBoundary, file, errors });
+      validateMarkdownLinks({ root, allowedRoots, file, errors });
     }
     if (basename(file) !== "SKILL.md") continue;
     const relativeFile = normalizedRelative(root, file);
@@ -778,6 +814,32 @@ function validateComponent({
   }
 }
 
+function targetComponentProjectionRoots({ pluginRoot, plugin, manifest, target, targetRoot, errors }) {
+  const roots = [];
+  for (const component of manifest.components || []) {
+    const disposition = component.targets?.[target];
+    if (
+      !["preserved", "transformed"].includes(disposition?.status)
+      || typeof disposition.path !== "string"
+    ) {
+      continue;
+    }
+    const path = safeRelativePath({
+      boundary: pluginRoot,
+      configuredPath: disposition.path,
+      label: `${plugin.name} ${target} component ${component.id} projection`,
+      errors,
+    });
+    if (!path) continue;
+    if (!pathIsInside(targetRoot, path)) {
+      errors.push(`${plugin.name} ${target} component ${component.id}: projection escapes target`);
+      continue;
+    }
+    roots.push(path);
+  }
+  return sortedUnique(roots);
+}
+
 function validateTarget({ pluginRoot, plugin, manifest, lockEntry, target, errors }) {
   const label = `${plugin.name} target ${target}`;
   const targetData = manifest.targets?.[target];
@@ -808,7 +870,18 @@ function validateTarget({ pluginRoot, plugin, manifest, lockEntry, target, error
   validateHostManifest({ pluginRoot, plugin, manifest, target, errors });
   const skillsRoot = resolve(targetRoot, "skills");
   if (existsSync(skillsRoot)) {
-    for (const error of validateRecursiveSkills(skillsRoot)) {
+    const allowedComponentRoots = targetComponentProjectionRoots({
+      pluginRoot,
+      plugin,
+      manifest,
+      target,
+      targetRoot,
+      errors,
+    });
+    for (const error of validateRecursiveSkills(skillsRoot, {
+      target,
+      allowedComponentRoots,
+    })) {
       errors.push(`${plugin.name} ${target}: ${error}`);
     }
   }
