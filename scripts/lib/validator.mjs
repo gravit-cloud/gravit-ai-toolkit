@@ -37,7 +37,7 @@ import { assertVersionChange } from "./provenance.mjs";
 import { classifyRuntimeCommand } from "./runtime-command.mjs";
 
 const PROTOTYPE_NAMES = new Set(["__proto__", "constructor", "prototype"]);
-const TARGETS = new Set(["claude", "codex"]);
+const TARGETS = new Set(["claude", "codex", "openclaw"]);
 const SUPPORTED_SCRIPT_EXTENSIONS = new Set([".cjs", ".js", ".mjs", ".sh"]);
 const CONTAINER_BOOLEAN_OPTIONS = new Set([
   "-i", "-t", "--init", "--interactive", "--read-only", "--rm", "--tty",
@@ -670,6 +670,10 @@ const HOST_REFERENCES = {
     ["hooks", ["hook"], "file"],
     ["mcpServers", ["mcp"], "file"],
     ["apps", ["app"], "file"],
+  ],
+  openclaw: [
+    ["skills", ["skill", "command"], "directory"],
+    ["mcpServers", ["mcp"], "file"],
   ],
 };
 

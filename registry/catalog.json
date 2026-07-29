@@ -6,7 +6,7 @@
       "name": "claude-seo",
       "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
       "category": "seo",
-      "distributionVersion": "2.2.4-gravit.1",
+      "distributionVersion": "2.2.4-gravit.2",
       "source": {
         "type": "github",
         "repo": "AgricIDaniel/claude-seo",
@@ -80,9 +80,18 @@
           "unsupported": {
             "agent": "host-does-not-load-agents"
           }
+        },
+        "openclaw": {
+          "unsupported": {
+            "agent": "openclaw-detects-agents-only",
+            "hook": "openclaw-does-not-run-claude-hook-json"
+          }
         }
       },
-      "targets": ["claude", "codex"],
+      "adapterOptions": {
+        "openclaw": { "bundleFormat": "codex" }
+      },
+      "targets": ["claude", "codex", "openclaw"],
       "policies": {
         "default": "transform-or-fail",
         "skills": "transform"
@@ -92,7 +101,7 @@
       "name": "obsidian",
       "description": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle.",
       "category": "productivity",
-      "distributionVersion": "1.0.1-gravit.1",
+      "distributionVersion": "1.0.1-gravit.2",
       "source": {
         "type": "github",
         "repo": "kepano/obsidian-skills",
@@ -104,7 +113,10 @@
         { "path": ".claude-plugin/marketplace.json", "digest": "7a9a8e1d87d73e578fe5180811d58379037f668b865f037bb60bc0715bb10b7d" },
         { "path": "README.md", "digest": "5c0d37f7a9378ff928fced5db91f06ca02454f59a736b874c4d59fe59c60e6dd" }
       ],
-      "targets": ["claude", "codex"],
+      "adapterOptions": {
+        "openclaw": { "bundleFormat": "codex" }
+      },
+      "targets": ["claude", "codex", "openclaw"],
       "policies": {
         "default": "transform-or-fail",
         "skills": "transform"
@@ -114,7 +126,7 @@
       "name": "mattpocock-skills",
       "description": "Produktivitäts-Skills von Matt Pocock (u.a. grill-me — intensives Interview zur Plan-Schärfung).",
       "category": "productivity",
-      "distributionVersion": "1.1.0-gravit.1",
+      "distributionVersion": "1.1.0-gravit.2",
       "source": {
         "type": "github",
         "repo": "mattpocock/skills",
@@ -144,7 +156,10 @@
         { "path": "skills/personal", "digest": "e08ce3477a1ba74c5ba130fdfc9ecebc8f054e659fd2cb3ee739d924797c0006" },
         { "path": "skills/productivity/README.md", "digest": "ed18a029605880d48a4e47e0a6f4a54536ce6dd92d7b2ce88d4754bb16b5b20f" }
       ],
-      "targets": ["claude", "codex"],
+      "adapterOptions": {
+        "openclaw": { "bundleFormat": "codex" }
+      },
+      "targets": ["claude", "codex", "openclaw"],
       "policies": {
         "default": "transform-or-fail",
         "skills": "transform"
@@ -154,7 +169,7 @@
       "name": "azure",
       "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
       "category": "cloud",
-      "distributionVersion": "1.2.5-gravit.1",
+      "distributionVersion": "1.2.5-gravit.2",
       "runtimeDependencies": {
         "@azure/mcp": "2.0.5"
       },
@@ -180,6 +195,11 @@
           "unsupported": {
             "app": "host-uses-mcp-without-app-binding"
           }
+        },
+        "openclaw": {
+          "unsupported": {
+            "hook": "openclaw-does-not-run-claude-hook-json"
+          }
         }
       },
       "source": {
@@ -204,7 +224,10 @@
         { "path": "landing-page", "digest": "8eda6a146b93c2fae2022f255547d3d9ff848d929f85c0c224f04c38d914a0ec" },
         { "path": "plugin.json", "digest": "87a13e2e48643cfb5a141e520be8023ed4f4c8fef7b4dfd68b652a06a6614005" }
       ],
-      "targets": ["claude", "codex"],
+      "adapterOptions": {
+        "openclaw": { "bundleFormat": "codex" }
+      },
+      "targets": ["claude", "codex", "openclaw"],
       "policies": {
         "default": "transform-or-fail",
         "skills": "transform"
@@ -214,7 +237,7 @@
       "name": "superpowers",
       "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
       "category": "development",
-      "distributionVersion": "6.2.0-gravit.1",
+      "distributionVersion": "6.2.0-gravit.2",
       "source": {
         "type": "github",
         "repo": "obra/superpowers",
@@ -246,7 +269,17 @@
         { "path": "scripts", "digest": "3a2b3d3296966e3921454bc2737c85c2d37ac2e1f31227ed69e883256ab4bfa1" },
         { "path": "tests", "digest": "80a0ef6dceba3aa2ce951403283792919f6c02da0de06a1bf2588534573dfd33" }
       ],
-      "targets": ["claude", "codex"],
+      "targetPolicies": {
+        "openclaw": {
+          "unsupported": {
+            "hook": "openclaw-does-not-run-claude-hook-json"
+          }
+        }
+      },
+      "adapterOptions": {
+        "openclaw": { "bundleFormat": "codex" }
+      },
+      "targets": ["claude", "codex", "openclaw"],
       "policies": {
         "default": "transform-or-fail",
         "skills": "transform"
@@ -256,13 +289,16 @@
       "name": "gravit-custom",
       "description": "Sieben lokal gepflegte Skills der Gravit Cloud (sources/gravit-custom/skills/).",
       "category": "development",
-      "distributionVersion": "1.0.0-gravit.1",
+      "distributionVersion": "1.0.0-gravit.2",
       "source": {
         "type": "local",
         "path": "sources/gravit-custom",
         "root": "."
       },
-      "targets": ["claude", "codex"],
+      "adapterOptions": {
+        "openclaw": { "bundleFormat": "codex" }
+      },
+      "targets": ["claude", "codex", "openclaw"],
       "policies": {
         "default": "transform-or-fail",
         "skills": "transform"

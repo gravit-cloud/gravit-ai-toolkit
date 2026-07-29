@@ -1,0 +1,20 @@
+{
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
+  "interface": {
+    "capabilities": [],
+    "category": "Development",
+    "defaultPrompt": [
+      "Use superpowers to help with this task."
+    ],
+    "developerName": "Gravit Cloud",
+    "displayName": "superpowers",
+    "longDescription": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
+    "shortDescription": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschlus"
+  },
+  "name": "superpowers",
+  "skills": "./skills/",
+  "version": "6.2.0-gravit.2"
+}

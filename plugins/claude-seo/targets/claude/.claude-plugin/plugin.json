@@ -26,5 +26,5 @@
   "hooks": "./hooks/hooks.json",
   "name": "claude-seo",
   "skills": "./skills/",
-  "version": "2.2.4-gravit.1"
+  "version": "2.2.4-gravit.2"
 }

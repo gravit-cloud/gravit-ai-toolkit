@@ -70,12 +70,12 @@ test("production catalog is neutral and fully pinned", () => {
   assert.deepEqual(
     catalog.plugins.map((plugin) => plugin.distributionVersion),
     [
-      "2.2.4-gravit.1",
-      "1.0.1-gravit.1",
-      "1.1.0-gravit.1",
-      "1.2.5-gravit.1",
-      "6.2.0-gravit.1",
-      "1.0.0-gravit.1",
+      "2.2.4-gravit.2",
+      "1.0.1-gravit.2",
+      "1.1.0-gravit.2",
+      "1.2.5-gravit.2",
+      "6.2.0-gravit.2",
+      "1.0.0-gravit.2",
     ],
   );
   for (const plugin of catalog.plugins.filter(({ source }) => source.type === "github")) {
@@ -145,6 +145,12 @@ test("production catalog is neutral and fully pinned", () => {
         agent: "host-does-not-load-agents",
       },
     },
+    openclaw: {
+      unsupported: {
+        agent: "openclaw-detects-agents-only",
+        hook: "openclaw-does-not-run-claude-hook-json",
+      },
+    },
   });
   const azure = catalog.plugins.find(({ name }) => name === "azure");
   assert.equal(azure.runtimeDependencies["@azure/mcp"], "2.0.5");
@@ -164,17 +170,30 @@ test("production catalog is neutral and fully pinned", () => {
         theme: "host-does-not-load-themes",
       },
     },
+    openclaw: {
+      unsupported: {
+        hook: "openclaw-does-not-run-claude-hook-json",
+      },
+    },
   });
   assert.deepEqual(catalog.plugins.at(-1).source, {
     type: "local",
     path: "sources/gravit-custom",
     root: ".",
   });
-  for (const plugin of catalog.plugins.filter(({ name }) => (
-    !["azure", "claude-seo"].includes(name)
-  ))) {
-    assert.equal(Object.hasOwn(plugin, "targetPolicies"), false, plugin.name);
+  for (const plugin of catalog.plugins) {
+    assert.deepEqual(plugin.targets, ["claude", "codex", "openclaw"], plugin.name);
+    assert.deepEqual(plugin.adapterOptions, {
+      openclaw: { bundleFormat: "codex" },
+    }, plugin.name);
   }
+  assert.deepEqual(catalog.plugins.find(({ name }) => name === "superpowers").targetPolicies, {
+    openclaw: {
+      unsupported: {
+        hook: "openclaw-does-not-run-claude-hook-json",
+      },
+    },
+  });
 });
 
 test("current repository passes offline validation after generated cutover", () => {

@@ -13,6 +13,10 @@
         "codex": {
           "reasonCode": "host-does-not-load-agents",
           "status": "unsupported"
+        },
+        "openclaw": {
+          "reasonCode": "openclaw-detects-agents-only",
+          "status": "unsupported"
         }
       },
       "type": "agent"
@@ -29,6 +33,11 @@
         },
         "codex": {
           "path": "targets/codex/data",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/data",
           "reasonCode": "native-component",
           "status": "preserved"
         }
@@ -49,6 +58,11 @@
           "path": "targets/codex/requirements.txt",
           "reasonCode": "native-component",
           "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/requirements.txt",
+          "reasonCode": "native-component",
+          "status": "preserved"
         }
       },
       "type": "asset"
@@ -65,6 +79,11 @@
         },
         "codex": {
           "path": "targets/codex/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/assets",
           "reasonCode": "native-component",
           "status": "preserved"
         }
@@ -85,6 +104,11 @@
           "path": "targets/codex/screenshots",
           "reasonCode": "native-component",
           "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/screenshots",
+          "reasonCode": "native-component",
+          "status": "preserved"
         }
       },
       "type": "asset"
@@ -101,6 +125,11 @@
         },
         "codex": {
           "path": "targets/codex/pdf",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/pdf",
           "reasonCode": "native-component",
           "status": "preserved"
         }
@@ -121,6 +150,11 @@
           "path": "targets/codex/schema",
           "reasonCode": "native-component",
           "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/schema",
+          "reasonCode": "native-component",
+          "status": "preserved"
         }
       },
       "type": "asset"
@@ -137,6 +171,11 @@
         },
         "codex": {
           "path": "targets/codex/hooks/validate-schema.py",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/hooks/validate-schema.py",
           "reasonCode": "native-component",
           "status": "preserved"
         }
@@ -157,6 +196,11 @@
           "path": "targets/codex/extensions",
           "reasonCode": "native-component",
           "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/extensions",
+          "reasonCode": "native-component",
+          "status": "preserved"
         }
       },
       "type": "executable"
@@ -173,6 +217,11 @@
         },
         "codex": {
           "path": "targets/codex/hooks/run-python-hook.js",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/hooks/run-python-hook.js",
           "reasonCode": "native-component",
           "status": "preserved"
         }
@@ -193,6 +242,11 @@
           "path": "targets/codex/bin",
           "reasonCode": "native-component",
           "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/bin",
+          "reasonCode": "native-component",
+          "status": "preserved"
         }
       },
       "type": "executable"
@@ -209,6 +263,11 @@
         },
         "codex": {
           "path": "targets/codex/scripts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/scripts",
           "reasonCode": "native-component",
           "status": "preserved"
         }
@@ -229,6 +288,10 @@
           "path": "targets/codex/hooks/hooks.json",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "reasonCode": "openclaw-does-not-run-claude-hook-json",
+          "status": "unsupported"
         }
       },
       "type": "hook"
@@ -245,6 +308,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -265,6 +333,11 @@
           "path": "targets/codex/skills/seo-audit",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-audit",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -281,6 +354,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-backlinks",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-backlinks",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -301,6 +379,11 @@
           "path": "targets/codex/skills/seo-cluster",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-cluster",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -317,6 +400,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-competitor-pages",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-competitor-pages",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -337,6 +425,11 @@
           "path": "targets/codex/skills/seo-content",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-content",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -353,6 +446,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-content-brief",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-content-brief",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -373,6 +471,11 @@
           "path": "targets/codex/skills/seo-dataforseo",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-dataforseo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -389,6 +492,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-drift",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-drift",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -409,6 +517,11 @@
           "path": "targets/codex/skills/seo-ecommerce",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-ecommerce",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -425,6 +538,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-flow",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-flow",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -445,6 +563,11 @@
           "path": "targets/codex/skills/seo-geo",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-geo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -461,6 +584,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-google",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-google",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -481,6 +609,11 @@
           "path": "targets/codex/skills/seo-hreflang",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-hreflang",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -497,6 +630,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-image-gen",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-image-gen",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -517,6 +655,11 @@
           "path": "targets/codex/skills/seo-images",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-images",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -533,6 +676,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-local",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-local",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -553,6 +701,11 @@
           "path": "targets/codex/skills/seo-maps",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-maps",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -569,6 +722,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-page",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-page",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -589,6 +747,11 @@
           "path": "targets/codex/skills/seo-plan",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-plan",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -605,6 +768,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-programmatic",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-programmatic",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -625,6 +793,11 @@
           "path": "targets/codex/skills/seo-schema",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-schema",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -641,6 +814,11 @@
         },
         "codex": {
           "path": "targets/codex/skills/seo-sitemap",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-sitemap",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -661,6 +839,11 @@
           "path": "targets/codex/skills/seo-sxo",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-sxo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
@@ -679,12 +862,17 @@
           "path": "targets/codex/skills/seo-technical",
           "reasonCode": "target-translation",
           "status": "transformed"
+        },
+        "openclaw": {
+          "path": "targets/openclaw/skills/seo-technical",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "skill"
     }
   ],
-  "distributionVersion": "2.2.4-gravit.1",
+  "distributionVersion": "2.2.4-gravit.2",
   "name": "claude-seo",
   "schemaVersion": 1,
   "targets": {
@@ -881,7 +1069,7 @@
           "status": "preserved"
         }
       },
-      "digest": "60815af71958e378d56e1cb75f8a2e50be664375946e9e99b94fd0c3970fad28",
+      "digest": "2c784699ecfc9a2bfc97a59fac8b440115daf99b821e5b85478caa257d1c6335",
       "path": "targets/claude"
     },
     "codex": {
@@ -1076,8 +1264,202 @@
           "status": "transformed"
         }
       },
-      "digest": "fd1ddf1630d5dd0fe683c5f680145375162990e8d1f4a4f884d05f727677e4fe",
+      "digest": "773622b73cf5876021603250ee245f8f2410894a7c25622df8039f441eff7936",
       "path": "targets/codex"
+    },
+    "openclaw": {
+      "components": {
+        "agent-8c70b25cbbbe": {
+          "reasonCode": "openclaw-detects-agents-only",
+          "status": "unsupported"
+        },
+        "asset-3a6eb0790f39": {
+          "path": "targets/openclaw/data",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-4d7c51b1efe9": {
+          "path": "targets/openclaw/requirements.txt",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-8bf729ffe074": {
+          "path": "targets/openclaw/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-98d875b61ff2": {
+          "path": "targets/openclaw/screenshots",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-c35b21d6ca39": {
+          "path": "targets/openclaw/pdf",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-df0ad6e43880": {
+          "path": "targets/openclaw/schema",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-048f0de608d4": {
+          "path": "targets/openclaw/hooks/validate-schema.py",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-20ef7739e842": {
+          "path": "targets/openclaw/extensions",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-2fe8debbb325": {
+          "path": "targets/openclaw/hooks/run-python-hook.js",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-51a1f05af85e": {
+          "path": "targets/openclaw/bin",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-8c5967fd8486": {
+          "path": "targets/openclaw/scripts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "hook-a48aec12c9dd": {
+          "reasonCode": "openclaw-does-not-run-claude-hook-json",
+          "status": "unsupported"
+        },
+        "seo": {
+          "path": "targets/openclaw/skills/seo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-audit": {
+          "path": "targets/openclaw/skills/seo-audit",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-backlinks": {
+          "path": "targets/openclaw/skills/seo-backlinks",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-cluster": {
+          "path": "targets/openclaw/skills/seo-cluster",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-competitor-pages": {
+          "path": "targets/openclaw/skills/seo-competitor-pages",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-content": {
+          "path": "targets/openclaw/skills/seo-content",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-content-brief": {
+          "path": "targets/openclaw/skills/seo-content-brief",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-dataforseo": {
+          "path": "targets/openclaw/skills/seo-dataforseo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-drift": {
+          "path": "targets/openclaw/skills/seo-drift",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-ecommerce": {
+          "path": "targets/openclaw/skills/seo-ecommerce",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-flow": {
+          "path": "targets/openclaw/skills/seo-flow",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-geo": {
+          "path": "targets/openclaw/skills/seo-geo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-google": {
+          "path": "targets/openclaw/skills/seo-google",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-hreflang": {
+          "path": "targets/openclaw/skills/seo-hreflang",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-image-gen": {
+          "path": "targets/openclaw/skills/seo-image-gen",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-images": {
+          "path": "targets/openclaw/skills/seo-images",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-local": {
+          "path": "targets/openclaw/skills/seo-local",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-maps": {
+          "path": "targets/openclaw/skills/seo-maps",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-page": {
+          "path": "targets/openclaw/skills/seo-page",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-plan": {
+          "path": "targets/openclaw/skills/seo-plan",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-programmatic": {
+          "path": "targets/openclaw/skills/seo-programmatic",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-schema": {
+          "path": "targets/openclaw/skills/seo-schema",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-sitemap": {
+          "path": "targets/openclaw/skills/seo-sitemap",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-sxo": {
+          "path": "targets/openclaw/skills/seo-sxo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-technical": {
+          "path": "targets/openclaw/skills/seo-technical",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "digest": "1299e4a7b664d45c7f51f0bc16bfcc2cac64750f1bce0803df0166be5dbab4aa",
+      "path": "targets/openclaw"
     }
   }
 }
