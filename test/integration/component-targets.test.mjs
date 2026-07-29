@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -99,6 +100,34 @@ function commandPlugin() {
     distributionVersion: "1.0.0",
     source: { type: "local", path: "test/fixtures/command-fixture", root: "." },
     targets: ["claude", "codex"],
+    policies: { default: "transform-or-fail", skills: "transform" },
+    targetPolicies: {},
+  };
+}
+
+function singletonSource(context, { host, field, sourcePath }) {
+  const root = mkdtempSync(resolve(tmpdir(), "component-singleton-source-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const manifestRoot = host === "claude" ? ".claude-plugin" : ".codex-plugin";
+  mkdirSync(resolve(root, manifestRoot), { recursive: true });
+  writeFileSync(resolve(root, manifestRoot, "plugin.json"), JSON.stringify({
+    name: "singleton-fixture",
+    version: "1.0.0",
+    [field]: "./" + sourcePath,
+  }));
+  mkdirSync(resolve(root, sourcePath), { recursive: true });
+  writeFileSync(resolve(root, sourcePath, "nested.json"), "{}\n");
+  return root;
+}
+
+function singletonPlugin(target) {
+  return {
+    name: "singleton-fixture",
+    description: "Singleton directory fixture",
+    category: "development",
+    distributionVersion: "1.0.0",
+    source: { type: "local", path: "test/fixtures/singleton-fixture", root: "." },
+    targets: [target],
     policies: { default: "transform-or-fail", skills: "transform" },
     targetPolicies: {},
   };
@@ -286,8 +315,53 @@ test("rejects command collisions against real and converted skills before manife
       /duplicate target skill name: release/,
     );
     assert.equal(existsSync(resolve(bundleRoot, "targets/codex/.codex-plugin/plugin.json")), false);
+    assert.equal(existsSync(resolve(bundleRoot, "targets/claude/.claude-plugin/plugin.json")), false);
+    assert.equal(existsSync(resolve(bundleRoot, "targets")), false);
+    assert.equal(existsSync(resolve(bundleRoot, ".agent-plugin/plugin.json")), false);
+    assert.deepEqual(
+      readdirSync(bundleRoot).filter((entry) => entry.startsWith(".targets.stage-")),
+      [],
+    );
+  }
+});
+
+test("rejects path directories for fixed JSON singleton destinations before exposure", (context) => {
+  const cases = [
+    { host: "claude", field: "lspServers", sourcePath: "lsp-config", target: "claude" },
+    { host: "codex", field: "apps", sourcePath: "app-config", target: "codex" },
+  ];
+  for (const fixture of cases) {
+    const sourceRoot = singletonSource(context, fixture);
+    const bundleRoot = sandbox(context);
+    assert.throws(
+      () => buildPluginBundle({
+        plugin: singletonPlugin(fixture.target),
+        sourceRoot,
+        bundleRoot,
+      }),
+      /component must be a regular JSON file/,
+    );
+    assert.equal(existsSync(resolve(bundleRoot, "targets")), false);
     assert.equal(existsSync(resolve(bundleRoot, ".agent-plugin/plugin.json")), false);
   }
+});
+
+test("refuses to replace or merge an existing final target tree", (context) => {
+  const sourceRoot = commandSource(context, {
+    files: { "release.md": "---\ndescription: Release\n---\nBody\n" },
+  });
+  const bundleRoot = sandbox(context);
+  const sentinel = resolve(bundleRoot, "targets/sentinel.txt");
+  mkdirSync(dirname(sentinel), { recursive: true });
+  writeFileSync(sentinel, "keep\n");
+
+  assert.throws(
+    () => buildPluginBundle({ plugin: commandPlugin(), sourceRoot, bundleRoot }),
+    /atomic output already exists/,
+  );
+  assert.equal(readFileSync(sentinel, "utf8"), "keep\n");
+  assert.deepEqual(readdirSync(resolve(bundleRoot, "targets")), ["sentinel.txt"]);
+  assert.equal(existsSync(resolve(bundleRoot, ".agent-plugin/plugin.json")), false);
 });
 
 test("renders inline hooks, MCP, and Codex app records without leaking Claude app output", (context) => {

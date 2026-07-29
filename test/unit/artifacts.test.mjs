@@ -134,6 +134,80 @@ test("withAtomicOutput replaces an existing output only after the new tree is bu
   assert.equal(readFileSync(resolve(finalRoot, "nested", "state.txt"), "utf8"), "new\n");
 });
 
+test("withAtomicOutput can require an absent final output without replacing races", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-absent-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+  mkdirSync(finalRoot);
+  writeFileSync(resolve(finalRoot, "sentinel.txt"), "keep\n");
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build() {
+      assert.fail("build must not run for an existing final output");
+    },
+  }), /atomic output already exists/);
+  assert.equal(readFileSync(resolve(finalRoot, "sentinel.txt"), "utf8"), "keep\n");
+  assert.deepEqual(readdirSync(parent), ["output"]);
+
+  rmSync(finalRoot, { recursive: true });
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build(stage) {
+      writeFileSync(resolve(stage, "new.txt"), "new\n");
+      mkdirSync(finalRoot);
+      writeFileSync(resolve(finalRoot, "concurrent.txt"), "concurrent\n");
+    },
+  }), /atomic output already exists/);
+  assert.equal(readFileSync(resolve(finalRoot, "concurrent.txt"), "utf8"), "concurrent\n");
+  assert.equal(existsSync(resolve(finalRoot, "new.txt")), false);
+  assert.deepEqual(readdirSync(parent), ["output"]);
+});
+
+test("absent-only atomic promotion preserves errors and cannot clobber a concurrent tree", (context) => {
+  const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-race-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const finalRoot = resolve(parent, "output");
+
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build(stage) {
+      writeFileSync(resolve(stage, "new.txt"), "new\n");
+    },
+  }, {
+    renameSync() {
+      throw new Error("synthetic absent promotion failure");
+    },
+  }), /synthetic absent promotion failure/);
+  assert.equal(existsSync(finalRoot), false);
+  assert.deepEqual(readdirSync(parent), []);
+
+  let raceError;
+  assert.throws(() => withAtomicOutput({
+    finalRoot,
+    replaceExisting: false,
+    build(stage) {
+      writeFileSync(resolve(stage, "new.txt"), "new\n");
+    },
+  }, {
+    renameSync(source, destination) {
+      mkdirSync(finalRoot);
+      writeFileSync(resolve(finalRoot, "concurrent.txt"), "concurrent\n");
+      renameSync(source, destination);
+    },
+  }), (error) => {
+    raceError = error;
+    return ["EEXIST", "ENOTEMPTY"].includes(error.code);
+  });
+  assert.equal(["EEXIST", "ENOTEMPTY"].includes(raceError.code), true);
+  assert.equal(readFileSync(resolve(finalRoot, "concurrent.txt"), "utf8"), "concurrent\n");
+  assert.equal(existsSync(resolve(finalRoot, "new.txt")), false);
+  assert.deepEqual(readdirSync(parent), ["output"]);
+});
+
 test("withAtomicOutput never deletes a pre-existing sibling backup path", (context) => {
   const parent = mkdtempSync(resolve(tmpdir(), "registry-atomic-"));
   context.after(() => rmSync(parent, { recursive: true, force: true }));

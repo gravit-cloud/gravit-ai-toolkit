@@ -6,12 +6,15 @@ function removeIfPresent(path) {
   if (existsSync(path)) rmSync(path, { recursive: true, force: true });
 }
 
-export function withAtomicOutput({ finalRoot, build }, fileSystem = {}) {
+export function withAtomicOutput({ finalRoot, build, replaceExisting = true }, fileSystem = {}) {
   const makeTemporaryDirectory = fileSystem.mkdtempSync ?? mkdtempSync;
   const rename = fileSystem.renameSync ?? renameSync;
   const outputRoot = resolve(finalRoot);
   const parent = dirname(outputRoot);
   const name = basename(outputRoot);
+  if (!replaceExisting && existsSync(outputRoot)) {
+    throw new Error("atomic output already exists: " + outputRoot);
+  }
   mkdirSync(parent, { recursive: true });
 
   const stage = makeTemporaryDirectory(resolve(parent, "." + name + ".stage-"));
@@ -21,14 +24,22 @@ export function withAtomicOutput({ finalRoot, build }, fileSystem = {}) {
   let activeError;
 
   try {
-    backupRoot = makeTemporaryDirectory(resolve(parent, "." + name + ".backup-"));
-    backup = resolve(backupRoot, "previous");
+    if (replaceExisting) {
+      backupRoot = makeTemporaryDirectory(resolve(parent, "." + name + ".backup-"));
+      backup = resolve(backupRoot, "previous");
+    }
     build(stage);
-    if (existsSync(outputRoot)) rename(outputRoot, backup);
+    // Absent-only callers recheck after the build. A concurrent non-empty
+    // directory also makes the following directory rename fail without
+    // clobbering it; preserve that promotion error because there is no backup.
+    if (!replaceExisting && existsSync(outputRoot)) {
+      throw new Error("atomic output already exists: " + outputRoot);
+    }
+    if (replaceExisting && existsSync(outputRoot)) rename(outputRoot, backup);
     try {
       rename(stage, outputRoot);
     } catch (promotionError) {
-      if (existsSync(backup)) {
+      if (backup && existsSync(backup)) {
         if (existsSync(outputRoot)) {
           keepBackupRoot = true;
           const collisionError = new Error(

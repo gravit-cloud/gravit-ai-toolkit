@@ -1,5 +1,13 @@
-import { existsSync, lstatSync, mkdirSync, realpathSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+} from "node:fs";
 import { relative, resolve } from "node:path";
+import { withAtomicOutput } from "./atomic-output.mjs";
 import { copyComponent } from "./component-files.mjs";
 import { treeHash } from "./hash.mjs";
 import { inventorySource } from "./inventory.mjs";
@@ -145,27 +153,44 @@ export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
     })
     .sort((left, right) => compareCodePoints(left.id, right.id));
 
-  const targetResults = {};
-  for (const target of targetNames) {
-    const rendered = TARGET_RENDERERS[target]({
-      plugin,
-      inventory,
-      neutralComponents,
-      bundleRoot,
-    });
-    const validated = assertAdapterResult({
-      plugin,
-      target,
-      bundleRoot,
-      neutralComponents,
-      result: rendered,
-    });
-    targetResults[target] = {
-      path: "targets/" + target,
-      digest: validated.digest,
-      components: validated.components,
-    };
-  }
+  let targetResults;
+  withAtomicOutput({
+    finalRoot: resolve(bundleRoot, "targets"),
+    replaceExisting: false,
+    build(stageRoot) {
+      const stagedBundleRoot = resolve(stageRoot, ".bundle");
+      mkdirSync(stagedBundleRoot);
+      const stagedResults = {};
+      for (const target of targetNames) {
+        const rendered = TARGET_RENDERERS[target]({
+          plugin,
+          inventory,
+          neutralComponents,
+          bundleRoot: stagedBundleRoot,
+        });
+        const validated = assertAdapterResult({
+          plugin,
+          target,
+          bundleRoot: stagedBundleRoot,
+          neutralComponents,
+          result: rendered,
+        });
+        stagedResults[target] = {
+          path: "targets/" + target,
+          digest: validated.digest,
+          components: validated.components,
+        };
+      }
+      for (const target of targetNames) {
+        renameSync(
+          resolve(stagedBundleRoot, "targets", target),
+          resolve(stageRoot, target),
+        );
+      }
+      rmSync(stagedBundleRoot, { recursive: true });
+      targetResults = stagedResults;
+    },
+  });
 
   for (const component of neutralComponents) {
     for (const target of plugin.targets) {

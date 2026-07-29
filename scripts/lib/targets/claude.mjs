@@ -1,6 +1,7 @@
 import { lstatSync } from "node:fs";
 import { basename, relative, resolve } from "node:path";
 import {
+  assertJsonSingletonComponent,
   commandSourceFiles,
   materializeComponent,
 } from "../component-files.mjs";
@@ -137,6 +138,9 @@ export function renderClaudeTarget({ plugin, inventory, neutralComponents, bundl
     if (neutral.type === "skill") continue;
     const record = records.get(neutral.id);
     if (!record) throw new Error("missing inventory component: " + neutral.id);
+    if (["hook", "mcp", "lsp", "monitor", "settings"].includes(neutral.type)) {
+      assertJsonSingletonComponent(record);
+    }
     if (neutral.type === "hook") {
       hooks.push(record);
       continue;

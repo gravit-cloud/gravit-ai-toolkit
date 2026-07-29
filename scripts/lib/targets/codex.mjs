@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { basename, extname, relative, resolve } from "node:path";
 import {
+  assertJsonSingletonComponent,
   commandSourceFiles,
   commandToSkill,
   materializeComponent,
@@ -91,6 +92,9 @@ export function renderCodexTarget({ plugin, inventory, neutralComponents, bundle
     if (neutral.type === "skill") continue;
     const record = records.get(neutral.id);
     if (!record) throw new Error("missing inventory component: " + neutral.id);
+    if (["hook", "mcp", "app"].includes(neutral.type)) {
+      assertJsonSingletonComponent(record);
+    }
     if (neutral.type === "command") {
       const files = commandSourceFiles(record);
       const names = files.map(commandSkillName);
