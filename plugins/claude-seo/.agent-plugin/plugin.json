@@ -1,0 +1,1083 @@
+{
+  "components": [
+    {
+      "digest": "50ea6aafeb20813e786e82a6403ede9d75709b3a9ff27de28f055de994528520",
+      "id": "agent-8c70b25cbbbe",
+      "path": "components/agent/agent-8c70b25cbbbe",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/agents",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "reasonCode": "host-does-not-load-agents",
+          "status": "unsupported"
+        }
+      },
+      "type": "agent"
+    },
+    {
+      "digest": "495475607398e243011c794ded65c24c44cd93b2102573f768a45e719679fc2b",
+      "id": "asset-3a6eb0790f39",
+      "path": "components/asset/asset-3a6eb0790f39",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/data",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/data",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "asset"
+    },
+    {
+      "digest": "64210bb366bf64d1504091c8c825e6e810a027ba5104ab2387f02d37f997c464",
+      "id": "asset-4d7c51b1efe9",
+      "path": "components/asset/asset-4d7c51b1efe9",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/requirements.txt",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/requirements.txt",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "asset"
+    },
+    {
+      "digest": "36de4e9674633632e5d678a8edac5d6257639240660a825bf08a12f722936eab",
+      "id": "asset-8bf729ffe074",
+      "path": "components/asset/asset-8bf729ffe074",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "asset"
+    },
+    {
+      "digest": "678326bea5dc67ccc42f8c5893e79a308052afacc48a04e823759db5acceee11",
+      "id": "asset-98d875b61ff2",
+      "path": "components/asset/asset-98d875b61ff2",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/screenshots",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/screenshots",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "asset"
+    },
+    {
+      "digest": "7a56f8a4a8a63bc11b79a3e7f04b0b434e41cb9fc8e939c00ad3c5b004d96587",
+      "id": "asset-c35b21d6ca39",
+      "path": "components/asset/asset-c35b21d6ca39",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/pdf",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/pdf",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "asset"
+    },
+    {
+      "digest": "c5825032b0e24fc72425471e366bafa6f5ca2ea94c3885e347b2a47a108f5553",
+      "id": "asset-df0ad6e43880",
+      "path": "components/asset/asset-df0ad6e43880",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/schema",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/schema",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "asset"
+    },
+    {
+      "digest": "8f2b5411556da6b6d6c5081c54338fdd9473a662b4126120f08e91c6344c5f17",
+      "id": "executable-048f0de608d4",
+      "path": "components/executable/executable-048f0de608d4",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/hooks/validate-schema.py",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/hooks/validate-schema.py",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "executable"
+    },
+    {
+      "digest": "ff7eb548254a248f2975734f0d624f38ca4157b8689f0feaafea144f9e4a475e",
+      "id": "executable-20ef7739e842",
+      "path": "components/executable/executable-20ef7739e842",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/extensions",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/extensions",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "executable"
+    },
+    {
+      "digest": "009d1ba8c979433c90fa3bf4b03390e1aa801d65d9331f886a2a0bd23b6dfe31",
+      "id": "executable-2fe8debbb325",
+      "path": "components/executable/executable-2fe8debbb325",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/hooks/run-python-hook.js",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/hooks/run-python-hook.js",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "executable"
+    },
+    {
+      "digest": "c6a10de76b85af5e1397fa332d071778a969331a56293b3f8abd26245309dd1e",
+      "id": "executable-51a1f05af85e",
+      "path": "components/executable/executable-51a1f05af85e",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/bin",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/bin",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "executable"
+    },
+    {
+      "digest": "10cbebcaee725b8a8a3e3535980f6c49dbb4c400cdaca2f42e39385847fe8a2a",
+      "id": "executable-8c5967fd8486",
+      "path": "components/executable/executable-8c5967fd8486",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/scripts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/scripts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "executable"
+    },
+    {
+      "digest": "2b1b47fce386420a34549f3d555b388de77d82f3ca23d3f24b7b6526b3ac8f20",
+      "id": "hook-a48aec12c9dd",
+      "path": "components/hook/hook-a48aec12c9dd",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "codex": {
+          "path": "targets/codex/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "hook"
+    },
+    {
+      "digest": "5c593834bb6a3da20b2a77116fccf75b9d275265ec9461d9b6e711a7dc938d4b",
+      "id": "seo",
+      "path": "components/skills/seo",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "bbcec7724038a0c12e45374211b15604d633156f13a8846fa1f514138b589fb1",
+      "id": "seo-audit",
+      "path": "components/skills/seo-audit",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-audit",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-audit",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "e90f9e5271b536ac476a3a2b39c8886b776a9088c21d936f32af0354c1044d13",
+      "id": "seo-backlinks",
+      "path": "components/skills/seo-backlinks",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-backlinks",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-backlinks",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "0a42431833ac3751f71e2274683e489a3dbf491ba75e2ebefc0f0c4ba6018f1c",
+      "id": "seo-cluster",
+      "path": "components/skills/seo-cluster",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-cluster",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-cluster",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "2941cbce8a898c2329655a7102e5cfd06f2d8c72723a2f77e4c1f975ff629612",
+      "id": "seo-competitor-pages",
+      "path": "components/skills/seo-competitor-pages",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-competitor-pages",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-competitor-pages",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "816f8adc05c9ce2206d896364fe2313726644e1a896ccc13378bd79ea5112fe1",
+      "id": "seo-content",
+      "path": "components/skills/seo-content",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-content",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-content",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "ef75158170d270170ae934f62aefb1116fe9be25d2177296b1b70c2e09a1e855",
+      "id": "seo-content-brief",
+      "path": "components/skills/seo-content-brief",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-content-brief",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-content-brief",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "23f5051ecf9ad6285f6ce8f34dd9589cedbc4f71aa086f0c20c9eb5953701c7e",
+      "id": "seo-dataforseo",
+      "path": "components/skills/seo-dataforseo",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-dataforseo",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-dataforseo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "5767b9d469b2dc88dfe2511c9c454b7cecb7986f037dd2734d168961f66cdb47",
+      "id": "seo-drift",
+      "path": "components/skills/seo-drift",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-drift",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-drift",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "d72e8773225172688d98af23f9c6b161ddab454cd15f40c010e734a58121a2b8",
+      "id": "seo-ecommerce",
+      "path": "components/skills/seo-ecommerce",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-ecommerce",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-ecommerce",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "6bfdeac64925b488a42e66d67b47a67494d3be03372f4cdbee2b66be0b3c2dbe",
+      "id": "seo-flow",
+      "path": "components/skills/seo-flow",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-flow",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-flow",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "c721f1eb12cf87ccc17ebdd0ecdde712a5efc862c7ce33c501ecb71ea48ffd0c",
+      "id": "seo-geo",
+      "path": "components/skills/seo-geo",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-geo",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-geo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "07ee80b2e30f132f87fea9a1fe343e91c492c66837a104c8375c6bc092ab147c",
+      "id": "seo-google",
+      "path": "components/skills/seo-google",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-google",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-google",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "b32d6b0e601b43d42e919b58c90e483a95eba1d51330358846bc95ee4332d0ea",
+      "id": "seo-hreflang",
+      "path": "components/skills/seo-hreflang",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-hreflang",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-hreflang",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "65f0eb199ff4540ee3e3a42161a5f26a3218b31aeab0c894e6a9bfb3a0fa7150",
+      "id": "seo-image-gen",
+      "path": "components/skills/seo-image-gen",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-image-gen",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-image-gen",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "92d10a6fea82f8deb1a4e7d715c20832f4f3f0a9ce27d409c5868ea580c9ac7e",
+      "id": "seo-images",
+      "path": "components/skills/seo-images",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-images",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-images",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "e66e931f9d0a47d4ae3776cb04d847ab17ca1e1d43a88d773493ce20b93c8a9c",
+      "id": "seo-local",
+      "path": "components/skills/seo-local",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-local",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-local",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "6c5bb1aa8b894ec76fbbc4887f3ba2709f33f2df0fdc739c906d208fdad94a8d",
+      "id": "seo-maps",
+      "path": "components/skills/seo-maps",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-maps",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-maps",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "4bad079d2c76555d44ab801cb7fcd3f26750af55daa9af38db6f5ca2a1a98c22",
+      "id": "seo-page",
+      "path": "components/skills/seo-page",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-page",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-page",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "203401569753356d01f0b0b789e10136512a8a46ebf7813e8c473f474ec19213",
+      "id": "seo-plan",
+      "path": "components/skills/seo-plan",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-plan",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-plan",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "9bd4a2df36858a51033ad6c08ff8a812ffcde72c3a4a49ed6401884258dd9cce",
+      "id": "seo-programmatic",
+      "path": "components/skills/seo-programmatic",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-programmatic",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-programmatic",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "724dcaa7c988eec8476e6d1babc3e5616c8541a29d17df303ce8521fe5a2b051",
+      "id": "seo-schema",
+      "path": "components/skills/seo-schema",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-schema",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-schema",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "ced8c6cbdd4d0c9cbe52480f73d21ba51a59825b9b5175d89fcf325e925fa540",
+      "id": "seo-sitemap",
+      "path": "components/skills/seo-sitemap",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-sitemap",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-sitemap",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "5457859343b65001a7763cb82962815ed1c62be0412e074f905ab918c8e5b042",
+      "id": "seo-sxo",
+      "path": "components/skills/seo-sxo",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-sxo",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-sxo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "53e8f1e8be68702a06858192ae34e7d00fa65b5687560c54fe6e4aeb6487c246",
+      "id": "seo-technical",
+      "path": "components/skills/seo-technical",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/seo-technical",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/seo-technical",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    }
+  ],
+  "distributionVersion": "2.2.4-gravit.1",
+  "name": "claude-seo",
+  "schemaVersion": 1,
+  "targets": {
+    "claude": {
+      "components": {
+        "agent-8c70b25cbbbe": {
+          "path": "targets/claude/agents",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-3a6eb0790f39": {
+          "path": "targets/claude/data",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-4d7c51b1efe9": {
+          "path": "targets/claude/requirements.txt",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-8bf729ffe074": {
+          "path": "targets/claude/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-98d875b61ff2": {
+          "path": "targets/claude/screenshots",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-c35b21d6ca39": {
+          "path": "targets/claude/pdf",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-df0ad6e43880": {
+          "path": "targets/claude/schema",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-048f0de608d4": {
+          "path": "targets/claude/hooks/validate-schema.py",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-20ef7739e842": {
+          "path": "targets/claude/extensions",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-2fe8debbb325": {
+          "path": "targets/claude/hooks/run-python-hook.js",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-51a1f05af85e": {
+          "path": "targets/claude/bin",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-8c5967fd8486": {
+          "path": "targets/claude/scripts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "hook-a48aec12c9dd": {
+          "path": "targets/claude/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo": {
+          "path": "targets/claude/skills/seo",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-audit": {
+          "path": "targets/claude/skills/seo-audit",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-backlinks": {
+          "path": "targets/claude/skills/seo-backlinks",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-cluster": {
+          "path": "targets/claude/skills/seo-cluster",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-competitor-pages": {
+          "path": "targets/claude/skills/seo-competitor-pages",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-content": {
+          "path": "targets/claude/skills/seo-content",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-content-brief": {
+          "path": "targets/claude/skills/seo-content-brief",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-dataforseo": {
+          "path": "targets/claude/skills/seo-dataforseo",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-drift": {
+          "path": "targets/claude/skills/seo-drift",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-ecommerce": {
+          "path": "targets/claude/skills/seo-ecommerce",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-flow": {
+          "path": "targets/claude/skills/seo-flow",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-geo": {
+          "path": "targets/claude/skills/seo-geo",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-google": {
+          "path": "targets/claude/skills/seo-google",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-hreflang": {
+          "path": "targets/claude/skills/seo-hreflang",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-image-gen": {
+          "path": "targets/claude/skills/seo-image-gen",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-images": {
+          "path": "targets/claude/skills/seo-images",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-local": {
+          "path": "targets/claude/skills/seo-local",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-maps": {
+          "path": "targets/claude/skills/seo-maps",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-page": {
+          "path": "targets/claude/skills/seo-page",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-plan": {
+          "path": "targets/claude/skills/seo-plan",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-programmatic": {
+          "path": "targets/claude/skills/seo-programmatic",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-schema": {
+          "path": "targets/claude/skills/seo-schema",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-sitemap": {
+          "path": "targets/claude/skills/seo-sitemap",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-sxo": {
+          "path": "targets/claude/skills/seo-sxo",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "seo-technical": {
+          "path": "targets/claude/skills/seo-technical",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "digest": "60815af71958e378d56e1cb75f8a2e50be664375946e9e99b94fd0c3970fad28",
+      "path": "targets/claude"
+    },
+    "codex": {
+      "components": {
+        "agent-8c70b25cbbbe": {
+          "reasonCode": "host-does-not-load-agents",
+          "status": "unsupported"
+        },
+        "asset-3a6eb0790f39": {
+          "path": "targets/codex/data",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-4d7c51b1efe9": {
+          "path": "targets/codex/requirements.txt",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-8bf729ffe074": {
+          "path": "targets/codex/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-98d875b61ff2": {
+          "path": "targets/codex/screenshots",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-c35b21d6ca39": {
+          "path": "targets/codex/pdf",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "asset-df0ad6e43880": {
+          "path": "targets/codex/schema",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-048f0de608d4": {
+          "path": "targets/codex/hooks/validate-schema.py",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-20ef7739e842": {
+          "path": "targets/codex/extensions",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-2fe8debbb325": {
+          "path": "targets/codex/hooks/run-python-hook.js",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-51a1f05af85e": {
+          "path": "targets/codex/bin",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executable-8c5967fd8486": {
+          "path": "targets/codex/scripts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "hook-a48aec12c9dd": {
+          "path": "targets/codex/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo": {
+          "path": "targets/codex/skills/seo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-audit": {
+          "path": "targets/codex/skills/seo-audit",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-backlinks": {
+          "path": "targets/codex/skills/seo-backlinks",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-cluster": {
+          "path": "targets/codex/skills/seo-cluster",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-competitor-pages": {
+          "path": "targets/codex/skills/seo-competitor-pages",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-content": {
+          "path": "targets/codex/skills/seo-content",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-content-brief": {
+          "path": "targets/codex/skills/seo-content-brief",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-dataforseo": {
+          "path": "targets/codex/skills/seo-dataforseo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-drift": {
+          "path": "targets/codex/skills/seo-drift",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-ecommerce": {
+          "path": "targets/codex/skills/seo-ecommerce",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-flow": {
+          "path": "targets/codex/skills/seo-flow",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-geo": {
+          "path": "targets/codex/skills/seo-geo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-google": {
+          "path": "targets/codex/skills/seo-google",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-hreflang": {
+          "path": "targets/codex/skills/seo-hreflang",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-image-gen": {
+          "path": "targets/codex/skills/seo-image-gen",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-images": {
+          "path": "targets/codex/skills/seo-images",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-local": {
+          "path": "targets/codex/skills/seo-local",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-maps": {
+          "path": "targets/codex/skills/seo-maps",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-page": {
+          "path": "targets/codex/skills/seo-page",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-plan": {
+          "path": "targets/codex/skills/seo-plan",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-programmatic": {
+          "path": "targets/codex/skills/seo-programmatic",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-schema": {
+          "path": "targets/codex/skills/seo-schema",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-sitemap": {
+          "path": "targets/codex/skills/seo-sitemap",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-sxo": {
+          "path": "targets/codex/skills/seo-sxo",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "seo-technical": {
+          "path": "targets/codex/skills/seo-technical",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "digest": "fd1ddf1630d5dd0fe683c5f680145375162990e8d1f4a4f884d05f727677e4fe",
+      "path": "targets/codex"
+    }
+  }
+}

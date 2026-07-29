@@ -108,6 +108,31 @@ test("accepts optional target policies with known targets, component types, and 
   assert.doesNotThrow(() => validateCatalog(catalog));
 });
 
+test("accepts only exact safe catalog resource declarations", () => {
+  const catalog = fixtureCatalog();
+  catalog.plugins[0].resources = [
+    { type: "executable", path: "scripts" },
+    { type: "asset", path: "schema/templates.json" },
+  ];
+  assert.doesNotThrow(() => validateCatalog(catalog));
+
+  for (const resources of [
+    [{ type: "resource", path: "scripts" }],
+    [{ type: "asset", path: "../outside" }],
+    [{ type: "asset", path: "/absolute" }],
+    [{ type: "asset", path: "C:\\outside" }],
+    [{ type: "asset", path: "scripts/" }],
+    [{ type: "asset", path: "scripts", extra: true }],
+    [{ type: "asset" }],
+    [{ path: "scripts" }],
+    [{ type: "asset", path: "scripts" }, { type: "asset", path: "scripts" }],
+  ]) {
+    const invalid = fixtureCatalog();
+    invalid.plugins[0].resources = resources;
+    assert.throws(() => validateCatalog(invalid), /invalid registry catalog/);
+  }
+});
+
 test("rejects malformed target policies and prototype-like keys", () => {
   const cases = [
     { future: { unsupported: {} } },

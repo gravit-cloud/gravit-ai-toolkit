@@ -1,80 +1,80 @@
 {
-  "name": "gravit-cloud",
   "interface": {
     "displayName": "Gravit Cloud"
   },
+  "name": "gravit-cloud",
   "plugins": [
     {
+      "category": "Productivity",
       "name": "claude-seo",
-      "source": {
-        "source": "local",
-        "path": "./plugins/claude-seo"
-      },
       "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
       },
-      "category": "Productivity"
+      "source": {
+        "path": "./plugins/claude-seo/targets/codex",
+        "source": "local"
+      }
     },
     {
+      "category": "Productivity",
       "name": "obsidian",
-      "source": {
-        "source": "local",
-        "path": "./plugins/obsidian"
-      },
       "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
       },
-      "category": "Productivity"
+      "source": {
+        "path": "./plugins/obsidian/targets/codex",
+        "source": "local"
+      }
     },
     {
+      "category": "Productivity",
       "name": "mattpocock-skills",
-      "source": {
-        "source": "local",
-        "path": "./plugins/mattpocock-skills"
-      },
       "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
       },
-      "category": "Productivity"
+      "source": {
+        "path": "./plugins/mattpocock-skills/targets/codex",
+        "source": "local"
+      }
     },
     {
+      "category": "Cloud",
       "name": "azure",
-      "source": {
-        "source": "local",
-        "path": "./plugins/azure"
-      },
       "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
       },
-      "category": "Cloud"
+      "source": {
+        "path": "./plugins/azure/targets/codex",
+        "source": "local"
+      }
     },
     {
+      "category": "Development",
       "name": "superpowers",
-      "source": {
-        "source": "local",
-        "path": "./plugins/superpowers"
-      },
       "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
       },
-      "category": "Development"
+      "source": {
+        "path": "./plugins/superpowers/targets/codex",
+        "source": "local"
+      }
     },
     {
+      "category": "Development",
       "name": "gravit-custom",
-      "source": {
-        "source": "local",
-        "path": "./plugins/gravit-custom"
-      },
       "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
       },
-      "category": "Development"
+      "source": {
+        "path": "./plugins/gravit-custom/targets/codex",
+        "source": "local"
+      }
     }
   ]
 }

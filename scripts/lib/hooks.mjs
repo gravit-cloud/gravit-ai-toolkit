@@ -299,7 +299,48 @@ function hasDynamicEvaluationMode(family, args) {
   return false;
 }
 
-function assertSafeRuntimeCommand(command, tokens) {
+const EXACT_BASH_SCRIPT = {
+  claude: /^bash "\$\{CLAUDE_PLUGIN_ROOT\}\/([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\.sh)"$/u,
+  codex: /^bash "\$\{PLUGIN_ROOT\}\/([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\.sh)"$/u,
+};
+
+function executableFileSet(executableFiles) {
+  if (!Array.isArray(executableFiles)) {
+    throw new Error("executable resource files must be an array");
+  }
+  const result = new Set();
+  for (const file of executableFiles) {
+    const segments = typeof file === "string" ? file.split("/") : [];
+    if (
+      typeof file !== "string"
+      || file.length === 0
+      || file.includes("\\")
+      || file.startsWith("/")
+      || segments.some((segment) => !segment || segment === "." || segment === "..")
+    ) {
+      throw new Error("executable resource file must be a canonical relative path: " + String(file));
+    }
+    result.add(file);
+  }
+  return result;
+}
+
+function validationContext({ target = "claude", executableFiles = [] } = {}) {
+  if (!Object.hasOwn(EXACT_BASH_SCRIPT, target)) {
+    throw new Error("unsupported hook target: " + String(target));
+  }
+  return { target, executableFiles: executableFileSet(executableFiles) };
+}
+
+function isSafePluginBashScript(command, context) {
+  const match = EXACT_BASH_SCRIPT[context.target].exec(command);
+  if (!match) return false;
+  const segments = match[1].split("/");
+  if (segments.some((segment) => segment === "." || segment === "..")) return false;
+  return context.executableFiles.has(match[1]);
+}
+
+function assertSafeRuntimeCommand(command, tokens, context) {
   if (ENV_ASSIGNMENT.test(tokens[0])) {
     throw new Error("leading environment assignment in hook command: " + command);
   }
@@ -317,6 +358,7 @@ function assertSafeRuntimeCommand(command, tokens) {
     throw new Error("blocked hook command shell control: " + command);
   }
   if (runtime.runtimeClass === "blocked") {
+    if (runtime.stem === "bash" && isSafePluginBashScript(command, context)) return;
     throw new Error("blocked hook command runtime: " + command);
   }
   const family = interpreterFamily(runtime.stem);
@@ -325,7 +367,7 @@ function assertSafeRuntimeCommand(command, tokens) {
   }
 }
 
-function validateHookMap(hooks) {
+function validateHookMap(hooks, context) {
   assertPlainObject(hooks, "hook event map");
   assertNoPrototypeKeys(hooks);
   for (const [event, groups] of Object.entries(hooks)) {
@@ -344,19 +386,19 @@ function validateHookMap(hooks) {
           throw new Error("command hook requires a non-empty string command: " + event);
         }
         const tokens = commandTokens(hook.command);
-        assertSafeRuntimeCommand(hook.command, tokens);
+        assertSafeRuntimeCommand(hook.command, tokens, context);
         assertNoAbsoluteCommandPath(hook.command, tokens);
       }
     }
   }
 }
 
-function normalizedHooks(config) {
+function normalizedHooks(config, context) {
   assertPlainObject(config, "normalized hook config");
   if (!hasOwn(config, "hooks") || Object.keys(config).length !== 1) {
     throw new Error("normalized hook config must contain only hooks");
   }
-  validateHookMap(config.hooks);
+  validateHookMap(config.hooks, context);
   return config.hooks;
 }
 
@@ -373,7 +415,8 @@ function renderRootReferences(command, target) {
   });
 }
 
-export function normalizeHooks(record) {
+export function normalizeHooks(record, options) {
+  const context = validationContext(options);
   const source = sourceObject(record);
   assertPlainObject(source, "hook source");
   assertNoPrototypeKeys(source);
@@ -382,15 +425,14 @@ export function normalizeHooks(record) {
     throw new Error("hook wrapper must contain only hooks");
   }
   const hooks = wrapped ? source.hooks : source;
-  validateHookMap(hooks);
+  validateHookMap(hooks, context);
   return { hooks: structuredClone(hooks) };
 }
 
-export function renderHooks({ config, target }) {
-  if (!["claude", "codex"].includes(target)) {
-    throw new Error("unsupported hook target: " + String(target));
-  }
-  normalizedHooks(config);
+export function renderHooks({ config, target, executableFiles = [] }) {
+  const sourceContext = validationContext({ target: "claude", executableFiles });
+  const targetContext = validationContext({ target, executableFiles });
+  normalizedHooks(config, sourceContext);
   const rendered = structuredClone(config);
   for (const groups of Object.values(rendered.hooks)) {
     for (const group of groups) {
@@ -401,5 +443,6 @@ export function renderHooks({ config, target }) {
       }
     }
   }
+  normalizedHooks(rendered, targetContext);
   return rendered;
 }

@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
+import { skillComponentId } from "../../scripts/lib/skill-identity.mjs";
 import { discoverSkills } from "../../scripts/lib/skills.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -78,6 +79,31 @@ test("orders discovered source paths by code point instead of locale collation",
   assert.deepEqual(
     discoverSkills({ sourceRoot: root }).map((skill) => skill.name),
     ["upper-path", "lower-path"],
+  );
+});
+
+test("maps only the prototype host name and rejects component-id collisions", (context) => {
+  assert.equal(skillComponentId("ordinary"), "ordinary");
+  const prototypeId = skillComponentId("prototype");
+  assert.match(prototypeId, /^skill-prototype-[a-f0-9]{12}$/);
+  assert.throws(() => skillComponentId("constructor"), /prototype registry name/);
+
+  const root = mkdtempSync(join(tmpdir(), "skills-identity-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  for (const [directory, name] of [
+    ["prototype", "prototype"],
+    ["collision", prototypeId],
+  ]) {
+    mkdirSync(join(root, "skills", directory), { recursive: true });
+    writeFileSync(
+      join(root, "skills", directory, "SKILL.md"),
+      `---\nname: ${name}\ndescription: Identity fixture\n---\n`,
+    );
+  }
+
+  assert.throws(
+    () => discoverSkills({ sourceRoot: root }),
+    new RegExp("duplicate skill component id: " + prototypeId),
   );
 });
 

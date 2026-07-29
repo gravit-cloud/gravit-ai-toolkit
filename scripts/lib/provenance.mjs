@@ -275,6 +275,7 @@ function validatePlugin(plugin) {
     "targets",
     "policies",
     "runtimeDependencies",
+    "resources",
     "targetPolicies",
   ]), "plugin");
   assertOwn(plugin, "name", "plugin");

@@ -14,7 +14,9 @@ import { fileURLToPath } from "node:url";
 import Ajv from "ajv/dist/2020.js";
 import { buildPluginBundle } from "../../scripts/lib/bundle-builder.mjs";
 import { sha256, treeHash } from "../../scripts/lib/hash.mjs";
+import { assertRegistryName } from "../../scripts/lib/path-safety.mjs";
 import { createLockEntry } from "../../scripts/lib/provenance.mjs";
+import { validateRecursiveSkills } from "../../scripts/lib/validator.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const completeFixture = resolve(repositoryRoot, "test/fixtures/complete-plugin");
@@ -146,6 +148,50 @@ test("materializes every inventory component and accounts for it on every target
   });
   assert.equal(lockEntry.components.length, manifest.components.length);
   assert.equal(lockEntry.bundleDigest, treeHash(bundleRoot));
+});
+
+test("keeps the public prototype skill name behind a safe component identity", (context) => {
+  const { root, bundleRoot } = sandbox(context, "prototype-skill-");
+  const sourceRoot = resolve(root, "source");
+  mkdirSync(resolve(sourceRoot, ".claude-plugin"), { recursive: true });
+  writeFileSync(
+    resolve(sourceRoot, ".claude-plugin/plugin.json"),
+    JSON.stringify({
+      name: "prototype-fixture",
+      version: "1.0.0",
+      skills: ["./skills/prototype"],
+    }),
+  );
+  mkdirSync(resolve(sourceRoot, "skills/prototype"), { recursive: true });
+  writeFileSync(
+    resolve(sourceRoot, "skills/prototype/SKILL.md"),
+    "---\nname: prototype\ndescription: Prototype safely\n---\n",
+  );
+  const plugin = {
+    name: "prototype-fixture",
+    description: "Prototype skill fixture",
+    category: "development",
+    distributionVersion: "1.0.0-gravit.1",
+    source: { type: "local", path: "test/fixtures/prototype", root: "." },
+    targets: ["claude", "codex"],
+    policies: { default: "transform-or-fail", skills: "transform" },
+  };
+
+  const manifest = buildPluginBundle({ plugin, sourceRoot, bundleRoot });
+  const skillComponents = manifest.components.filter(({ type }) => type === "skill");
+  assert.equal(skillComponents.length, 1);
+  const [{ id }] = skillComponents;
+  assert.notEqual(id, "prototype");
+  assert.match(id, /^skill-prototype-[a-f0-9]{12}$/);
+  assert.throws(() => assertRegistryName("prototype"), /prototype registry name/);
+
+  for (const target of ["claude", "codex"]) {
+    const skillRoot = resolve(bundleRoot, "targets", target, "skills");
+    assert.equal(existsSync(resolve(skillRoot, "prototype/SKILL.md")), true);
+    assert.deepEqual(validateRecursiveSkills(skillRoot), []);
+    assert.equal(Object.hasOwn(manifest.targets[target].components, id), true);
+    assert.equal(Object.hasOwn(manifest.targets[target].components, "prototype"), false);
+  }
 });
 
 test("duplicate component IDs fail before a neutral manifest is exposed", (context) => {

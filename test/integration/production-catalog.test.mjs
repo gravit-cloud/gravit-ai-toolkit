@@ -138,8 +138,19 @@ test("production catalog is neutral and fully pinned", () => {
       },
     ],
   );
+  const claudeSeo = catalog.plugins.find(({ name }) => name === "claude-seo");
+  assert.deepEqual(claudeSeo.targetPolicies, {
+    codex: {
+      unsupported: {
+        agent: "host-does-not-load-agents",
+      },
+    },
+  });
   const azure = catalog.plugins.find(({ name }) => name === "azure");
   assert.equal(azure.runtimeDependencies["@azure/mcp"], "2.0.5");
+  assert.deepEqual(azure.resources, [
+    { type: "executable", path: "hooks/scripts" },
+  ]);
   assert.deepEqual(azure.targetPolicies, {
     claude: { unsupported: { app: "host-uses-mcp-without-app-binding" } },
     codex: {
@@ -159,21 +170,23 @@ test("production catalog is neutral and fully pinned", () => {
     path: "sources/gravit-custom",
     root: ".",
   });
-  for (const plugin of catalog.plugins.filter(({ name }) => name !== "azure")) {
+  for (const plugin of catalog.plugins.filter(({ name }) => (
+    !["azure", "claude-seo"].includes(name)
+  ))) {
     assert.equal(Object.hasOwn(plugin, "targetPolicies"), false, plugin.name);
   }
 });
 
-test("current repository validation fails closed before generated cutover", () => {
+test("current repository passes offline validation after generated cutover", () => {
   const result = spawnSync(
     process.execPath,
     ["scripts/validate.mjs"],
     { cwd: repositoryRoot, encoding: "utf8" },
   );
 
-  assert.equal(result.status, 1, result.stderr || result.stdout);
-  assert.match(result.stderr, /registry\/lock\.json/);
-  assert.equal(result.stdout, "");
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(result.stdout, "Registry validation passed.\n");
+  assert.equal(result.stderr, "");
 });
 
 test("production build promotes only complete managed registry artifacts", (context) => {

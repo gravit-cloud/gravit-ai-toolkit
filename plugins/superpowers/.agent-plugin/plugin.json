@@ -1,0 +1,469 @@
+{
+  "components": [
+    {
+      "digest": "2612738e8c0862f57896b9254bfe2269a6bd9f9fb74ddeeeb424b5e98115ae30",
+      "id": "asset-8bf729ffe074",
+      "path": "components/asset/asset-8bf729ffe074",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "type": "asset"
+    },
+    {
+      "digest": "a84290da09d640ccabc4ae7c3512d2b7296adde611616b0fd78981042a8b3621",
+      "id": "brainstorming",
+      "path": "components/skills/brainstorming",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/brainstorming",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/brainstorming",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "24c720b5624ce789560ec9fe227eff9baaeebb7745646cf2f7df29565c23e141",
+      "id": "dispatching-parallel-agents",
+      "path": "components/skills/dispatching-parallel-agents",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/dispatching-parallel-agents",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/dispatching-parallel-agents",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "a811f92bde94cae9873721accdbfd59e9b0b98578b957b17591afc61fa99e943",
+      "id": "executing-plans",
+      "path": "components/skills/executing-plans",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/executing-plans",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/executing-plans",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "3416d195649f49e068ad8aadc5c084726200cd02e85df24c99980cd8070dfdac",
+      "id": "finishing-a-development-branch",
+      "path": "components/skills/finishing-a-development-branch",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/finishing-a-development-branch",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/finishing-a-development-branch",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "03eb052a138902c87064faba99d470577b70ff261e356c0b9a40fe9e0c755cdd",
+      "id": "hook-inline-ca3d163bab05",
+      "path": "components/hook/hook-inline-ca3d163bab05",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "codex": {
+          "path": "targets/codex/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "hook"
+    },
+    {
+      "digest": "9e67888034ed1c6d60fdaf72212785b985c577d29def0337ec729fae2739f9c2",
+      "id": "receiving-code-review",
+      "path": "components/skills/receiving-code-review",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/receiving-code-review",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/receiving-code-review",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "e9e90d94114058973f437cce681a6d88f05350a05b3cfc2fb26af504ea5bef08",
+      "id": "requesting-code-review",
+      "path": "components/skills/requesting-code-review",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/requesting-code-review",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/requesting-code-review",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "e56516824cec9a4bcf075c9ce526627603f4ec2d5cc7eeb68b350743d5a3ec81",
+      "id": "subagent-driven-development",
+      "path": "components/skills/subagent-driven-development",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/subagent-driven-development",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/subagent-driven-development",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "8eeec51295c6ecdc13b6866b9f11daec532e6cca1371a2baf7ee7f2e889ece9a",
+      "id": "systematic-debugging",
+      "path": "components/skills/systematic-debugging",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/systematic-debugging",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/systematic-debugging",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "38c1c0fa669c2a98a5b7cb69f1a0b0e894140568f13c5cbb0c419d395331f424",
+      "id": "test-driven-development",
+      "path": "components/skills/test-driven-development",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/test-driven-development",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/test-driven-development",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "90cf9bff0b647fbb8571a2933c61304218fd29e52e00784c6043ddac3d4ba43f",
+      "id": "using-git-worktrees",
+      "path": "components/skills/using-git-worktrees",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/using-git-worktrees",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/using-git-worktrees",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "aa0fa978be4266c64ec0b77ba619f6a6e1b08202a6ee83f8ebbd28cb552e8b8f",
+      "id": "using-superpowers",
+      "path": "components/skills/using-superpowers",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/using-superpowers",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/using-superpowers",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "d814ecc4d6a11c2f0a28611421ba30f003732973845bb2eeef835f727b372539",
+      "id": "verification-before-completion",
+      "path": "components/skills/verification-before-completion",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/verification-before-completion",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/verification-before-completion",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "768eb0e203d59bf0cf13046dde95f4e6ca8e8eb691154b8c58b6c39ebc1bcd9d",
+      "id": "writing-plans",
+      "path": "components/skills/writing-plans",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/writing-plans",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/writing-plans",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "863ebad0428c85aa94e3a2c5b305faa8a2935073ee0afb6c6118a52e1f521797",
+      "id": "writing-skills",
+      "path": "components/skills/writing-skills",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/writing-skills",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/writing-skills",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    }
+  ],
+  "distributionVersion": "6.2.0-gravit.1",
+  "name": "superpowers",
+  "schemaVersion": 1,
+  "targets": {
+    "claude": {
+      "components": {
+        "asset-8bf729ffe074": {
+          "path": "targets/claude/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "brainstorming": {
+          "path": "targets/claude/skills/brainstorming",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "dispatching-parallel-agents": {
+          "path": "targets/claude/skills/dispatching-parallel-agents",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "executing-plans": {
+          "path": "targets/claude/skills/executing-plans",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "finishing-a-development-branch": {
+          "path": "targets/claude/skills/finishing-a-development-branch",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "hook-inline-ca3d163bab05": {
+          "path": "targets/claude/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "receiving-code-review": {
+          "path": "targets/claude/skills/receiving-code-review",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "requesting-code-review": {
+          "path": "targets/claude/skills/requesting-code-review",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "subagent-driven-development": {
+          "path": "targets/claude/skills/subagent-driven-development",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "systematic-debugging": {
+          "path": "targets/claude/skills/systematic-debugging",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "test-driven-development": {
+          "path": "targets/claude/skills/test-driven-development",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "using-git-worktrees": {
+          "path": "targets/claude/skills/using-git-worktrees",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "using-superpowers": {
+          "path": "targets/claude/skills/using-superpowers",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "verification-before-completion": {
+          "path": "targets/claude/skills/verification-before-completion",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "writing-plans": {
+          "path": "targets/claude/skills/writing-plans",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "writing-skills": {
+          "path": "targets/claude/skills/writing-skills",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "digest": "e0920411dcc170366447fc574121777b547dfe43503e26d2613da6a3f9460228",
+      "path": "targets/claude"
+    },
+    "codex": {
+      "components": {
+        "asset-8bf729ffe074": {
+          "path": "targets/codex/assets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "brainstorming": {
+          "path": "targets/codex/skills/brainstorming",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "dispatching-parallel-agents": {
+          "path": "targets/codex/skills/dispatching-parallel-agents",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "executing-plans": {
+          "path": "targets/codex/skills/executing-plans",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "finishing-a-development-branch": {
+          "path": "targets/codex/skills/finishing-a-development-branch",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "hook-inline-ca3d163bab05": {
+          "path": "targets/codex/hooks/hooks.json",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "receiving-code-review": {
+          "path": "targets/codex/skills/receiving-code-review",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "requesting-code-review": {
+          "path": "targets/codex/skills/requesting-code-review",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "subagent-driven-development": {
+          "path": "targets/codex/skills/subagent-driven-development",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "systematic-debugging": {
+          "path": "targets/codex/skills/systematic-debugging",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "test-driven-development": {
+          "path": "targets/codex/skills/test-driven-development",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "using-git-worktrees": {
+          "path": "targets/codex/skills/using-git-worktrees",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "using-superpowers": {
+          "path": "targets/codex/skills/using-superpowers",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "verification-before-completion": {
+          "path": "targets/codex/skills/verification-before-completion",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "writing-plans": {
+          "path": "targets/codex/skills/writing-plans",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "writing-skills": {
+          "path": "targets/codex/skills/writing-skills",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "digest": "1878e829a53d9b072abb28b5840c87a3c0cdab26566abf5c59558fccd9f64c6b",
+      "path": "targets/codex"
+    }
+  }
+}

@@ -14,6 +14,51 @@
         "sha": "6b63c8bb7b2e8e4480060604555e3af629b54c2c",
         "root": "."
       },
+      "resources": [
+        {
+          "type": "executable",
+          "path": "scripts"
+        },
+        {
+          "type": "executable",
+          "path": "extensions"
+        },
+        {
+          "type": "executable",
+          "path": "hooks/run-python-hook.js"
+        },
+        {
+          "type": "executable",
+          "path": "hooks/validate-schema.py"
+        },
+        {
+          "type": "asset",
+          "path": "schema"
+        },
+        {
+          "type": "asset",
+          "path": "data"
+        },
+        {
+          "type": "asset",
+          "path": "pdf"
+        },
+        {
+          "type": "asset",
+          "path": "screenshots"
+        },
+        {
+          "type": "asset",
+          "path": "requirements.txt"
+        }
+      ],
+      "targetPolicies": {
+        "codex": {
+          "unsupported": {
+            "agent": "host-does-not-load-agents"
+          }
+        }
+      },
       "targets": ["claude", "codex"],
       "policies": {
         "default": "transform-or-fail",
@@ -64,6 +109,12 @@
       "runtimeDependencies": {
         "@azure/mcp": "2.0.5"
       },
+      "resources": [
+        {
+          "type": "executable",
+          "path": "hooks/scripts"
+        }
+      ],
       "targetPolicies": {
         "codex": {
           "unsupported": {

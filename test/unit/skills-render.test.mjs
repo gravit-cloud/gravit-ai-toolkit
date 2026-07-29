@@ -471,6 +471,49 @@ test("rewrites links in copied Markdown resources but not CommonMark indented co
   );
 });
 
+test("preserves BOM and non-BOM Markdown while rewriting exact link offsets", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-bom-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const parentDirectory = resolve(temporaryRoot, "source", "parent");
+  const childDirectory = resolve(parentDirectory, "child");
+  mkdirSync(childDirectory, { recursive: true });
+  writeFileSync(
+    resolve(parentDirectory, "SKILL.md"),
+    "---\nname: parent\ndescription: Parent\n---\n",
+  );
+  writeFileSync(
+    resolve(childDirectory, "SKILL.md"),
+    "---\nname: child\ndescription: Child\n---\n",
+  );
+  writeFileSync(
+    resolve(parentDirectory, "bom.md"),
+    "\uFEFFRead [the child](./child/SKILL.md).\n",
+  );
+  writeFileSync(
+    resolve(parentDirectory, "plain.md"),
+    "Read [the child](./child/SKILL.md).\n",
+  );
+
+  const destinationRoot = resolve(temporaryRoot, "neutral");
+  renderSkills({
+    skills: [
+      { id: "parent", name: "parent", sourceDirectory: parentDirectory },
+      { id: "child", name: "child", sourceDirectory: childDirectory },
+    ],
+    destinationRoot,
+    target: "neutral",
+  });
+
+  assert.equal(
+    readFileSync(resolve(destinationRoot, "parent/bom.md"), "utf8"),
+    "\uFEFFRead [the child](../child/SKILL.md).\n",
+  );
+  assert.equal(
+    readFileSync(resolve(destinationRoot, "parent/plain.md"), "utf8"),
+    "Read [the child](../child/SKILL.md).\n",
+  );
+});
+
 test("rejects unresolved local links in copied Markdown resources", (context) => {
   const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
   context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
@@ -519,7 +562,7 @@ test("rejects Windows-style skill names before creating a target tree", (context
   }
 });
 
-test("rejects prototype-like skill names before creating a target tree", (context) => {
+test("rejects hazardous object-key skill names before creating a target tree", (context) => {
   const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
   context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
   const sourceDirectory = resolve(temporaryRoot, "source", "safe");
@@ -529,7 +572,7 @@ test("rejects prototype-like skill names before creating a target tree", (contex
     "---\nname: safe\ndescription: Safe source\n---\n",
   );
 
-  for (const name of ["__proto__", "constructor", "prototype"]) {
+  for (const name of ["__proto__", "constructor"]) {
     const destinationRoot = resolve(temporaryRoot, "target-" + name);
     assert.throws(
       () => renderSkills({

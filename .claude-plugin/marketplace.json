@@ -1,75 +1,45 @@
 {
+  "description": "Kuratierter Gravit-Cloud-Marketplace für Claude Code und Codex.",
   "name": "gravit-cloud",
   "owner": {
     "name": "Gravit Cloud"
   },
-  "description": "Kuratierter Gravit-Cloud-Marketplace für Claude Code mit SEO-, Obsidian-, Azure- und Entwicklungs-Skills.",
   "plugins": [
     {
-      "name": "claude-seo",
-      "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
-      "source": {
-        "source": "github",
-        "repo": "AgricIDaniel/claude-seo",
-        "ref": "v2.2.4",
-        "sha": "6b63c8bb7b2e8e4480060604555e3af629b54c2c"
-      },
       "category": "seo",
-      "homepage": "https://github.com/AgricIDaniel/claude-seo"
+      "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
+      "name": "claude-seo",
+      "source": "./plugins/claude-seo/targets/claude"
     },
     {
-      "name": "obsidian",
+      "category": "productivity",
       "description": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle.",
-      "source": {
-        "source": "github",
-        "repo": "kepano/obsidian-skills",
-        "ref": "main",
-        "sha": "a1dc48e68138490d522c04cbf5822214c6eb1202"
-      },
-      "category": "productivity",
-      "homepage": "https://github.com/kepano/obsidian-skills"
+      "name": "obsidian",
+      "source": "./plugins/obsidian/targets/claude"
     },
     {
-      "name": "mattpocock-skills",
+      "category": "productivity",
       "description": "Produktivitäts-Skills von Matt Pocock (u.a. grill-me — intensives Interview zur Plan-Schärfung).",
-      "source": {
-        "source": "github",
-        "repo": "mattpocock/skills",
-        "ref": "v1.1.0",
-        "sha": "d574778f94cf620fcc8ce741584093bc650a61d3"
-      },
-      "category": "productivity",
-      "homepage": "https://github.com/mattpocock/skills"
+      "name": "mattpocock-skills",
+      "source": "./plugins/mattpocock-skills/targets/claude"
     },
     {
-      "name": "azure",
-      "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
-      "source": {
-        "source": "github",
-        "repo": "microsoft/azure-skills",
-        "ref": "v1.2.8",
-        "sha": "1d88f75412afd408bc1d063a3acbe214d0d9fa0c"
-      },
       "category": "cloud",
-      "homepage": "https://github.com/microsoft/azure-skills"
+      "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
+      "name": "azure",
+      "source": "./plugins/azure/targets/claude"
     },
     {
-      "name": "superpowers",
-      "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
-      "source": {
-        "source": "github",
-        "repo": "obra/superpowers",
-        "ref": "v6.2.0",
-        "sha": "3dcbd5c4b48e02263fbf4a3c01e3fe4f81d584d9"
-      },
       "category": "development",
-      "homepage": "https://github.com/obra/superpowers"
+      "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
+      "name": "superpowers",
+      "source": "./plugins/superpowers/targets/claude"
     },
     {
+      "category": "development",
+      "description": "Sieben lokal gepflegte Skills der Gravit Cloud (sources/gravit-custom/skills/).",
       "name": "gravit-custom",
-      "description": "Sieben lokal gepflegte Skills der Gravit Cloud (plugins/gravit-custom/skills/).",
-      "source": "./plugins/gravit-custom",
-      "category": "development"
+      "source": "./plugins/gravit-custom/targets/claude"
     }
   ]
 }

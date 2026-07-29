@@ -1,5 +1,11 @@
-import { existsSync, lstatSync, readdirSync, realpathSync } from "node:fs";
-import { relative, resolve } from "node:path";
+import {
+  existsSync,
+  lstatSync,
+  readlinkSync,
+  readdirSync,
+  realpathSync,
+} from "node:fs";
+import { isAbsolute, relative, resolve, win32 } from "node:path";
 import { treeHash, sha256 } from "./hash.mjs";
 import { stableJson } from "./json.mjs";
 import { compareCodePoints } from "./ordering.mjs";
@@ -9,6 +15,7 @@ import {
   assertRegistryName,
   canonicalPath,
   pathIsInside,
+  pathsOverlap,
   walkFiles,
 } from "./path-safety.mjs";
 import { declaredSkillPaths, discoverSkills } from "./skills.mjs";
@@ -97,15 +104,22 @@ const KNOWN_TOP_LEVEL_FILES = new Set([
 // These roots contain repository metadata, documentation, examples, or tests;
 // they are source context rather than installable plugin components.
 const NON_COMPONENT_RESOURCE_DIRECTORIES = new Set([
+  ".agents",
   ".changeset",
   ".circleci",
+  ".cursor-plugin",
   ".devcontainer",
   ".github",
   ".gitlab",
   ".husky",
+  ".kimi-plugin",
+  ".opencode",
   ".vscode",
+  ".out-of-scope",
+  ".pi",
   "docs",
   "examples",
+  "landing-page",
   "test",
   "tests",
 ]);
@@ -121,6 +135,8 @@ const NON_COMPONENT_METADATA_FILES = new Set([
   ".prettierrc.json",
   ".prettierrc.yaml",
   ".prettierrc.yml",
+  ".pre-commit-config.yaml",
+  ".version-bump.json",
   "Cargo.lock",
   "Cargo.toml",
   "Gemfile",
@@ -128,6 +144,7 @@ const NON_COMPONENT_METADATA_FILES = new Set([
   "Makefile",
   "Taskfile.yaml",
   "Taskfile.yml",
+  "apm.yml",
   "bun.lock",
   "bun.lockb",
   "composer.json",
@@ -138,20 +155,46 @@ const NON_COMPONENT_METADATA_FILES = new Set([
   "flake.nix",
   "go.mod",
   "go.sum",
+  "gemini-extension.json",
   "jsconfig.json",
   "package-lock.json",
   "package.json",
   "pnpm-lock.yaml",
+  "plugin.json",
   "pyproject.toml",
   "requirements-dev.txt",
   "requirements.txt",
   "renovate.json",
+  "install.ps1",
+  "install.sh",
   "tsconfig.json",
+  "uninstall.ps1",
+  "uninstall.sh",
   "uv.lock",
   "yarn.lock",
 ]);
 
-const NON_COMPONENT_DOCUMENTATION_FILE = /^(?:AGENTS|AUTHORS|CHANGELOG|CLAUDE|CODE_OF_CONDUCT|CONTRIBUTING|GEMINI|LICENSE|NOTICE|README|SECURITY|SUPPORT|VERSION)(?:\.(?:md|rst|txt))?$/i;
+const NON_COMPONENT_HOST_FILES = new Set([
+  ".claude-plugin/marketplace.json",
+  "hooks/cursor-hooks.json",
+  "hooks/hooks-cursor.json",
+  "hooks/hooks.json",
+  "hooks/run-hook.cmd",
+  "hooks/session-start",
+  "scripts/bump-version.sh",
+  "scripts/link-skills.sh",
+  "scripts/lint-shell.sh",
+  "scripts/list-skills.sh",
+  "scripts/package-codex-plugin.sh",
+  "scripts/sync-to-codex-plugin.sh",
+]);
+
+const NON_COMPONENT_DOCUMENTATION_FILE = /^(?:(?:AGENTS|AUTHORS|CHANGELOG|CLAUDE|CODE_OF_CONDUCT|CONTEXT|CONTRIBUTING|CONTRIBUTORS|GEMINI|LICENSE|NOTICE|PRIVACY|README|SECURITY|SUPPORT|VERSION)(?:\.(?:md|rst|txt))?|CITATION\.cff)$/i;
+const EXACT_NON_COMPONENT_DOCUMENTATION_FILES = new Set(["RELEASE-NOTES.md"]);
+const AGENTS_ALIAS_NAME = "AGENTS.md";
+const AGENTS_ALIAS_TARGET_NAME = "CLAUDE.md";
+const AGENTS_ALIAS_TARGET_BYTES = Buffer.from(AGENTS_ALIAS_TARGET_NAME, "ascii");
+const FILE_TYPE_MASK = 0o170000n;
 
 function values(value) {
   if (value === undefined) return [];
@@ -166,6 +209,68 @@ function pathEntryExists(path) {
     if (error.code === "ENOENT") return false;
     throw error;
   }
+}
+
+function isNonComponentDocumentationFile(name) {
+  return (
+    EXACT_NON_COMPONENT_DOCUMENTATION_FILES.has(name)
+    || NON_COMPONENT_DOCUMENTATION_FILE.test(name)
+  );
+}
+
+function isExactAgentsDocumentAlias(sourceRoot, entryPath) {
+  if (entryPath !== resolve(sourceRoot, AGENTS_ALIAS_NAME)) return false;
+  let before;
+  let targetBytes;
+  let after;
+  try {
+    before = lstatSync(entryPath, { bigint: true });
+    if (!before.isSymbolicLink()) return false;
+    targetBytes = readlinkSync(entryPath, { encoding: "buffer" });
+    after = lstatSync(entryPath, { bigint: true });
+  } catch {
+    return false;
+  }
+  if (
+    !after.isSymbolicLink()
+    || before.dev !== after.dev
+    || before.ino !== after.ino
+    || (before.mode & FILE_TYPE_MASK) !== (after.mode & FILE_TYPE_MASK)
+    || before.size !== after.size
+    || before.ctimeNs !== after.ctimeNs
+    || before.mtimeNs !== after.mtimeNs
+    || !targetBytes.equals(AGENTS_ALIAS_TARGET_BYTES)
+  ) {
+    return false;
+  }
+  let targetStats;
+  try {
+    targetStats = lstatSync(resolve(sourceRoot, AGENTS_ALIAS_TARGET_NAME), { bigint: true });
+  } catch {
+    return false;
+  }
+  return targetStats.isFile();
+}
+
+function walkSourceFiles(sourceRoot, directory = sourceRoot, result = []) {
+  const absoluteRoot = resolve(sourceRoot);
+  const absoluteDirectory = resolve(directory);
+  for (const entry of readdirSync(absoluteDirectory, { withFileTypes: true })) {
+    const entryPath = resolve(absoluteDirectory, entry.name);
+    if (entry.isSymbolicLink()) {
+      if (
+        absoluteDirectory === absoluteRoot
+        && entry.name === AGENTS_ALIAS_NAME
+        && isExactAgentsDocumentAlias(absoluteRoot, entryPath)
+      ) {
+        continue;
+      }
+      throw new Error("symbolic links are not allowed in staged components: " + entryPath);
+    }
+    if (entry.isDirectory()) walkSourceFiles(absoluteRoot, entryPath, result);
+    else if (entry.isFile()) result.push(entryPath);
+  }
+  return result.sort(compareCodePoints);
 }
 
 function validateManifest(manifest, host) {
@@ -204,7 +309,7 @@ function declaredPath(sourceRoot, configuredPath, label) {
   );
 }
 
-function declaredComponentPaths({ sourceRoot, manifests, skillPaths }) {
+function declaredComponentPaths({ sourceRoot, manifests, skillPaths, resources }) {
   const result = [];
   for (const manifest of [manifests.claude, manifests.codex]) {
     for (const [field, config] of Object.entries(TYPE_CONFIG)) {
@@ -225,6 +330,7 @@ function declaredComponentPaths({ sourceRoot, manifests, skillPaths }) {
   for (const value of skillPaths || []) {
     result.push(declaredPath(sourceRoot, value, "declared skill"));
   }
+  for (const resource of resources || []) result.push(resource.sourcePath);
   return result;
 }
 
@@ -240,14 +346,28 @@ function entryCoveredByDeclarations(entryPath, declarations) {
   )));
 }
 
-function assertKnownTopLevelEntries({ sourceRoot, manifests, skillPaths }) {
+function assertKnownTopLevelEntries({ sourceRoot, manifests, skillPaths, resources }) {
   const absoluteRoot = resolve(sourceRoot);
-  const declarations = declaredComponentPaths({ sourceRoot, manifests, skillPaths });
+  const declarations = declaredComponentPaths({
+    sourceRoot,
+    manifests,
+    skillPaths,
+    resources,
+  });
+  declarations.push(...[...NON_COMPONENT_HOST_FILES].map((file) => (
+    resolve(absoluteRoot, file)
+  )));
   const entries = readdirSync(absoluteRoot, { withFileTypes: true })
     .sort((left, right) => compareCodePoints(left.name, right.name));
   for (const entry of entries) {
     const entryPath = resolve(absoluteRoot, entry.name);
     if (entry.isSymbolicLink()) {
+      if (
+        entry.name === AGENTS_ALIAS_NAME
+        && isExactAgentsDocumentAlias(absoluteRoot, entryPath)
+      ) {
+        continue;
+      }
       throw new Error("symbolic links are not allowed in staged components: " + entryPath);
     }
     if (KNOWN_TOP_LEVEL_DIRECTORIES.has(entry.name)) {
@@ -270,7 +390,7 @@ function assertKnownTopLevelEntries({ sourceRoot, manifests, skillPaths }) {
     }
     if (
       NON_COMPONENT_METADATA_FILES.has(entry.name)
-      || NON_COMPONENT_DOCUMENTATION_FILE.test(entry.name)
+      || isNonComponentDocumentationFile(entry.name)
     ) {
       if (!entry.isFile()) {
         throw new Error("non-component metadata entry must be a file: " + entry.name);
@@ -287,28 +407,39 @@ function nonComponentCoveragePaths(sourceRoot) {
   const paths = [
     resolve(absoluteRoot, ".claude-plugin/plugin.json"),
     resolve(absoluteRoot, ".codex-plugin/plugin.json"),
+    ...[...NON_COMPONENT_HOST_FILES]
+      .map((file) => resolve(absoluteRoot, file)),
     ...[...NON_COMPONENT_RESOURCE_DIRECTORIES]
       .map((directory) => resolve(absoluteRoot, directory)),
     ...[...NON_COMPONENT_METADATA_FILES]
       .map((file) => resolve(absoluteRoot, file)),
   ];
   for (const entry of readdirSync(absoluteRoot, { withFileTypes: true })) {
-    if (entry.isFile() && NON_COMPONENT_DOCUMENTATION_FILE.test(entry.name)) {
+    if (entry.isFile() && isNonComponentDocumentationFile(entry.name)) {
       paths.push(resolve(absoluteRoot, entry.name));
     }
   }
   return paths;
 }
 
-function assertInventoryCoverage({ sourceRoot, components, skills }) {
+function assertInventoryCoverage({
+  sourceRoot,
+  components,
+  skills,
+  hasExplicitSkillSelection,
+}) {
+  const defaultSkillsRoot = resolve(sourceRoot, "skills");
   const coverageRoots = [
     ...components
       .filter(({ sourceFormat }) => sourceFormat === "path")
       .map(({ sourcePath }) => sourcePath),
     ...skills.map(({ sourceDirectory }) => sourceDirectory),
+    ...(hasExplicitSkillSelection && pathEntryExists(defaultSkillsRoot)
+      ? [defaultSkillsRoot]
+      : []),
     ...nonComponentCoveragePaths(sourceRoot),
   ].map(canonicalPath);
-  for (const filePath of walkFiles(resolve(sourceRoot))) {
+  for (const filePath of walkSourceFiles(resolve(sourceRoot))) {
     const canonicalFile = canonicalPath(filePath);
     if (coverageRoots.some((coverageRoot) => pathIsInside(coverageRoot, canonicalFile))) {
       continue;
@@ -387,6 +518,92 @@ function addRecord(components, seen, record) {
   components.push(record);
 }
 
+function isPlainObject(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function assertSafeResourcePath(path) {
+  const segments = typeof path === "string" ? path.split("/") : [];
+  if (
+    typeof path !== "string"
+    || path.length === 0
+    || isAbsolute(path)
+    || win32.isAbsolute(path)
+    || path.includes("\\")
+    || path.includes("//")
+    || path.endsWith("/")
+    || segments.some((segment) => (
+      segment.length === 0
+      || segment === "."
+      || segment === ".."
+      || /[\u0000-\u001f]/.test(segment)
+    ))
+  ) {
+    throw new Error("resource path must be a safe relative path: " + String(path));
+  }
+}
+
+function configuredResourceRecords({ sourceRoot, resources }) {
+  if (resources === undefined) return [];
+  if (!Array.isArray(resources)) throw new Error("plugin resources must be an array");
+  const records = resources.map((resource) => {
+    if (
+      !isPlainObject(resource)
+      || Object.keys(resource).sort(compareCodePoints).join(",") !== "path,type"
+      || !["asset", "executable"].includes(resource.type)
+    ) {
+      throw new Error("plugin resource must contain only type and path");
+    }
+    assertSafeResourcePath(resource.path);
+    return recordFor({ sourceRoot, type: resource.type, value: resource.path });
+  });
+  for (const [index, left] of records.entries()) {
+    for (const right of records.slice(index + 1)) {
+      if (
+        pathsOverlap(left.sourcePath, right.sourcePath)
+        || pathsOverlap(realpathSync(left.sourcePath), realpathSync(right.sourcePath))
+      ) {
+        throw new Error(
+          "overlapping resource paths: "
+            + [left.metadata.relativePath, right.metadata.relativePath]
+              .sort(compareCodePoints)
+              .join(", "),
+        );
+      }
+    }
+  }
+  return records;
+}
+
+function assertResourcesDisjoint({ resources, components, skills }) {
+  const pathComponents = components.filter(({ sourceFormat }) => sourceFormat === "path");
+  for (const resource of resources) {
+    for (const component of pathComponents) {
+      if (
+        pathsOverlap(resource.sourcePath, component.sourcePath)
+        || pathsOverlap(realpathSync(resource.sourcePath), realpathSync(component.sourcePath))
+      ) {
+        throw new Error(
+          "resource path overlaps inventoried component: "
+            + resource.metadata.relativePath + ", " + component.metadata.relativePath,
+        );
+      }
+    }
+    for (const skill of skills) {
+      if (
+        pathsOverlap(resource.sourcePath, skill.sourceDirectory)
+        || pathsOverlap(realpathSync(resource.sourcePath), realpathSync(skill.sourceDirectory))
+      ) {
+        throw new Error(
+          "resource path overlaps inventoried skill: " + resource.metadata.relativePath,
+        );
+      }
+    }
+  }
+}
+
 function configuredSkillPaths(manifests, declaredSkills) {
   const inputs = declaredSkills === undefined
     ? [manifests.claude.skills, manifests.codex.skills]
@@ -404,7 +621,12 @@ function configuredSkillPaths(manifests, declaredSkills) {
   return hasDeclaration ? result : undefined;
 }
 
-export function inventorySource({ sourceRoot, declaredSkills, manifestOverrides = {} }) {
+export function inventorySource({
+  sourceRoot,
+  declaredSkills,
+  manifestOverrides = {},
+  resources,
+}) {
   const loadedManifests = readUpstreamManifests(sourceRoot);
   const manifests = {
     claude: manifestOverrides.claude ?? loadedManifests.claude,
@@ -413,7 +635,13 @@ export function inventorySource({ sourceRoot, declaredSkills, manifestOverrides 
   validateManifest(manifests.claude, "Claude");
   validateManifest(manifests.codex, "Codex");
   const skillPaths = configuredSkillPaths(manifests, declaredSkills);
-  assertKnownTopLevelEntries({ sourceRoot, manifests, skillPaths });
+  const resourceRecords = configuredResourceRecords({ sourceRoot, resources });
+  assertKnownTopLevelEntries({
+    sourceRoot,
+    manifests,
+    skillPaths,
+    resources: resourceRecords,
+  });
 
   const components = [];
   const seen = new Set();
@@ -452,7 +680,14 @@ export function inventorySource({ sourceRoot, declaredSkills, manifestOverrides 
     sourceRoot,
     declaredSkills: skillPaths,
   });
-  assertInventoryCoverage({ sourceRoot, components, skills });
+  assertResourcesDisjoint({ resources: resourceRecords, components, skills });
+  for (const record of resourceRecords) addRecord(components, seen, record);
+  assertInventoryCoverage({
+    sourceRoot,
+    components,
+    skills,
+    hasExplicitSkillSelection: skillPaths !== undefined,
+  });
 
   return {
     manifests,

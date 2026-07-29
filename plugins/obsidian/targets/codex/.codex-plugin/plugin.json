@@ -1,0 +1,20 @@
+{
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "description": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle.",
+  "interface": {
+    "capabilities": [],
+    "category": "Productivity",
+    "defaultPrompt": [
+      "Use obsidian to help with this task."
+    ],
+    "developerName": "Gravit Cloud",
+    "displayName": "obsidian",
+    "longDescription": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle.",
+    "shortDescription": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle."
+  },
+  "name": "obsidian",
+  "skills": "./skills/",
+  "version": "1.0.1-gravit.1"
+}
