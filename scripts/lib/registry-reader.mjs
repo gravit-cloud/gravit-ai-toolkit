@@ -106,6 +106,9 @@ function metadataError(catalog, lock) {
   for (const plugin of catalog.plugins) {
     const locked = lock.plugins[plugin.name];
     if (!locked || locked.name !== plugin.name) return `${plugin.name}: lock name mismatch`;
+    if (locked.generatorDigest !== lock.generatorDigest) {
+      return `${plugin.name}: generator digest mismatch with registry`;
+    }
     if (locked.distributionVersion !== plugin.distributionVersion) {
       return `${plugin.name}: distributionVersion mismatch with lock`;
     }
@@ -113,6 +116,13 @@ function metadataError(catalog, lock) {
     const configuredTargets = sortedNames(plugin.targets);
     if (!sameValues(configuredTargets, exactKeys(locked.targets))) {
       return `${plugin.name}: configured targets mismatch with lock`;
+    }
+    const componentIds = new Set();
+    for (const component of locked.components) {
+      if (componentIds.has(component.id)) {
+        return `${plugin.name}: duplicate lock component id ${component.id}`;
+      }
+      componentIds.add(component.id);
     }
   }
   return undefined;
@@ -293,17 +303,12 @@ export function openRegistry(repositoryRoot) {
         }
       }
       if (errors.length === 0) {
-        const selectedNames = new Set(names);
-        const knownNames = state.catalog.plugins.map((plugin) => plugin.name);
-        const appliesToSelection = (error) => knownNames.every((pluginName) => (
-          selectedNames.has(pluginName)
-          || (!error.startsWith(pluginName + ":") && !error.startsWith(pluginName + " "))
-        ));
-        errors.push(...validateRepository({ repositoryRoot: state.root })
-          .filter(appliesToSelection));
+        errors.push(...validateRepository({
+          repositoryRoot: state.root,
+          selectedPlugins: names,
+        }));
       }
       return { ok: errors.length === 0, errors };
     },
-    entry,
   };
 }

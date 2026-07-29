@@ -466,12 +466,15 @@ export function validateRecursiveSkills(
   return errors.sort(compareCodePoints);
 }
 
-function marketplaceNames(marketplace, label, errors) {
+function marketplaceNames(marketplace, label, errors, selectedNames) {
   if (!isPlainObject(marketplace) || !Array.isArray(marketplace.plugins)) {
     errors.push(`${label}: plugins must be an array`);
     return [];
   }
-  const names = marketplace.plugins
+  const entries = selectedNames === undefined
+    ? marketplace.plugins
+    : marketplace.plugins.filter((entry) => selectedNames.has(entry?.name));
+  const names = entries
     .map((entry) => entry?.name)
     .filter((name) => typeof name === "string");
   rejectPrototypeNames(names, label, errors);
@@ -533,7 +536,7 @@ function exactNameAgreement(groups, errors) {
   )).join("; "));
 }
 
-function pluginDirectories(repositoryRoot, errors) {
+function pluginDirectories(repositoryRoot, errors, selectedNames) {
   const pluginsRoot = safeExistingPath({
     boundary: repositoryRoot,
     candidate: resolve(repositoryRoot, "plugins"),
@@ -543,6 +546,18 @@ function pluginDirectories(repositoryRoot, errors) {
   });
   if (!pluginsRoot) return [];
   const result = [];
+  if (selectedNames !== undefined) {
+    for (const name of selectedNames) {
+      const path = resolve(pluginsRoot, name);
+      const entry = statEntry(path);
+      if (!entry || entry.isSymbolicLink() || !entry.isDirectory()) {
+        errors.push(`plugins/${name}: plugin entry must be a real directory`);
+        continue;
+      }
+      result.push(name);
+    }
+    return sortedUnique(result);
+  }
   for (const entry of readdirSync(pluginsRoot, { withFileTypes: true })) {
     const path = resolve(pluginsRoot, entry.name);
     if (entry.isSymbolicLink() || !entry.isDirectory()) {
@@ -561,12 +576,14 @@ function validateMarketplaceEntries({
   catalogByName,
   target,
   errors,
+  selectedNames,
 }) {
   if (!Array.isArray(marketplace?.plugins)) return;
   const allowedFields = target === "claude"
     ? new Set(["category", "description", "name", "source"])
     : new Set(["category", "name", "policy", "source"]);
   for (const [index, entry] of marketplace.plugins.entries()) {
+    if (selectedNames !== undefined && !selectedNames.has(entry?.name)) continue;
     const entryLabel = `${target === "claude" ? "Claude" : "Codex"} marketplace entry ${index}`;
     if (!isPlainObject(entry) || typeof entry.name !== "string" || entry.name.length === 0) {
       errors.push(`${entryLabel}: entry must be an object with a name`);
@@ -629,6 +646,27 @@ function validateMarketplaceEntries({
       errors.push(`${target} marketplace ${entry.name}: source escapes plugin bundle`);
     }
   }
+}
+
+function selectedCatalogPlugins({ catalogPlugins, catalogByName, selectedPlugins, errors }) {
+  if (selectedPlugins === undefined) return catalogPlugins;
+  if (!Array.isArray(selectedPlugins)) {
+    errors.push("selectedPlugins must be an array");
+    return [];
+  }
+  const selectedNames = new Set();
+  for (const name of selectedPlugins) {
+    if (typeof name !== "string" || PROTOTYPE_NAMES.has(name)) {
+      errors.push("selectedPlugins must contain registry-safe plugin names");
+      continue;
+    }
+    if (!catalogByName.has(name)) {
+      errors.push(`selected plugin is not in catalog: ${name}`);
+      continue;
+    }
+    selectedNames.add(name);
+  }
+  return catalogPlugins.filter((plugin) => selectedNames.has(plugin?.name));
 }
 
 function mapById(components, label, errors) {
@@ -1555,6 +1593,7 @@ export function validateRepository({
   repositoryRoot,
   compareLock,
   processRunner = spawnSync,
+  selectedPlugins,
 }) {
   const errors = [];
   const root = resolve(repositoryRoot);
@@ -1582,6 +1621,15 @@ export function validateRepository({
   const catalogByName = new Map(catalogPlugins
     .filter((plugin) => isPlainObject(plugin) && typeof plugin.name === "string")
     .map((plugin) => [plugin.name, plugin]));
+  const selectedCatalog = selectedCatalogPlugins({
+    catalogPlugins,
+    catalogByName,
+    selectedPlugins,
+    errors,
+  });
+  const selectedNames = selectedPlugins === undefined
+    ? undefined
+    : new Set(selectedCatalog.map((plugin) => plugin.name));
   validateMarketplaceRoot({
     marketplace: claudeMarketplace,
     catalog,
@@ -1598,19 +1646,43 @@ export function validateRepository({
     ? Object.keys(lock.plugins).sort(compareCodePoints)
     : [];
   rejectPrototypeNames(lockNames, "registry lock", errors);
-  exactNameAgreement({
-    catalog: catalogNames,
-    lock: lockNames,
-    claude: marketplaceNames(claudeMarketplace, "Claude marketplace", errors),
-    codex: marketplaceNames(codexMarketplace, "Codex marketplace", errors),
-    plugins: pluginDirectories(root, errors),
-  }, errors);
+  const claudeNames = marketplaceNames(
+    claudeMarketplace,
+    "Claude marketplace",
+    errors,
+    selectedNames,
+  );
+  const codexNames = marketplaceNames(
+    codexMarketplace,
+    "Codex marketplace",
+    errors,
+    selectedNames,
+  );
+  const directoryNames = pluginDirectories(root, errors, selectedNames);
+  if (selectedNames === undefined) {
+    exactNameAgreement({
+      catalog: catalogNames,
+      lock: lockNames,
+      claude: claudeNames,
+      codex: codexNames,
+      plugins: directoryNames,
+    }, errors);
+  } else {
+    exactNameAgreement({ catalog: catalogNames, lock: lockNames }, errors);
+    exactNameAgreement({
+      catalog: selectedCatalog.map((plugin) => plugin.name).sort(compareCodePoints),
+      claude: claudeNames,
+      codex: codexNames,
+      plugins: directoryNames,
+    }, errors);
+  }
   validateMarketplaceEntries({
     repositoryRoot: root,
     marketplace: claudeMarketplace,
     catalogByName,
     target: "claude",
     errors,
+    selectedNames,
   });
   validateMarketplaceEntries({
     repositoryRoot: root,
@@ -1618,10 +1690,11 @@ export function validateRepository({
     catalogByName,
     target: "codex",
     errors,
+    selectedNames,
   });
 
   const processData = [];
-  for (const plugin of catalogPlugins) {
+  for (const plugin of selectedCatalog) {
     if (!isPlainObject(plugin) || typeof plugin.name !== "string") continue;
     const lockEntry = isPlainObject(lock?.plugins) && Object.hasOwn(lock.plugins, plugin.name)
       ? lock.plugins[plugin.name]
