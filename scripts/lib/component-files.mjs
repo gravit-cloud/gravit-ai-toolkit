@@ -1,12 +1,16 @@
 import {
   cpSync,
+  existsSync,
   lstatSync,
   mkdirSync,
+  readFileSync,
   readdirSync,
   realpathSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { basename, dirname, extname, relative, resolve } from "node:path";
+import { parseFrontmatter } from "./frontmatter.mjs";
+import { compareCodePoints } from "./ordering.mjs";
 import { stableJson } from "./json.mjs";
 import {
   assertRegistryName,
@@ -127,6 +131,18 @@ function assertCanonicalDestinationContainment({
     || !pathIsInside(canonicalNeutralRoot, canonicalDestination)
   ) {
     throw new Error("neutral root escapes bundle root: " + neutralRoot);
+  }
+}
+
+function assertMaterializedDestinationContainment({ bundleRoot, destination }) {
+  if (!pathIsStrictlyInside(bundleRoot, destination)) {
+    throw new Error("component destination escapes bundle root: " + destination);
+  }
+}
+
+function assertCanonicalMaterializedDestinationContainment({ canonicalBundleRoot, destination }) {
+  if (!pathIsStrictlyInside(canonicalBundleRoot, canonicalPath(destination))) {
+    throw new Error("component destination escapes bundle root: " + destination);
   }
 }
 
@@ -253,4 +269,122 @@ export function copyComponent(input) {
     });
   }
   return destination;
+}
+
+export function materializeComponent(input) {
+  assertPlainObject(input, "materializeComponent input");
+  assertNoPrototypeKeys(input, "materializeComponent input");
+  for (const field of ["component", "bundleRoot", "destination"]) {
+    if (!Object.hasOwn(input, field)) {
+      throw new Error("materializeComponent input requires " + field);
+    }
+  }
+  const { component, bundleRoot, destination } = input;
+  validateComponent(component);
+  if (typeof destination !== "string" || destination.length === 0) {
+    throw new Error("component destination must be a path");
+  }
+  const canonicalBundleRoot = assertRealBundleDirectory(bundleRoot);
+  assertMaterializedDestinationContainment({ bundleRoot, destination });
+  if (lstatIfPresent(destination)) {
+    throw new Error("component destination already exists: " + destination);
+  }
+  assertNoDestinationSymlinks(bundleRoot, destination);
+  assertCanonicalMaterializedDestinationContainment({ canonicalBundleRoot, destination });
+  if (component.sourceFormat === "path") {
+    const canonicalSource = realpathSync(component.sourcePath);
+    if (pathsOverlap(canonicalSource, canonicalPath(destination))) {
+      throw new Error("component source overlaps destination: " + component.sourcePath);
+    }
+  }
+
+  mkdirSync(dirname(destination), { recursive: true });
+  assertNoDestinationSymlinks(bundleRoot, destination);
+  if (lstatIfPresent(destination)) {
+    throw new Error("component destination already exists: " + destination);
+  }
+  if (component.sourceFormat === "inline") {
+    writeFileSync(destination, stableJson(component.inline));
+  } else {
+    cpSync(component.sourcePath, destination, {
+      recursive: true,
+      errorOnExist: true,
+      force: false,
+    });
+  }
+  return destination;
+}
+
+function commandFilesInDirectory(directory, result = []) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })
+    .sort((left, right) => compareCodePoints(left.name, right.name))) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) commandFilesInDirectory(path, result);
+    else if (entry.isFile()) {
+      if (extname(entry.name).toLowerCase() !== ".md") {
+        throw new Error("command directory contains a non-Markdown file: " + path);
+      }
+      result.push(path);
+    } else {
+      throw new Error("symbolic links are not allowed in command source: " + path);
+    }
+  }
+  return result;
+}
+
+export function commandSourceFiles(component) {
+  validateComponent(component);
+  if (component.type !== "command" || component.sourceFormat !== "path") {
+    throw new Error("command source must be a Markdown path component");
+  }
+  const stats = lstatSync(component.sourcePath);
+  if (stats.isFile()) {
+    if (extname(component.sourcePath).toLowerCase() !== ".md") {
+      throw new Error("command source must be a Markdown file");
+    }
+    return [component.sourcePath];
+  }
+  const files = commandFilesInDirectory(component.sourcePath)
+    .sort((left, right) => compareCodePoints(
+      relative(component.sourcePath, left).replaceAll("\\", "/"),
+      relative(component.sourcePath, right).replaceAll("\\", "/"),
+    ));
+  if (files.length === 0) throw new Error("command directory must contain Markdown files");
+  return files;
+}
+
+export function commandToSkill({ component, destinationRoot }) {
+  if (
+    !component
+    || typeof component !== "object"
+    || typeof component.sourcePath !== "string"
+    || extname(component.sourcePath).toLowerCase() !== ".md"
+  ) {
+    throw new Error("command source must be a Markdown file");
+  }
+  const stats = lstatIfPresent(component.sourcePath);
+  if (!stats || stats.isSymbolicLink() || !stats.isFile()) {
+    throw new Error("command source must be a Markdown file");
+  }
+  const name = basename(component.sourcePath, extname(component.sourcePath))
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-|-$/g, "");
+  if (!name) throw new Error("command filename does not produce a valid skill name");
+  assertRegistryName(name, "command skill name");
+
+  const source = readFileSync(component.sourcePath, "utf8");
+  const parsed = parseFrontmatter(source);
+  const description = parsed.attributes.description || "Run the " + name + " command";
+  const directory = resolve(destinationRoot, name);
+  if (existsSync(directory)) {
+    throw new Error("duplicate target skill name: " + name);
+  }
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(
+    resolve(directory, "SKILL.md"),
+    "---\nname: " + name + "\ndescription: " + JSON.stringify(description)
+      + "\n---\n" + parsed.body,
+  );
+  return name;
 }
