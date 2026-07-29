@@ -21,6 +21,11 @@ import { isTrueLike, parseFrontmatter } from "./frontmatter.mjs";
 import { treeHash } from "./hash.mjs";
 import { normalizeHooks } from "./hooks.mjs";
 import { stableJson } from "./json.mjs";
+import {
+  CODEX_CATEGORIES,
+  createClaudeMarketplace,
+  createCodexMarketplace,
+} from "./marketplaces.mjs";
 import { normalizeMcp } from "./mcp.mjs";
 import { compareCodePoints } from "./ordering.mjs";
 import {
@@ -33,12 +38,6 @@ import { classifyRuntimeCommand } from "./runtime-command.mjs";
 
 const PROTOTYPE_NAMES = new Set(["__proto__", "constructor", "prototype"]);
 const TARGETS = new Set(["claude", "codex"]);
-const CODEX_CATEGORY = Object.freeze({
-  cloud: "Cloud",
-  development: "Development",
-  productivity: "Productivity",
-  seo: "Productivity",
-});
 const SUPPORTED_SCRIPT_EXTENSIONS = new Set([".cjs", ".js", ".mjs", ".sh"]);
 const CONTAINER_BOOLEAN_OPTIONS = new Set([
   "-i", "-t", "--init", "--interactive", "--read-only", "--rm", "--tty",
@@ -114,21 +113,23 @@ function readRepositoryJson(repositoryRoot, relativePath, errors) {
   return path ? readJsonFile(path, relativePath, errors) : undefined;
 }
 
-function readOptionalRepositoryJson(repositoryRoot, relativePath, errors) {
-  if (!statEntry(resolve(repositoryRoot, relativePath))) return undefined;
-  return readRepositoryJson(repositoryRoot, relativePath, errors);
-}
-
-function validateMaintainedSourceVersions(repositoryRoot, errors) {
+function validateMaintainedSourceVersions(repositoryRoot, catalog, errors) {
   const manifestPaths = [
     ["Claude", "sources/gravit-custom/.claude-plugin/plugin.json"],
     ["Codex", "sources/gravit-custom/.codex-plugin/plugin.json"],
   ];
-  const present = manifestPaths.filter(([, path]) => statEntry(resolve(repositoryRoot, path)));
-  if (present.length === 0) return;
+  const sourceExists = Boolean(statEntry(resolve(repositoryRoot, "sources/gravit-custom")));
+  const manifestExists = manifestPaths.some(([, path]) => (
+    statEntry(resolve(repositoryRoot, path))
+  ));
+  const sourceSelected = Array.isArray(catalog?.plugins) && catalog.plugins.some((plugin) => (
+    plugin?.source?.type === "local"
+    && plugin.source.path === "sources/gravit-custom"
+  ));
+  if (!sourceExists && !manifestExists && !sourceSelected) return;
   const packageManifest = readRepositoryJson(repositoryRoot, "package.json", errors);
-  for (const [target, path] of present) {
-    const manifest = readOptionalRepositoryJson(repositoryRoot, path, errors);
+  for (const [target, path] of manifestPaths) {
+    const manifest = readRepositoryJson(repositoryRoot, path, errors);
     if (
       isPlainObject(packageManifest)
       && isPlainObject(manifest)
@@ -392,6 +393,51 @@ function marketplaceNames(marketplace, label, errors) {
   return sortedUnique(names);
 }
 
+function validateMarketplaceRoot({ marketplace, catalog, target, errors }) {
+  const label = target === "claude" ? "Claude marketplace" : "Codex marketplace";
+  if (!isPlainObject(marketplace)) {
+    errors.push(`${label}: root must be an object`);
+    return;
+  }
+  if (
+    !isPlainObject(catalog)
+    || !Array.isArray(catalog.plugins)
+    || catalog.plugins.some((plugin) => !isPlainObject(plugin))
+  ) return;
+  const expected = addCaught(errors, label, () => (
+    target === "claude"
+      ? createClaudeMarketplace(catalog)
+      : createCodexMarketplace(catalog)
+  ));
+  if (!expected) return;
+  const expectedFields = Object.keys(expected).sort(compareCodePoints);
+  const actualFields = Object.keys(marketplace).sort(compareCodePoints);
+  for (const field of actualFields) {
+    if (!expectedFields.includes(field)) {
+      errors.push(`${label}: unexpected root field ${field}`);
+    }
+  }
+  for (const field of expectedFields) {
+    if (!Object.hasOwn(marketplace, field)) {
+      errors.push(`${label}: missing root field ${field}`);
+    }
+  }
+  if (Object.hasOwn(marketplace, "name") && marketplace.name !== catalog.name) {
+    errors.push(`${label}: name must match catalog`);
+  }
+  const metadataFields = target === "claude"
+    ? ["owner", "description"]
+    : ["interface"];
+  for (const field of metadataFields) {
+    if (
+      Object.hasOwn(marketplace, field)
+      && stableJson(marketplace[field]) !== stableJson(expected[field])
+    ) {
+      errors.push(`${label}: ${field} must match generated marketplace`);
+    }
+  }
+}
+
 function exactNameAgreement(groups, errors) {
   const entries = Object.entries(groups);
   const baseline = entries[0]?.[1] || [];
@@ -475,7 +521,7 @@ function validateMarketplaceEntries({
     if (catalogPlugin) {
       const expectedCategory = target === "claude"
         ? catalogPlugin.category
-        : CODEX_CATEGORY[catalogPlugin.category];
+        : CODEX_CATEGORIES[catalogPlugin.category];
       if (entry.category !== expectedCategory) {
         errors.push(
           `${target} marketplace ${entry.name}: category must be ${expectedCategory}`,
@@ -1275,7 +1321,7 @@ export function validateRepository({
   const lock = readRepositoryJson(root, "registry/lock.json", errors);
   const claudeMarketplace = readRepositoryJson(root, ".claude-plugin/marketplace.json", errors);
   const codexMarketplace = readRepositoryJson(root, ".agents/plugins/marketplace.json", errors);
-  validateMaintainedSourceVersions(root, errors);
+  validateMaintainedSourceVersions(root, catalog, errors);
   applySchema("catalog", catalog, "registry/catalog.json", errors);
   applySchema("lock", lock, "registry/lock.json", errors);
   if (catalog !== undefined) validateExceptions(catalog, errors);
@@ -1290,6 +1336,18 @@ export function validateRepository({
   const catalogByName = new Map(catalogPlugins
     .filter((plugin) => isPlainObject(plugin) && typeof plugin.name === "string")
     .map((plugin) => [plugin.name, plugin]));
+  validateMarketplaceRoot({
+    marketplace: claudeMarketplace,
+    catalog,
+    target: "claude",
+    errors,
+  });
+  validateMarketplaceRoot({
+    marketplace: codexMarketplace,
+    catalog,
+    target: "codex",
+    errors,
+  });
   const lockNames = isPlainObject(lock?.plugins)
     ? Object.keys(lock.plugins).sort(compareCodePoints)
     : [];
