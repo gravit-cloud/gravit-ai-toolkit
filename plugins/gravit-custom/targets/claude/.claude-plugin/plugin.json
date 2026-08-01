@@ -5,5 +5,5 @@
   "description": "Sieben lokal gepflegte Skills der Gravit Cloud (sources/gravit-custom/skills/).",
   "name": "gravit-custom",
   "skills": "./skills/",
-  "version": "1.0.0-gravit.2"
+  "version": "1.0.0-gravit.3"
 }

@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { buildPluginBundle } from "../../scripts/lib/bundle-builder.mjs";
-import { sourceContextHash, treeHash } from "../../scripts/lib/hash.mjs";
+import { treeHash } from "../../scripts/lib/hash.mjs";
 
 function sandbox(context) {
   const root = mkdtempSync(resolve(tmpdir(), "bundle-license-"));
@@ -108,20 +108,48 @@ test("external bundles reject a symbolic license without reading its target", (c
   assert.equal(existsSync(bundleRoot), false);
 });
 
-test("local bundles do not invent a redistributed external license", (context) => {
+test("local bundles may omit a top-level license", (context) => {
   const { sourceRoot, bundleRoot } = sandbox(context);
-  writeFileSync(resolve(sourceRoot, "LICENSE.txt"), "local source license\n");
-  const localPlugin = plugin("local");
-  localPlugin.sourceContext = [{
-    path: "LICENSE.txt",
-    digest: sourceContextHash(resolve(sourceRoot, "LICENSE.txt")),
-  }];
-
   buildPluginBundle({
-    plugin: localPlugin,
+    plugin: plugin("local"),
     sourceRoot,
     bundleRoot,
   });
 
   assert.equal(existsSync(resolve(bundleRoot, "LICENSE")), false);
+});
+
+test("local bundles preserve one canonical top-level license", (context) => {
+  const { sourceRoot, bundleRoot } = sandbox(context);
+  const bytes = Buffer.from("local source license\n");
+  writeFileSync(resolve(sourceRoot, "LICENSE.txt"), bytes, { mode: 0o640 });
+
+  buildPluginBundle({
+    plugin: plugin("local"),
+    sourceRoot,
+    bundleRoot,
+  });
+
+  assert.deepEqual(readFileSync(resolve(bundleRoot, "LICENSE")), bytes);
+  assert.equal(statSync(resolve(bundleRoot, "LICENSE")).mode & 0o777, 0o640);
+});
+
+test("local bundles reject ambiguous or non-regular top-level licenses", (context) => {
+  {
+    const { sourceRoot, bundleRoot } = sandbox(context);
+    writeFileSync(resolve(sourceRoot, "LICENSE"), "first\n");
+    writeFileSync(resolve(sourceRoot, "LICENSE.md"), "second\n");
+    assert.throws(
+      () => buildPluginBundle({ plugin: plugin("local"), sourceRoot, bundleRoot }),
+      /local source has ambiguous top-level licenses/,
+    );
+  }
+  {
+    const { sourceRoot, bundleRoot } = sandbox(context);
+    mkdirSync(resolve(sourceRoot, "LICENSE"));
+    assert.throws(
+      () => buildPluginBundle({ plugin: plugin("local"), sourceRoot, bundleRoot }),
+      /local license must be a real regular file/,
+    );
+  }
 });
