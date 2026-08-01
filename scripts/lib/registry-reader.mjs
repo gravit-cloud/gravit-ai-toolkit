@@ -270,6 +270,30 @@ export function openRegistry(repositoryRoot) {
     return { plugin, locked };
   }
 
+  function verify(name) {
+    if (loadError) return { ok: false, errors: [loadError] };
+    if (state.error) return { ok: false, errors: [state.error] };
+    const names = name === undefined
+      ? state.catalog.plugins.map((plugin) => plugin.name)
+      : [assertRegistryName(name, "registry plugin name")];
+    const errors = [];
+    for (const pluginName of names) {
+      try {
+        const selected = entry(pluginName);
+        errors.push(...verifyPlugin({ root: state.root, ...selected }));
+      } catch (error) {
+        errors.push(`${pluginName}: ${messageOf(error)}`);
+      }
+    }
+    if (errors.length === 0) {
+      errors.push(...validateRepository({
+        repositoryRoot: state.root,
+        selectedPlugins: names,
+      }));
+    }
+    return { ok: errors.length === 0, errors };
+  }
+
   const reader = {
     list() {
       const loaded = ready();
@@ -281,43 +305,23 @@ export function openRegistry(repositoryRoot) {
       }));
     },
     inspect(name) {
-      const result = this.verify(name);
+      const result = verify(name);
       if (!result.ok) throw new Error(result.errors.join("\n"));
       const selected = entry(name);
       return {
-        ...this.list().find((plugin) => plugin.name === name),
+        ...reader.list().find((plugin) => plugin.name === name),
         components: structuredClone(selected.locked.components),
         source: structuredClone(selected.locked.source),
       };
     },
-    verify(name) {
-      if (loadError) return { ok: false, errors: [loadError] };
-      if (state.error) return { ok: false, errors: [state.error] };
-      const names = name === undefined
-        ? state.catalog.plugins.map((plugin) => plugin.name)
-        : [assertRegistryName(name, "registry plugin name")];
-      const errors = [];
-      for (const pluginName of names) {
-        try {
-          const selected = entry(pluginName);
-          errors.push(...verifyPlugin({ root: state.root, ...selected }));
-        } catch (error) {
-          errors.push(`${pluginName}: ${messageOf(error)}`);
-        }
-      }
-      if (errors.length === 0) {
-        errors.push(...validateRepository({
-          repositoryRoot: state.root,
-          selectedPlugins: names,
-        }));
-      }
-      return { ok: errors.length === 0, errors };
-    },
+    verify,
   };
   materializationReaders.set(reader, (name, target) => {
     if (!MATERIALIZATION_TARGETS.has(target)) {
       throw new Error("unsupported materialization target: " + String(target));
     }
+    const verification = verify(name);
+    if (!verification.ok) throw new Error(verification.errors.join("\n"));
     const selected = entry(name);
     if (!selected.plugin.targets.includes(target)) {
       throw new Error(name + ": target is not configured: " + target);
@@ -344,7 +348,7 @@ export function openRegistry(repositoryRoot) {
       targetRoot,
     });
   });
-  return reader;
+  return Object.freeze(reader);
 }
 
 export function materializationSource(reader, name, target) {
