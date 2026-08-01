@@ -30,6 +30,7 @@
     "registry": "node scripts/registry.mjs",
     "registry:build:foundation": "node scripts/build-registry.mjs --catalog test/fixtures/skill-only-catalog.json --output .tmp/registry-foundation",
     "registry:verify": "node scripts/registry.mjs verify",
+    "smoke:clients": "node scripts/smoke-clients.mjs",
     "validate": "node scripts/validate.mjs",
     "version:set": "node scripts/set-version.mjs",
     "release:prepare": "npm run validate && npm run build",
@@ -38,10 +39,12 @@
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "2.1.247",
+    "@openai/codex": "0.145.0",
     "ajv": "8.17.1",
     "decode-named-character-reference": "1.3.0",
     "giget": "3.3.1",
     "micromark": "4.0.2",
-    "micromark-util-decode-numeric-character-reference": "2.0.2"
+    "micromark-util-decode-numeric-character-reference": "2.0.2",
+    "openclaw": "2026.7.1-2"
   }
 }
