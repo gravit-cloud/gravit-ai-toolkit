@@ -26,6 +26,37 @@ const RELEASE_BUILDER = new URL("../../scripts/build-release.mjs", import.meta.u
 const RECEIPT = ".gravit-plugin-receipt.json";
 const UNZIP = "/usr/bin/unzip";
 
+test("stage parent selection rejects filesystem roots without creating paths", async () => {
+  const { selectReleaseStageParent } = await import(RELEASE_BUILDER);
+
+  assert.throws(
+    () => selectReleaseStageParent({
+      repositoryRoot: "/repo",
+      distRoot: "/repo/dist",
+      distParent: "/repo",
+    }),
+    /stage parent must not be a filesystem root/,
+  );
+  assert.throws(
+    () => selectReleaseStageParent({
+      repositoryRoot: "/repo",
+      distRoot: "/release",
+      distParent: "/",
+    }),
+    /stage parent must not be a filesystem root/,
+  );
+  assert.equal(selectReleaseStageParent({
+    repositoryRoot: "/workspace/repo",
+    distRoot: "/workspace/repo/dist",
+    distParent: "/workspace/repo",
+  }), "/workspace");
+  assert.equal(selectReleaseStageParent({
+    repositoryRoot: "/workspace/repo",
+    distRoot: "/release/output",
+    distParent: "/release",
+  }), "/release");
+});
+
 function sandbox(context, prefix) {
   const root = realpathSync(mkdtempSync(resolve(tmpdir(), prefix)));
   context.after(() => rmSync(root, { recursive: true, force: true }));

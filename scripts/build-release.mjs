@@ -135,6 +135,16 @@ function assertDirectoryClaim(path, expected, label) {
   }
 }
 
+export function selectReleaseStageParent({ repositoryRoot, distRoot, distParent }) {
+  const candidate = pathIsInside(repositoryRoot, distRoot)
+    ? dirname(repositoryRoot)
+    : distParent;
+  if (candidate === parse(candidate).root) {
+    throw new Error("release stage parent must not be a filesystem root");
+  }
+  return candidate;
+}
+
 function safeDistRoot(repositoryRoot, requestedRoot) {
   if (typeof requestedRoot !== "string" || requestedRoot.length === 0) {
     throw new Error("release DIST_DIR must be a non-empty path");
@@ -144,6 +154,9 @@ function safeDistRoot(repositoryRoot, requestedRoot) {
     throw new Error("release DIST_DIR must not be a filesystem root");
   }
   const lexicalParent = dirname(lexicalRoot);
+  if (lexicalParent === parse(lexicalParent).root) {
+    throw new Error("release DIST_DIR immediate parent must not be a filesystem root");
+  }
   const parentEntry = pathEntry(lexicalParent);
   if (!parentEntry) {
     throw new Error("release DIST_DIR immediate parent must exist: " + lexicalParent);
@@ -172,6 +185,11 @@ function safeDistRoot(repositoryRoot, requestedRoot) {
       throw new Error("release DIST_DIR overlaps managed registry inputs: " + distRoot);
     }
   }
+  const stageParentPath = selectReleaseStageParent({
+    repositoryRoot: repository,
+    distRoot,
+    distParent: parentRoot,
+  });
 
   assertDirectoryClaim(parentRoot, parentIdentity, "release DIST_DIR parent");
   let distEntry = pathEntry(distRoot);
@@ -192,13 +210,12 @@ function safeDistRoot(repositoryRoot, requestedRoot) {
     identity: Object.freeze({ device: distEntry.dev, inode: distEntry.ino }),
     parentPath: parentRoot,
     parentIdentity,
+    stageParentPath,
   });
 }
 
 function safeStageParent(repositoryRoot, dist) {
-  const candidate = pathIsInside(repositoryRoot, dist.path)
-    ? dirname(repositoryRoot)
-    : dist.parentPath;
+  const candidate = dist.stageParentPath;
   const entry = lstatSync(candidate);
   if (
     entry.isSymbolicLink()
