@@ -25,14 +25,15 @@ import {
 import { treeHash } from "../../scripts/lib/hash.mjs";
 import { writeJson } from "../../scripts/lib/json.mjs";
 import {
+  claimRegistryRevision,
   materializationSource,
   openRegistry,
-  registryRevision,
 } from "../../scripts/lib/registry-reader.mjs";
 import {
   materialize,
   validateReceipt,
 } from "../../scripts/lib/materialize.mjs";
+import { runRegistryCommand } from "../../scripts/registry.mjs";
 
 const RECEIPT = ".gravit-plugin-receipt.json";
 const REVISION = "a".repeat(40);
@@ -98,24 +99,63 @@ function fixtureRegistry(context) {
     outputRoot: repositoryRoot,
     production: true,
   });
+  runGit(repositoryRoot, "init", "-q");
+  runGit(repositoryRoot, "add", ".");
+  runGit(
+    repositoryRoot,
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "-q",
+    "-m",
+    "fixture",
+  );
   return repositoryRoot;
+}
+
+function runGit(repositoryRoot, ...args) {
+  const result = spawnSync("/usr/bin/git", args, {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    env: {
+      GIT_AUTHOR_EMAIL: "materialize-test@example.invalid",
+      GIT_AUTHOR_NAME: "Materialize Test",
+      GIT_COMMITTER_EMAIL: "materialize-test@example.invalid",
+      GIT_COMMITTER_NAME: "Materialize Test",
+      LC_ALL: "C",
+      PATH: "/usr/bin:/bin",
+    },
+    maxBuffer: 1024 * 1024,
+    shell: false,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
 }
 
 function setup(context) {
   const repositoryRoot = fixtureRegistry(context);
   const temporaryRoot = sandbox(context, "materialize-output-");
   const reader = openRegistry(repositoryRoot);
+  const registryRevisionClaim = claimRegistryRevision(reader, ["nested-skills"]);
+  const revision = runGit(repositoryRoot, "rev-parse", "HEAD");
   function request(outputPath, overrides = {}) {
     return {
       reader,
       pluginName: "nested-skills",
       target: "codex",
       outputPath,
-      registryRevision: REVISION,
+      registryRevisionClaim,
       ...overrides,
     };
   }
-  return { repositoryRoot, temporaryRoot, reader, request };
+  return {
+    repositoryRoot,
+    temporaryRoot,
+    reader,
+    registryRevisionClaim,
+    revision,
+    request,
+  };
 }
 
 function receiptAt(outputPath) {
@@ -188,14 +228,25 @@ test("refuses a target whose committed digest no longer matches the lock", (cont
   const lock = JSON.parse(readFileSync(lockPath, "utf8"));
   lock.plugins["nested-skills"].targets.codex = "0".repeat(64);
   writeJson(lockPath, lock);
+  runGit(repositoryRoot, "add", "registry/lock.json");
+  runGit(
+    repositoryRoot,
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "-q",
+    "-m",
+    "invalid digest",
+  );
   const outputPath = resolve(temporaryRoot, "consumer");
+  const reader = openRegistry(repositoryRoot);
 
   assert.throws(() => materialize({
-    reader: openRegistry(repositoryRoot),
+    reader,
     pluginName: "nested-skills",
     target: "codex",
     outputPath,
-    registryRevision: REVISION,
+    registryRevisionClaim: claimRegistryRevision(reader, ["nested-skills"]),
   }), /target.*digest mismatch/);
   assert.equal(existsSync(outputPath), false);
 });
@@ -505,15 +556,15 @@ test("a copied payload mutation is retained as explicit incomplete recovery", (c
 });
 
 test("versioned sibling outputs can both be materialized", (context) => {
-  const { temporaryRoot, request } = setup(context);
+  const { temporaryRoot, request, revision } = setup(context);
   const firstPath = resolve(temporaryRoot, "nested-skills-1.0.0-rev-a");
   const secondPath = resolve(temporaryRoot, "nested-skills-1.0.0-rev-b");
 
   const first = materialize(request(firstPath));
-  const second = materialize(request(secondPath, { registryRevision: "b".repeat(40) }));
+  const second = materialize(request(secondPath));
 
-  assert.equal(first.registryRevision, REVISION);
-  assert.equal(second.registryRevision, "b".repeat(40));
+  assert.equal(first.registryRevision, revision);
+  assert.equal(second.registryRevision, revision);
   assert.equal(existsSync(resolve(firstPath, RECEIPT)), true);
   assert.equal(existsSync(resolve(secondPath, RECEIPT)), true);
 });
@@ -566,18 +617,20 @@ test("treeHash excludes only an exact safe relative file and can bind modes", (c
   }
 });
 
-test("registryRevision returns a strict Git HEAD and rejects non-checkouts", (context) => {
-  const repositoryRoot = resolve(import.meta.dirname, "../..");
-  const expected = spawnSync("git", ["rev-parse", "HEAD"], {
-    cwd: repositoryRoot,
-    encoding: "utf8",
-  }).stdout.trim();
-  assert.equal(registryRevision(repositoryRoot), expected);
-  assert.match(registryRevision(repositoryRoot), /^[a-f0-9]{40}$/);
-
-  const notRepository = sandbox(context, "materialize-no-git-");
+test("materialization requires an opaque committed registry revision claim", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const output = resolve(temporaryRoot, "forged-revision");
   assert.throws(
-    () => registryRevision(notRepository),
+    () => materialize(request(output, { registryRevisionClaim: REVISION })),
+    /trusted registry revision claim/,
+  );
+  assert.equal(existsSync(output), false);
+
+  const notRepository = fixtureRegistry(context);
+  rmSync(resolve(notRepository, ".git"), { recursive: true, force: true });
+  const reader = openRegistry(notRepository);
+  assert.throws(
+    () => claimRegistryRevision(reader, ["nested-skills"]),
     /registry checkout must have a resolvable Git HEAD/,
   );
 });
@@ -633,23 +686,24 @@ test("CLI validates materialize options and target before output resolution", (c
   }
 });
 
-test("CLI materializes a verified target and emits its receipt", (context) => {
-  const root = sandbox(context, "materialize-cli-success-");
-  const output = resolve(root, "gravit-custom-codex");
+test("CLI command runner materializes a verified committed target and emits its receipt", (context) => {
+  const { repositoryRoot, temporaryRoot } = setup(context);
+  const output = resolve(temporaryRoot, "nested-skills-codex");
+  const stdout = runRegistryCommand({
+    repositoryRoot,
+    argv: [
+      "materialize",
+      "--plugin",
+      "nested-skills",
+      "--target",
+      "codex",
+      "--output",
+      output,
+    ],
+  });
 
-  const result = runCli(
-    "materialize",
-    "--plugin",
-    "gravit-custom",
-    "--target",
-    "codex",
-    "--output",
-    output,
-  );
-
-  assert.equal(result.status, 0, result.stderr);
-  const receipt = JSON.parse(result.stdout);
-  assert.equal(receipt.plugin, "gravit-custom");
+  const receipt = JSON.parse(stdout);
+  assert.equal(receipt.plugin, "nested-skills");
   assert.equal(receipt.target, "codex");
   assert.match(receipt.registryRevision, /^[a-f0-9]{40}$/u);
   assert.equal(existsSync(resolve(output, RECEIPT)), true);
@@ -804,14 +858,25 @@ test("rejects a reserved receipt already present in a verified source target", (
   lock.plugins["nested-skills"].targets.codex = targetDigest;
   lock.plugins["nested-skills"].bundleDigest = treeHash(bundleRoot);
   writeJson(lockPath, lock);
+  runGit(repositoryRoot, "add", "plugins/nested-skills", "registry/lock.json");
+  runGit(
+    repositoryRoot,
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "-q",
+    "-m",
+    "reserved receipt fixture",
+  );
 
   const outputPath = resolve(temporaryRoot, "consumer");
+  const reader = openRegistry(repositoryRoot);
   assert.throws(() => materialize({
-    reader: openRegistry(repositoryRoot),
+    reader,
     pluginName: "nested-skills",
     target: "codex",
     outputPath,
-    registryRevision: REVISION,
+    registryRevisionClaim: claimRegistryRevision(reader, ["nested-skills"]),
   }), /source target contains reserved receipt/);
   assert.equal(existsSync(outputPath), false);
 });
@@ -831,6 +896,31 @@ test("revalidates the complete bundle immediately before publication", (context)
       },
     },
   })), /bundle.*(?:ownership|content or metadata) changed/);
+
+  assert.equal(existsSync(outputPath), true);
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
+});
+
+test("a Git HEAD change after source claims prevents receipt publication", (context) => {
+  const { repositoryRoot, temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      afterCopy() {
+        runGit(
+          repositoryRoot,
+          "-c",
+          "commit.gpgsign=false",
+          "commit",
+          "--allow-empty",
+          "-q",
+          "-m",
+          "head changed",
+        );
+      },
+    },
+  })), /Git HEAD changed/u);
 
   assert.equal(existsSync(outputPath), true);
   assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);

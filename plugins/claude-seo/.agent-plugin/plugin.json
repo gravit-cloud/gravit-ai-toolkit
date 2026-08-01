@@ -37,9 +37,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/data",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/data",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "asset"
@@ -60,9 +60,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/requirements.txt",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/requirements.txt",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "asset"
@@ -83,9 +83,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/assets",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/assets",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "asset"
@@ -106,9 +106,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/screenshots",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/screenshots",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "asset"
@@ -129,9 +129,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/pdf",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/pdf",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "asset"
@@ -152,9 +152,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/schema",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/schema",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "asset"
@@ -175,9 +175,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/hooks/validate-schema.py",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/hooks/validate-schema.py",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "executable"
@@ -198,9 +198,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/extensions",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/extensions",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "executable"
@@ -221,9 +221,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/hooks/run-python-hook.js",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/hooks/run-python-hook.js",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "executable"
@@ -244,9 +244,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/bin",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/bin",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "executable"
@@ -267,9 +267,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/scripts",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/scripts",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "executable"
@@ -872,7 +872,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "2.2.4-gravit.2",
+  "distributionVersion": "2.2.4-gravit.3",
   "name": "claude-seo",
   "schemaVersion": 1,
   "targets": {
@@ -1069,7 +1069,7 @@
           "status": "preserved"
         }
       },
-      "digest": "2c784699ecfc9a2bfc97a59fac8b440115daf99b821e5b85478caa257d1c6335",
+      "digest": "d335f465492493a1db4a1c0cb533b830e39f6f4ec04b71190e39cdb2827b655c",
       "path": "targets/claude"
     },
     "codex": {
@@ -1264,7 +1264,7 @@
           "status": "transformed"
         }
       },
-      "digest": "773622b73cf5876021603250ee245f8f2410894a7c25622df8039f441eff7936",
+      "digest": "82558d7bc6d2556ccbef990afa3053c7e09a5dcd7f01feadf70a9a6dfa1131e9",
       "path": "targets/codex"
     },
     "openclaw": {
@@ -1274,59 +1274,59 @@
           "status": "unsupported"
         },
         "asset-3a6eb0790f39": {
-          "path": "targets/openclaw/data",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/data",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "asset-4d7c51b1efe9": {
-          "path": "targets/openclaw/requirements.txt",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/requirements.txt",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "asset-8bf729ffe074": {
-          "path": "targets/openclaw/assets",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/assets",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "asset-98d875b61ff2": {
-          "path": "targets/openclaw/screenshots",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/screenshots",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "asset-c35b21d6ca39": {
-          "path": "targets/openclaw/pdf",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/pdf",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "asset-df0ad6e43880": {
-          "path": "targets/openclaw/schema",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/assets/plugin-layout/schema",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "executable-048f0de608d4": {
-          "path": "targets/openclaw/hooks/validate-schema.py",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/hooks/validate-schema.py",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "executable-20ef7739e842": {
-          "path": "targets/openclaw/extensions",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/extensions",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "executable-2fe8debbb325": {
-          "path": "targets/openclaw/hooks/run-python-hook.js",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/hooks/run-python-hook.js",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "executable-51a1f05af85e": {
-          "path": "targets/openclaw/bin",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/bin",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "executable-8c5967fd8486": {
-          "path": "targets/openclaw/scripts",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/scripts",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "hook-a48aec12c9dd": {
           "reasonCode": "openclaw-does-not-run-claude-hook-json",
@@ -1458,7 +1458,7 @@
           "status": "transformed"
         }
       },
-      "digest": "1299e4a7b664d45c7f51f0bc16bfcc2cac64750f1bce0803df0166be5dbab4aa",
+      "digest": "5f9f259923a59c6f5dd918657e0cdeaf6417d1519b1ec4e9fff0a84490bde590",
       "path": "targets/openclaw"
     }
   }

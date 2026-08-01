@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { assertRegistryName } from "./lib/path-safety.mjs";
 import { materialize } from "./lib/materialize.mjs";
-import { openRegistry, registryRevision } from "./lib/registry-reader.mjs";
+import {
+  claimRegistryRevision,
+  openRegistry,
+} from "./lib/registry-reader.mjs";
 
 const TARGETS = new Set(["claude", "codex", "openclaw"]);
 
@@ -54,17 +57,14 @@ function parseCommand(argv) {
   return { command, ...options };
 }
 
-function main() {
-  const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-  const { command, plugin, target, output } = parseCommand(process.argv.slice(2));
+export function runRegistryCommand({ repositoryRoot, argv }) {
+  const { command, plugin, target, output } = parseCommand(argv);
   const registry = openRegistry(repositoryRoot);
   if (command === "list") {
-    process.stdout.write(JSON.stringify(registry.list(), null, 2) + "\n");
-    return;
+    return JSON.stringify(registry.list(), null, 2) + "\n";
   }
   if (command === "inspect") {
-    process.stdout.write(JSON.stringify(registry.inspect(plugin), null, 2) + "\n");
-    return;
+    return JSON.stringify(registry.inspect(plugin), null, 2) + "\n";
   }
   if (command === "materialize") {
     const receipt = materialize({
@@ -72,23 +72,26 @@ function main() {
       pluginName: plugin,
       target,
       outputPath: resolve(output),
-      registryRevision: registryRevision(repositoryRoot),
+      registryRevisionClaim: claimRegistryRevision(registry, [plugin]),
     });
-    process.stdout.write(JSON.stringify(receipt, null, 2) + "\n");
-    return;
+    return JSON.stringify(receipt, null, 2) + "\n";
   }
   const result = registry.verify(plugin);
   if (!result.ok) {
-    process.stderr.write(result.errors.join("\n") + "\n");
-    process.exitCode = 1;
-    return;
+    throw new Error(result.errors.join("\n"));
   }
-  process.stdout.write("Registry bundles verified.\n");
+  return "Registry bundles verified.\n";
 }
 
-try {
-  main();
-} catch (error) {
-  process.stderr.write(String(error instanceof Error ? error.message : error) + "\n");
-  process.exitCode = 1;
+const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : undefined;
+if (invokedPath === import.meta.url) {
+  try {
+    process.stdout.write(runRegistryCommand({
+      repositoryRoot: resolve(dirname(fileURLToPath(import.meta.url)), ".."),
+      argv: process.argv.slice(2),
+    }));
+  } catch (error) {
+    process.stderr.write(String(error instanceof Error ? error.message : error) + "\n");
+    process.exitCode = 1;
+  }
 }

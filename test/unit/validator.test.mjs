@@ -164,6 +164,36 @@ test("OpenClaw rejects every unsupported host binding and target root", (context
   }
 });
 
+test("OpenClaw rejects a reserved target root even when an executable disposition owns it", (context) => {
+  const repositoryRoot = validRepository(context, { includeOpenClaw: true });
+  const pluginRoot = resolve(repositoryRoot, "plugins/fixture");
+  const targetRoot = resolve(pluginRoot, "targets/openclaw");
+  const sourcePath = resolve(targetRoot, "bin/helper.sh");
+  const forbiddenPath = resolve(targetRoot, "hooks/helper.sh");
+  mkdirSync(resolve(forbiddenPath, ".."), { recursive: true });
+  renameSync(sourcePath, forbiddenPath);
+
+  const manifestPath = resolve(pluginRoot, ".agent-plugin/plugin.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const executable = manifest.components.find(({ type }) => type === "executable");
+  executable.targets.openclaw.path = "targets/openclaw/hooks/helper.sh";
+  manifest.targets.openclaw.components[executable.id].path =
+    "targets/openclaw/hooks/helper.sh";
+  writeJson(manifestPath, manifest);
+
+  const lockPath = resolve(repositoryRoot, "registry/lock.json");
+  const lock = readJson(repositoryRoot, "registry/lock.json");
+  const lockedExecutable = lock.plugins.fixture.components.find(({ id }) => id === executable.id);
+  lockedExecutable.targets.openclaw.path = "targets/openclaw/hooks/helper.sh";
+  writeJson(lockPath, lock);
+  refreshGeneratedDigests(repositoryRoot);
+
+  assertHasError(
+    validateRepository({ repositoryRoot }),
+    "openclaw target must not contain hooks",
+  );
+});
+
 function readJson(repositoryRoot, relativePath) {
   return JSON.parse(readFileSync(resolve(repositoryRoot, relativePath), "utf8"));
 }

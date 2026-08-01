@@ -13,6 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { buildPluginBundle } from "../../scripts/lib/bundle-builder.mjs";
+import { treeHash } from "../../scripts/lib/hash.mjs";
 import { walkFiles } from "../../scripts/lib/path-safety.mjs";
 import { validateRecursiveSkills } from "../../scripts/lib/validator.mjs";
 
@@ -45,7 +46,13 @@ function fixture(context) {
   writeSourceFile(
     sourceRoot,
     "skills/fixture/references/flow.md",
-    "See the [framework](../../../assets/framework.svg).\n",
+    [
+      "See the [framework](../../../assets/framework.svg).",
+      "Use the [launcher](../../../bin/claude-seo).",
+      "Run the [hook helper](../../../hooks/run-python-hook.js).",
+      "Install the [requirements](../../../requirements.txt).",
+      "",
+    ].join("\n"),
   );
   writeSourceFile(sourceRoot, "assets/framework.svg", "<svg/>\n", 0o644);
   writeSourceFile(
@@ -167,6 +174,112 @@ test("explicit resources preserve root layout, modes, and runtime reachability",
       assert.equal(targetPaths.includes(`targets/${target}/${path}`), true, `${target}:${path}`);
     }
   }
+});
+
+test("OpenClaw relocates path resources under safe namespaces and rewrites skill links", (context) => {
+  const { sourceRoot, bundleRoot } = fixture(context);
+  const openClawPlugin = {
+    ...plugin(),
+    targets: ["openclaw"],
+    adapterOptions: { openclaw: { bundleFormat: "codex" } },
+    targetPolicies: {
+      openclaw: {
+        unsupported: { hook: "openclaw-does-not-run-claude-hook-json" },
+      },
+    },
+  };
+  const manifest = buildPluginBundle({ plugin: openClawPlugin, sourceRoot, bundleRoot });
+  const targetRoot = resolve(bundleRoot, "targets/openclaw");
+  const launcher = resolve(targetRoot, "bin/plugin-layout/bin/claude-seo");
+  assert.equal(existsSync(launcher), true);
+  assert.deepEqual(readFileSync(launcher), readFileSync(resolve(sourceRoot, "bin/claude-seo")));
+  assert.match(readFileSync(launcher, "utf8"), /\.\.\/scripts\/runtime\.py/u);
+  assert.equal(existsSync(resolve(dirname(launcher), "../scripts/runtime.py")), true);
+  const targetFiles = walkFiles(targetRoot)
+    .map((path) => path.slice(targetRoot.length + 1));
+  for (const suffix of [
+    "runtime.py",
+    "install.sh",
+    "run-python-hook.js",
+    "validate-schema.py",
+    "templates.json",
+    "profile.json",
+    "template.html",
+    "example.txt",
+    "requirements.txt",
+  ]) {
+    assert.equal(targetFiles.some((path) => path.endsWith("/" + suffix)), true, suffix);
+  }
+  assert.equal(existsSync(resolve(targetRoot, "hooks")), false);
+  assert.equal(existsSync(resolve(targetRoot, "scripts")), false);
+  assert.equal(existsSync(resolve(targetRoot, "requirements.txt")), false);
+
+  const flowPath = resolve(targetRoot, "skills/fixture/references/flow.md");
+  const flow = readFileSync(flowPath, "utf8");
+  const links = [...flow.matchAll(/\]\(([^)]+)\)/gu)].map((match) => match[1]);
+  assert.equal(links.length, 4);
+  for (const link of links) {
+    const linkedPath = resolve(dirname(flowPath), link);
+    assert.equal(existsSync(linkedPath), true, link);
+    assert.equal(
+      linkedPath.startsWith(resolve(targetRoot, "assets") + "/")
+        || linkedPath.startsWith(resolve(targetRoot, "bin") + "/"),
+      true,
+      link,
+    );
+  }
+
+  const resources = manifest.components.filter(({ type }) => (
+    type === "asset" || type === "executable"
+  ));
+  for (const component of resources) {
+    assert.match(component.targets.openclaw.status, /^(?:preserved|transformed)$/u, component.id);
+    if (component.targets.openclaw.status === "transformed") {
+      assert.equal(component.targets.openclaw.reasonCode, "target-translation", component.id);
+    }
+    assert.match(
+      component.targets.openclaw.path,
+      component.type === "asset"
+        ? /^targets\/openclaw\/assets(?:\/|$)/u
+        : /^targets\/openclaw\/bin(?:\/|$)/u,
+      component.id,
+    );
+  }
+  assert.equal(
+    resources.filter(({ targets }) => targets.openclaw.status === "transformed").length >= 9,
+    true,
+  );
+
+  const secondBundle = resolve(bundleRoot, "../second-bundle");
+  buildPluginBundle({ plugin: openClawPlugin, sourceRoot, bundleRoot: secondBundle });
+  assert.equal(treeHash(secondBundle), treeHash(bundleRoot));
+});
+
+test("OpenClaw preserves disjoint source trees whose preferred namespaces overlap", (context) => {
+  const { sourceRoot, bundleRoot } = fixture(context);
+  writeSourceFile(sourceRoot, "assets/schema/templates.json", "conflict\n");
+  const openClawPlugin = {
+    ...plugin(),
+    targets: ["openclaw"],
+    adapterOptions: { openclaw: { bundleFormat: "codex" } },
+    targetPolicies: {
+      openclaw: {
+        unsupported: { hook: "openclaw-does-not-run-claude-hook-json" },
+      },
+    },
+  };
+
+  assert.doesNotThrow(
+    () => buildPluginBundle({ plugin: openClawPlugin, sourceRoot, bundleRoot }),
+  );
+  assert.equal(
+    existsSync(resolve(bundleRoot, "targets/openclaw/assets/plugin-layout/assets/schema/templates.json")),
+    true,
+  );
+  assert.equal(
+    existsSync(resolve(bundleRoot, "targets/openclaw/assets/plugin-layout/schema/templates.json")),
+    true,
+  );
 });
 
 test("explicit resources cannot occupy generated target namespaces", (context) => {

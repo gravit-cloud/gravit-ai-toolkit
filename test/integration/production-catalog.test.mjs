@@ -70,10 +70,10 @@ test("production catalog is neutral and fully pinned", () => {
   assert.deepEqual(
     catalog.plugins.map((plugin) => plugin.distributionVersion),
     [
-      "2.2.4-gravit.2",
+      "2.2.4-gravit.3",
       "1.0.1-gravit.2",
       "1.1.0-gravit.2",
-      "1.2.5-gravit.2",
+      "1.2.5-gravit.3",
       "6.2.0-gravit.2",
       "1.0.0-gravit.3",
     ],
@@ -206,6 +206,27 @@ test("current repository passes offline validation after generated cutover", () 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(result.stdout, "Registry validation passed.\n");
   assert.equal(result.stderr, "");
+});
+
+test("production OpenClaw resources stay in safe namespaces with runtime-relative layout", () => {
+  const azureRoot = resolve(repositoryRoot, "plugins/azure/targets/openclaw");
+  const seoRoot = resolve(repositoryRoot, "plugins/claude-seo/targets/openclaw");
+  for (const root of [azureRoot, seoRoot]) {
+    assert.equal(existsSync(resolve(root, "hooks")), false);
+  }
+  assert.equal(
+    existsSync(resolve(azureRoot, "bin/hooks/scripts/track-telemetry.sh")),
+    true,
+  );
+
+  const launcher = resolve(seoRoot, "bin/plugin-layout/bin/claude-seo");
+  assert.equal(existsSync(launcher), true);
+  assert.deepEqual(
+    readFileSync(launcher),
+    readFileSync(resolve(repositoryRoot, "plugins/claude-seo/targets/codex/bin/claude-seo")),
+  );
+  assert.match(readFileSync(launcher, "utf8"), /\.\.\/scripts\/runtime\.py/u);
+  assert.equal(existsSync(resolve(dirname(launcher), "../scripts/runtime.py")), true);
 });
 
 test("production build promotes only complete managed registry artifacts", (context) => {

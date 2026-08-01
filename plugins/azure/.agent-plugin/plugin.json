@@ -729,9 +729,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/hooks/scripts",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/hooks/scripts",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "executable"
@@ -874,7 +874,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.2.5-gravit.2",
+  "distributionVersion": "1.2.5-gravit.3",
   "name": "azure",
   "schemaVersion": 1,
   "targets": {
@@ -1071,7 +1071,7 @@
           "status": "preserved"
         }
       },
-      "digest": "9e1ffe0d44bb1b20851252e5892b09afa834ef2ca430a61be887e19e1faa5f5d",
+      "digest": "e8f5b475ada144bc149c0f261a530467b878091d3bffaa9159f99ee995c26b77",
       "path": "targets/claude"
     },
     "codex": {
@@ -1267,7 +1267,7 @@
           "status": "transformed"
         }
       },
-      "digest": "95eb9348f0645a173282137714e9bed83e2ddaa00d6b1fa8025ac26c27be670e",
+      "digest": "c43676fb5f8a601961983d2e983a3ca109c769629303457b66de3b1d38df4fba",
       "path": "targets/codex"
     },
     "openclaw": {
@@ -1428,9 +1428,9 @@
           "status": "transformed"
         },
         "executable-3cfb0a3c9667": {
-          "path": "targets/openclaw/hooks/scripts",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/hooks/scripts",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "finetuning": {
           "path": "targets/openclaw/skills/finetuning",
@@ -1462,7 +1462,7 @@
           "status": "transformed"
         }
       },
-      "digest": "91527ed1f953aa6c9d6c4555699589fec0b2048eb8395e6a3b56cb9caf18da15",
+      "digest": "785e5813669dd1884e3f9294bbceee264836ca98e6c6328fceddaf3b970d121f",
       "path": "targets/openclaw"
     }
   }

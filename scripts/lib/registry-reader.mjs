@@ -21,8 +21,12 @@ const validateLock = ajv.compile(loadSchema("lock"));
 const validatePluginManifest = ajv.compile(loadSchema("agent-plugin"));
 const materializationReaders = new WeakMap();
 const releaseReaders = new WeakMap();
+const revisionReaders = new WeakMap();
+const revisionClaims = new WeakMap();
 const MATERIALIZATION_TARGETS = new Set(["claude", "codex", "openclaw"]);
 const RELEASE_RECEIPT = ".gravit-plugin-receipt.json";
+const MAX_GIT_OUTPUT = 1024 * 1024;
+const GIT_ENVIRONMENT = Object.freeze({ LC_ALL: "C", PATH: "/usr/bin:/bin" });
 
 function messageOf(error) {
   return String(error instanceof Error ? error.message : error)
@@ -384,11 +388,31 @@ export function openRegistry(repositoryRoot) {
     if (pathEntryExists(resolve(bundleRoot, RELEASE_RECEIPT))) {
       throw new Error(name + ": source bundle contains reserved receipt");
     }
+    const licensePath = resolve(bundleRoot, "LICENSE");
+    if (!pathEntryExists(licensePath)) {
+      throw new Error(name + ": source bundle requires a top-level LICENSE");
+    }
+    const safeLicense = safeExistingPath(
+      bundleRoot,
+      licensePath,
+      `${name} top-level LICENSE`,
+      "file",
+    );
+    if (lstatSync(safeLicense).size === 0) {
+      throw new Error(name + ": top-level LICENSE must not be empty");
+    }
     return Object.freeze({
       plugin: selected.plugin.name,
       distributionVersion: selected.plugin.distributionVersion,
       bundleDigest: selected.locked.bundleDigest,
       bundleRoot,
+    });
+  });
+  revisionReaders.set(reader, () => {
+    const loaded = ready();
+    return Object.freeze({
+      root: loaded.root,
+      pluginNames: Object.freeze(loaded.catalog.plugins.map(({ name }) => name)),
     });
   });
   return Object.freeze(reader);
@@ -406,16 +430,108 @@ export function releaseSource(reader, name) {
   return select(name);
 }
 
-export function registryRevision(repositoryRoot, { environment } = {}) {
-  const result = spawnSync("git", ["rev-parse", "HEAD"], {
+function runGit(repositoryRoot, args, label) {
+  const result = spawnSync("git", args, {
     cwd: repositoryRoot,
     encoding: "utf8",
-    ...(environment === undefined ? {} : { env: environment }),
-    maxBuffer: 1024 * 1024,
+    env: GIT_ENVIRONMENT,
+    maxBuffer: MAX_GIT_OUTPUT,
     shell: false,
   });
-  if (result.status !== 0 || !/^[a-f0-9]{40}\n?$/u.test(result.stdout)) {
+  if (result.error || result.status !== 0) {
+    throw new Error(label);
+  }
+  return result.stdout;
+}
+
+function gitHead(repositoryRoot) {
+  const output = runGit(
+    repositoryRoot,
+    ["rev-parse", "HEAD"],
+    "registry checkout must have a resolvable Git HEAD",
+  );
+  if (!/^[a-f0-9]{40}\n?$/u.test(output)) {
     throw new Error("registry checkout must have a resolvable Git HEAD");
   }
-  return result.stdout.trim();
+  return output.trim();
+}
+
+function normalizeRevisionNames(names, knownNames) {
+  if (!Array.isArray(names) || names.length === 0) {
+    throw new Error("registry revision claim requires at least one plugin");
+  }
+  const normalized = sortedNames(names.map((name) => (
+    assertRegistryName(name, "registry revision plugin name")
+  )));
+  if (new Set(normalized).size !== normalized.length) {
+    throw new Error("registry revision claim contains duplicate plugins");
+  }
+  const known = new Set(knownNames);
+  for (const name of normalized) {
+    if (!known.has(name)) throw new Error("unknown registry plugin: " + name);
+  }
+  return normalized;
+}
+
+function assertCommittedRevision({ root, revision, pluginNames }) {
+  const before = gitHead(root);
+  if (revision !== undefined && before !== revision) {
+    throw new Error("registry Git HEAD changed after revision claim");
+  }
+  const pathspecs = [
+    "registry/catalog.json",
+    "registry/lock.json",
+    ...pluginNames.map((name) => `plugins/${name}`),
+  ];
+  const status = runGit(
+    root,
+    ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ...pathspecs],
+    "registry checkout status could not be verified",
+  );
+  if (status.length !== 0) {
+    throw new Error("consumed registry paths are not committed at registry revision");
+  }
+  const after = gitHead(root);
+  if (after !== before || (revision !== undefined && after !== revision)) {
+    throw new Error("registry Git HEAD changed after revision claim");
+  }
+  return after;
+}
+
+export function claimRegistryRevision(reader, pluginNames) {
+  const select = revisionReaders.get(reader);
+  if (!select) throw new Error("revision claim requires a trusted registry reader");
+  const selected = select();
+  const names = normalizeRevisionNames(pluginNames, selected.pluginNames);
+  const revision = assertCommittedRevision({
+    root: selected.root,
+    pluginNames: names,
+  });
+  const claim = Object.freeze(Object.create(null));
+  revisionClaims.set(claim, Object.freeze({
+    reader,
+    root: selected.root,
+    pluginNames: Object.freeze(names),
+    revision,
+  }));
+  return claim;
+}
+
+export function assertRegistryRevisionClaim(reader, claim, pluginNames) {
+  const trusted = revisionClaims.get(claim);
+  if (!trusted || trusted.reader !== reader) {
+    throw new Error("registry publication requires a trusted registry revision claim");
+  }
+  const select = revisionReaders.get(reader);
+  if (!select) throw new Error("revision claim requires a trusted registry reader");
+  const selected = select();
+  const names = normalizeRevisionNames(pluginNames, selected.pluginNames);
+  if (!sameValues(names, trusted.pluginNames)) {
+    throw new Error("registry revision claim plugin selection mismatch");
+  }
+  return assertCommittedRevision({
+    root: trusted.root,
+    revision: trusted.revision,
+    pluginNames: trusted.pluginNames,
+  });
 }
