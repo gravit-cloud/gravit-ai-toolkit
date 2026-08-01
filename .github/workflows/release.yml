@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          fetch-depth: 0
+          fetch-tags: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
@@ -40,6 +42,10 @@ jobs:
               throw new Error(`unsafe or mismatched release tag: ${String(releaseTag)}`);
             }
           '
+          tag_commit=$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")
+          head_commit=$(git rev-parse HEAD)
+          test "$tag_commit" = "$head_commit"
+          test "$tag_commit" = "$GITHUB_SHA"
       - name: Validate and build committed universal bundles
         id: artifacts
         run: |
@@ -68,4 +74,4 @@ jobs:
             test -f "$archive"
             test ! -L "$archive"
           done
-          gh release create "$RELEASE_TAG" "${archives[@]}" --generate-notes
+          gh release create "$RELEASE_TAG" "${archives[@]}" --verify-tag --generate-notes

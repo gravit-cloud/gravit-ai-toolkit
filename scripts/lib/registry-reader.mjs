@@ -406,10 +406,13 @@ export function releaseSource(reader, name) {
   return select(name);
 }
 
-export function registryRevision(repositoryRoot) {
+export function registryRevision(repositoryRoot, { environment } = {}) {
   const result = spawnSync("git", ["rev-parse", "HEAD"], {
     cwd: repositoryRoot,
     encoding: "utf8",
+    ...(environment === undefined ? {} : { env: environment }),
+    maxBuffer: 1024 * 1024,
+    shell: false,
   });
   if (result.status !== 0 || !/^[a-f0-9]{40}\n?$/u.test(result.stdout)) {
     throw new Error("registry checkout must have a resolvable Git HEAD");

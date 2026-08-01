@@ -5,6 +5,7 @@ import {
   fchmodSync,
   fstatSync,
   lstatSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   openSync,
@@ -13,7 +14,6 @@ import {
   utimesSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import {
   basename,
   dirname,
@@ -192,6 +192,36 @@ function safeDistRoot(repositoryRoot, requestedRoot) {
     identity: Object.freeze({ device: distEntry.dev, inode: distEntry.ino }),
     parentPath: parentRoot,
     parentIdentity,
+  });
+}
+
+function safeStageParent(repositoryRoot, dist) {
+  const candidate = pathIsInside(repositoryRoot, dist.path)
+    ? dirname(repositoryRoot)
+    : dist.parentPath;
+  const entry = lstatSync(candidate);
+  if (
+    entry.isSymbolicLink()
+    || !entry.isDirectory()
+    || realpathSync(candidate) !== candidate
+    || canonicalPath(candidate) !== candidate
+  ) {
+    throw new Error("release stage parent must be a canonical real directory: " + candidate);
+  }
+  if (
+    candidate === repositoryRoot
+    || pathIsInside(repositoryRoot, candidate)
+    || candidate === dist.path
+    || pathIsInside(dist.path, candidate)
+  ) {
+    throw new Error("release stage parent must be outside repository and DIST_DIR: " + candidate);
+  }
+  if (entry.dev !== dist.identity.device) {
+    throw new Error("release stage parent and DIST_DIR must use the same filesystem");
+  }
+  return Object.freeze({
+    path: candidate,
+    identity: Object.freeze({ device: entry.dev, inode: entry.ino }),
   });
 }
 
@@ -379,30 +409,62 @@ function createStagedArchive({ payloadRoot, bundleStage, archivePath }) {
     "zip",
     { cwd: payloadRoot },
   );
-  const archiveStats = lstatSync(archivePath);
-  if (archiveStats.isSymbolicLink() || !archiveStats.isFile()) {
-    throw new Error("staged release archive must be a regular file: " + archivePath);
+  let descriptor;
+  try {
+    descriptor = openSync(archivePath, constants.O_RDWR | constants.O_NOFOLLOW);
+    const opened = fstatSync(descriptor);
+    const bound = lstatSync(archivePath);
+    if (
+      !opened.isFile()
+      || !sameIdentity(opened, bound)
+      || bound.isSymbolicLink()
+    ) {
+      throw new Error("staged release archive must be a bound regular file: " + archivePath);
+    }
+    fchmodSync(descriptor, 0o644);
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
   }
   verifyArchive(archivePath, relativeFiles);
 }
 
-function publishArchive({ source, sourceEntry, destination, dist }) {
+function publishArchive({
+  source,
+  sourceEntry,
+  destination,
+  dist,
+  publicationHooks,
+  recordPublished,
+}) {
   assertDirectoryClaim(dist.parentPath, dist.parentIdentity, "release DIST_DIR parent");
   assertDirectoryClaim(dist.path, dist.identity, "release DIST_DIR");
+  if (sourceEntry.device !== dist.identity.device) {
+    throw new Error("staged archive and DIST_DIR must use the same filesystem");
+  }
   if (pathEntry(destination)) {
     throw new Error("release archive already exists: " + destination);
   }
-  const sourceBytes = readBoundFile(source, sourceEntry, "staged release archive");
-  const destinationClaim = writeExclusiveFile(
-    destination,
-    sourceBytes,
-    0o644,
-    "published release archive",
-  );
+  publicationHooks.beforeArchiveLink?.({ source, destination });
+  assertDirectoryClaim(dist.parentPath, dist.parentIdentity, "release DIST_DIR parent");
+  assertDirectoryClaim(dist.path, dist.identity, "release DIST_DIR");
+  readBoundFile(source, sourceEntry, "staged release archive");
+  try {
+    linkSync(source, destination);
+  } catch (error) {
+    if (error.code === "EEXIST") {
+      throw new Error("release archive already exists: " + destination);
+    }
+    if (error.code === "EXDEV") {
+      throw new Error("staged archive and DIST_DIR must use the same filesystem");
+    }
+    throw error;
+  }
+  recordPublished(destination);
+  publicationHooks.afterArchiveLink?.({ source, destination });
   assertDirectoryClaim(dist.parentPath, dist.parentIdentity, "release DIST_DIR parent");
   assertDirectoryClaim(dist.path, dist.identity, "release DIST_DIR");
   if (
-    sha256(readBoundFile(destination, destinationClaim, "published release archive"))
+    sha256(readBoundFile(destination, sourceEntry, "published release archive"))
       !== sourceEntry.digest
   ) {
     throw new Error("published release archive digest mismatch: " + destination);
@@ -428,7 +490,9 @@ export function buildRelease({
   const reader = openRegistry(repository);
   const verification = reader.verify();
   if (!verification.ok) throw new Error(verification.errors.join("\n"));
-  const revision = registryRevision(repository);
+  const revision = registryRevision(repository, {
+    environment: { LC_ALL: "C", PATH: "/usr/bin:/bin" },
+  });
   const summaries = reader.list();
   const archiveNames = summaries.map(safeArchiveName);
   if (new Set(archiveNames).size !== archiveNames.length) {
@@ -442,14 +506,32 @@ export function buildRelease({
     }
   }
 
-  const temporaryParent = realpathSync(tmpdir());
-  const stageRoot = realpathSync(mkdtempSync(resolve(temporaryParent, "gravit-release-")));
+  const stageParent = safeStageParent(repository, dist);
+  assertDirectoryClaim(stageParent.path, stageParent.identity, "release stage parent");
+  const stageRoot = realpathSync(mkdtempSync(resolve(stageParent.path, "gravit-release-")));
   const payloadRoot = resolve(stageRoot, "payload");
   const archivesRoot = resolve(stageRoot, "archives");
   const staged = [];
   const published = [];
 
   try {
+    assertDirectoryClaim(stageParent.path, stageParent.identity, "release stage parent");
+    const stageEntry = lstatSync(stageRoot);
+    if (
+      stageEntry.isSymbolicLink()
+      || !stageEntry.isDirectory()
+      || dirname(stageRoot) !== stageParent.path
+      || stageEntry.dev !== dist.identity.device
+      || pathsOverlap(stageRoot, repository)
+      || pathsOverlap(stageRoot, dist.path)
+    ) {
+      throw new Error("release stage must be a same-filesystem directory outside trusted inputs");
+    }
+    for (const relativePath of MANAGED_INPUTS) {
+      if (pathsOverlap(stageRoot, resolve(repository, relativePath))) {
+        throw new Error("release stage overlaps managed registry inputs: " + stageRoot);
+      }
+    }
     createBoundDirectory(payloadRoot, 0o700, "release payload root");
     createBoundDirectory(archivesRoot, 0o700, "release archives root");
     for (const [index, summary] of summaries.entries()) {
@@ -528,9 +610,12 @@ export function buildRelease({
         sourceEntry: archiveEntry,
         destination: item.destination,
         dist,
+        publicationHooks,
+        recordPublished(destination) {
+          published.push(destination);
+        },
       });
       assertAtomicArtifactClaim(stageRoot, stageClaim, "completed release stage");
-      published.push(item.destination);
     }
 
     assertAtomicArtifactClaim(stageRoot, stageClaim, "completed release stage");

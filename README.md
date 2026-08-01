@@ -72,14 +72,20 @@ npm run registry -- materialize \
   --plugin "$PLUGIN" \
   --target openclaw \
   --output "$TARGET_PARENT/openclaw"
-openclaw plugins install "$TARGET_PARENT/openclaw" --force
+openclaw config set plugins.enabled false --strict-json
+openclaw plugins install \
+  "$TARGET_PARENT/openclaw" \
+  --acknowledge-clawhub-risk
+openclaw plugins disable azure
+openclaw plugins list --json
+openclaw plugins inspect azure --json
 ```
 
 Eine erfolgreiche Materialisierung endet mit `.gravit-plugin-receipt.json`. Sie bindet Registry-Revision, Plugin, Ziel, Distribution-Version sowie Quell- und Ergebnis-Digests. Ein Fehler nach der exklusiven Zielerstellung lässt die unvollständige Ausgabe absichtlich zur Diagnose stehen; das Fehlen eines gültigen Receipts ist das Fehlersignal. Ein Deployment-Controller darf seinen eigenen `current`-Pointer erst umschalten, nachdem er das finale Receipt und alle Digests geprüft hat. Der Registry-Materializer löscht, ersetzt oder aktiviert keinen Consumer-Zustand.
 
 ## OpenClaw-Grenzen
 
-Der aktuelle Adapter erzeugt ein Codex-formatkompatibles Bundle, das OpenClaw installieren und im deaktivierten Zustand statisch inspizieren kann. Er lädt keinen nativen In-Process-Plugin-Code. Nicht unterstützte Komponenten bleiben im neutralen Manifest ausdrücklich markiert, beispielsweise Claude-Hook-JSON. Erfolgreiche Installation oder Inspektion ist deshalb keine pauschale Laufzeit-Kompatibilitätsgarantie.
+Der aktuelle Adapter erzeugt ein Codex-formatkompatibles Bundle, das OpenClaw im oben gezeigten Cold-Flow installieren und im deaktivierten Zustand statisch inspizieren kann. `plugins list --json` und `plugins inspect azure --json` werden dabei ausdrücklich ohne `--runtime` ausgeführt. Er lädt keinen nativen In-Process-Plugin-Code. Nicht unterstützte Komponenten bleiben im neutralen Manifest ausdrücklich markiert, beispielsweise Claude-Hook-JSON. Erfolgreiche Installation oder Inspektion ist deshalb keine pauschale Laufzeit-Kompatibilitätsgarantie.
 
 ## Einsatzmuster
 
@@ -110,7 +116,7 @@ dist/<plugin>-v<distributionVersion>.zip
 
 Jedes ZIP besitzt genau einen Top-Level-Ordner mit dem Plugin-Namen und enthält das unveränderte universelle Bundle, alle drei Zielprojektionen, `LICENSE` und `.gravit-plugin-receipt.json`. Das Receipt-Ziel `universal` ist ausschließlich für diese Archive reserviert; alle drei Digest-Felder entsprechen dem verifizierten `bundleDigest` aus dem Lock.
 
-Archive werden deterministisch mit festen Zeitstempeln, stabilen Modi und sortierten Pfaden gebaut. Veröffentlichung ist write-once: ein vorhandenes Archiv ist ein Fehler und wird weder gelöscht noch ersetzt. Private Build-Stages bleiben auf Erfolg und Fehler zur Recovery erhalten. Für zwei Vergleichsbauten werden zwei neue Output-Roots verwendet:
+Archive werden deterministisch mit festen Zeitstempeln, stabilen Modi und sortierten Pfaden gebaut. Veröffentlichung ist write-once: ein vorhandenes Archiv ist ein Fehler und wird weder gelöscht noch ersetzt. Das vollständig gebaute und geprüfte Archiv wird erst durch einen exklusiven atomaren Hard Link auf demselben Dateisystem unter seinem permanenten Namen sichtbar; der permanente Pfad wird niemals während des Schreibens exponiert. Private Build-Stages liegen außerhalb von Repository und `DIST_DIR` und bleiben auf Erfolg und Fehler zur Recovery erhalten. Für zwei Vergleichsbauten werden zwei neue Output-Roots verwendet:
 
 ```bash
 FIRST_ROOT="$(mktemp -d)"
