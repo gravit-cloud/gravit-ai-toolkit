@@ -59,7 +59,7 @@ Materialisierung ist unveränderlich und write-once. Der unmittelbare Parent mus
 
 ```bash
 PLUGIN=azure
-DISTRIBUTION_VERSION=1.2.5-gravit.2
+DISTRIBUTION_VERSION=1.2.5-gravit.3
 REGISTRY_REVISION="$(git rev-parse HEAD)"
 TARGET_PARENT="/opt/gravit/plugins/$PLUGIN/$DISTRIBUTION_VERSION/$REGISTRY_REVISION"
 
@@ -83,9 +83,20 @@ openclaw plugins inspect azure --json
 
 Eine erfolgreiche Materialisierung endet mit `.gravit-plugin-receipt.json`. Sie bindet Registry-Revision, Plugin, Ziel, Distribution-Version sowie Quell- und Ergebnis-Digests. Ein Fehler nach der exklusiven Zielerstellung lässt die unvollständige Ausgabe absichtlich zur Diagnose stehen; das Fehlen eines gültigen Receipts ist das Fehlersignal. Ein Deployment-Controller darf seinen eigenen `current`-Pointer erst umschalten, nachdem er das finale Receipt und alle Digests geprüft hat. Der Registry-Materializer löscht, ersetzt oder aktiviert keinen Consumer-Zustand.
 
+Receipts werden nur aus einem unveränderten Git-Checkout veröffentlicht. Katalog,
+Lock und die ausgewählten `plugins/<name>`-Bundles müssen exakt im gebundenen
+`HEAD` liegen; uncommittierte Regeneration, untracked Bundle-Dateien oder ein
+HEAD-Wechsel während der Veröffentlichung brechen den Vorgang ab.
+
 ## OpenClaw-Grenzen
 
 Der aktuelle Adapter erzeugt ein Codex-formatkompatibles Bundle, das OpenClaw im oben gezeigten Cold-Flow installieren und im deaktivierten Zustand statisch inspizieren kann. `plugins list --json` und `plugins inspect azure --json` werden dabei ausdrücklich ohne `--runtime` ausgeführt. Er lädt keinen nativen In-Process-Plugin-Code. Nicht unterstützte Komponenten bleiben im neutralen Manifest ausdrücklich markiert, beispielsweise Claude-Hook-JSON. Erfolgreiche Installation oder Inspektion ist deshalb keine pauschale Laufzeit-Kompatibilitätsgarantie.
+
+Ausführbare Ressourcen und Assets liegen ausschließlich unter `bin/` beziehungsweise
+`assets/`. Wenn mehrere Quellbäume relative Laufzeitbeziehungen besitzen, bewahrt
+der Adapter ihr gemeinsames Layout in einem sicheren `plugin-layout`-Unterbaum.
+Markdown-Links auf katalogisierte Ressourcen werden auf das Ziel umgeschrieben;
+beliebiger Text oder Code-Spans werden nicht als Pfadsemantik interpretiert.
 
 ## Einsatzmuster
 

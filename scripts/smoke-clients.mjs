@@ -283,10 +283,9 @@ function validateOpenClawInspect(stdout, expected, observed) {
   }
   if (
     !Array.isArray(value.plugin.bundleCapabilities)
-    || value.plugin.bundleCapabilities.length !== 3
+    || value.plugin.bundleCapabilities.length !== 2
     || value.plugin.bundleCapabilities[0] !== "skills"
-    || value.plugin.bundleCapabilities[1] !== "hooks"
-    || value.plugin.bundleCapabilities[2] !== "mcpServers"
+    || value.plugin.bundleCapabilities[1] !== "mcpServers"
   ) {
     throw new Error("openclaw-inspect reported the wrong Codex bundle capabilities");
   }

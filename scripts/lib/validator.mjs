@@ -755,22 +755,11 @@ function validateOpenClawCompatibilityTarget({
       errors.push(`${plugin.name} openclaw host manifest must not declare ${field}`);
     }
   }
-  const componentRoots = targetComponentProjectionRoots({
-    pluginRoot,
-    plugin,
-    manifest,
-    target: "openclaw",
-    targetRoot,
-    errors,
-  });
   for (const path of OPENCLAW_FORBIDDEN_TARGET_PATHS) {
     const candidate = resolve(targetRoot, path);
     const stats = statEntry(candidate);
     if (!stats) continue;
-    const files = stats.isDirectory() ? walkFiles(candidate) : [candidate];
-    if (files.some((file) => !componentRoots.some((root) => pathIsInside(root, file)))) {
-      errors.push(`${plugin.name} openclaw target must not contain ${path}`);
-    }
+    errors.push(`${plugin.name} openclaw target must not contain ${path}`);
   }
 }
 

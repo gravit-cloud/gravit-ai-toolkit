@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  appendFileSync,
+  cpSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -20,6 +22,10 @@ import { sha256 } from "../../scripts/lib/hash.mjs";
 import { writeJson } from "../../scripts/lib/json.mjs";
 import { validateReceipt } from "../../scripts/lib/materialize.mjs";
 import { pathIsInside } from "../../scripts/lib/path-safety.mjs";
+import {
+  openRegistry,
+  releaseSource,
+} from "../../scripts/lib/registry-reader.mjs";
 
 const REPOSITORY_ROOT = resolve(import.meta.dirname, "../..");
 const RELEASE_BUILDER = new URL("../../scripts/build-release.mjs", import.meta.url);
@@ -81,12 +87,12 @@ function runGit(repositoryRoot, ...args) {
   assert.equal(result.status, 0, result.stderr);
 }
 
-function fixtureRegistry(context) {
+function fixtureRegistry(context, { license = "fixture license\n" } = {}) {
   const parent = sandbox(context, "release-fixture-");
   const repositoryRoot = resolve(parent, "repository");
   const sourceRoot = resolve(repositoryRoot, "sources/fixture");
   mkdirSync(resolve(sourceRoot, "skills/fixture"), { recursive: true });
-  writeFileSync(resolve(sourceRoot, "LICENSE"), "fixture license\n");
+  if (license !== null) writeFileSync(resolve(sourceRoot, "LICENSE"), license);
   writeFileSync(resolve(sourceRoot, "skills/fixture/SKILL.md"), [
     "---",
     "name: fixture",
@@ -120,6 +126,31 @@ function fixtureRegistry(context) {
   runGit(repositoryRoot, "init", "-q");
   runGit(repositoryRoot, "add", ".");
   runGit(repositoryRoot, "-c", "commit.gpgsign=false", "commit", "-q", "-m", "fixture");
+  return realpathSync(repositoryRoot);
+}
+
+function committedProductionRegistry(context) {
+  const parent = sandbox(context, "release-production-copy-");
+  const repositoryRoot = resolve(parent, "repository");
+  mkdirSync(repositoryRoot);
+  for (const relativePath of [
+    ".agents",
+    ".claude-plugin",
+    "plugins",
+    "registry",
+    "sources",
+    "LICENSE",
+    "package.json",
+  ]) {
+    cpSync(
+      resolve(REPOSITORY_ROOT, relativePath),
+      resolve(repositoryRoot, relativePath),
+      { recursive: true },
+    );
+  }
+  runGit(repositoryRoot, "init", "-q");
+  runGit(repositoryRoot, "add", ".");
+  runGit(repositoryRoot, "-c", "commit.gpgsign=false", "commit", "-q", "-m", "production");
   return realpathSync(repositoryRoot);
 }
 
@@ -221,6 +252,7 @@ function assertSafeArchive(pluginName, archive, locked) {
 test("builds one safe deterministic universal archive for every verified plugin", async (context) => {
   const releaseModule = await import(RELEASE_BUILDER).catch(() => undefined);
   assert.equal(typeof releaseModule?.buildRelease, "function", "release builder must exist");
+  const repositoryRoot = committedProductionRegistry(context);
 
   const root = sandbox(context, "release-archives-");
   const firstDist = resolve(root, "first");
@@ -234,11 +266,11 @@ test("builds one safe deterministic universal archive for every verified plugin"
   process.env.ZIPOPT = "-j";
   try {
     firstBuild = releaseModule.buildRelease({
-      repositoryRoot: REPOSITORY_ROOT,
+      repositoryRoot,
       distRoot: firstDist,
     });
     secondBuild = releaseModule.buildRelease({
-      repositoryRoot: REPOSITORY_ROOT,
+      repositoryRoot,
       distRoot: secondDist,
     });
   } finally {
@@ -253,8 +285,8 @@ test("builds one safe deterministic universal archive for every verified plugin"
     assert.equal(lstatSync(build.stagePath).isDirectory(), true);
   }
 
-  const catalog = JSON.parse(readFileSync(resolve(REPOSITORY_ROOT, "registry/catalog.json"), "utf8"));
-  const lock = JSON.parse(readFileSync(resolve(REPOSITORY_ROOT, "registry/lock.json"), "utf8"));
+  const catalog = JSON.parse(readFileSync(resolve(repositoryRoot, "registry/catalog.json"), "utf8"));
+  const lock = JSON.parse(readFileSync(resolve(repositoryRoot, "registry/lock.json"), "utf8"));
   const expectedNames = catalog.plugins
     .map((plugin) => `${plugin.name}-v${plugin.distributionVersion}.zip`)
     .sort();
@@ -285,14 +317,14 @@ test("builds one safe deterministic universal archive for every verified plugin"
     resolve(firstDist, `gravit-custom-v${lock.plugins["gravit-custom"].distributionVersion}.zip`),
     "gravit-custom/LICENSE",
   ]);
-  assert.deepEqual(Buffer.from(localLicense), readFileSync(resolve(REPOSITORY_ROOT, "LICENSE")));
+  assert.deepEqual(Buffer.from(localLicense), readFileSync(resolve(repositoryRoot, "LICENSE")));
 
   const firstClaims = Object.fromEntries(firstNames.map((archiveName) => [
     archiveName,
     sha256(readFileSync(resolve(firstDist, archiveName))),
   ]));
   assert.throws(
-    () => releaseModule.buildRelease({ repositoryRoot: REPOSITORY_ROOT, distRoot: firstDist }),
+    () => releaseModule.buildRelease({ repositoryRoot, distRoot: firstDist }),
     /release archive already exists/,
   );
   for (const [archiveName, digest] of Object.entries(firstClaims)) {
@@ -325,6 +357,180 @@ test("rejects unsafe DIST_DIR values before creating an output", async (context)
   assert.equal(existsSync(managedOutput), false);
 });
 
+test("release preflight rejects a local bundle without a top-level LICENSE before output", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context, { license: null });
+  const outputParent = sandbox(context, "release-missing-license-");
+  const distRoot = resolve(outputParent, "dist");
+
+  assert.throws(
+    () => buildRelease({ repositoryRoot, distRoot }),
+    /top-level LICENSE/,
+  );
+  assert.equal(existsSync(distRoot), false);
+  assert.deepEqual(readdirSync(outputParent), []);
+});
+
+test("release preflight rejects an empty top-level LICENSE before output", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context, { license: "" });
+  const outputParent = sandbox(context, "release-empty-license-");
+  const distRoot = resolve(outputParent, "dist");
+
+  assert.throws(
+    () => buildRelease({ repositoryRoot, distRoot }),
+    /top-level LICENSE must not be empty/,
+  );
+  assert.equal(existsSync(distRoot), false);
+  assert.deepEqual(readdirSync(outputParent), []);
+});
+
+test("release preflight rejects a top-level LICENSE symlink before output", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context);
+  const reader = openRegistry(repositoryRoot);
+  assert.equal(reader.verify().ok, true);
+  const licensePath = resolve(repositoryRoot, "plugins/fixture/LICENSE");
+  rmSync(licensePath);
+  symlinkSync(resolve(repositoryRoot, "sources/fixture/LICENSE"), licensePath);
+
+  assert.throws(
+    () => releaseSource(reader, "fixture"),
+    /top-level LICENSE must not use symbolic paths/,
+  );
+  const outputParent = sandbox(context, "release-symlink-license-");
+  const distRoot = resolve(outputParent, "dist");
+  assert.throws(
+    () => buildRelease({ repositoryRoot, distRoot }),
+    /symbolic links are not allowed|symbolic paths/,
+  );
+  assert.equal(existsSync(distRoot), false);
+  assert.deepEqual(readdirSync(outputParent), []);
+});
+
+test("release preflight rejects a special-file top-level LICENSE before output", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context);
+  const reader = openRegistry(repositoryRoot);
+  assert.equal(reader.verify().ok, true);
+  const licensePath = resolve(repositoryRoot, "plugins/fixture/LICENSE");
+  rmSync(licensePath);
+  const fifo = spawnSync("mkfifo", [licensePath], { encoding: "utf8" });
+  if (fifo.status !== 0) {
+    context.skip("mkfifo is unavailable on this platform");
+    return;
+  }
+
+  assert.throws(
+    () => releaseSource(reader, "fixture"),
+    /top-level LICENSE must be a real file|special filesystem entry/,
+  );
+  const outputParent = sandbox(context, "release-special-license-");
+  const distRoot = resolve(outputParent, "dist");
+  assert.throws(
+    () => buildRelease({ repositoryRoot, distRoot }),
+    /special filesystem entries|real file/,
+  );
+  assert.equal(existsSync(distRoot), false);
+  assert.deepEqual(readdirSync(outputParent), []);
+});
+
+test("release rejects coherent uncommitted registry regeneration before output", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context);
+  appendFileSync(
+    resolve(repositoryRoot, "sources/fixture/skills/fixture/SKILL.md"),
+    "\nChanged.\n",
+  );
+  const catalogPath = resolve(repositoryRoot, "registry/catalog.json");
+  const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+  catalog.plugins[0].distributionVersion = "1.0.0-gravit.2";
+  writeJson(catalogPath, catalog);
+  buildRegistry({
+    repositoryRoot,
+    catalogPath: "registry/catalog.json",
+    outputRoot: repositoryRoot,
+    production: true,
+  });
+  const outputParent = sandbox(context, "release-dirty-registry-");
+  const distRoot = resolve(outputParent, "dist");
+
+  assert.throws(
+    () => buildRelease({ repositoryRoot, distRoot }),
+    /consumed registry paths are not committed/,
+  );
+  assert.equal(existsSync(distRoot), false);
+  assert.deepEqual(readdirSync(outputParent), []);
+});
+
+test("release rechecks HEAD after source claims and publishes nothing", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context);
+  const outputParent = sandbox(context, "release-head-race-");
+  const distRoot = resolve(outputParent, "dist");
+  let error;
+
+  assert.throws(() => buildRelease({
+    repositoryRoot,
+    distRoot,
+    publicationHooks: {
+      afterSourceClaim() {
+        runGit(
+          repositoryRoot,
+          "-c",
+          "commit.gpgsign=false",
+          "commit",
+          "--allow-empty",
+          "-q",
+          "-m",
+          "head changed",
+        );
+      },
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError
+      && /Git HEAD changed/u.test(caught.errors[0]?.message);
+  });
+
+  assert.deepEqual(readdirSync(distRoot), []);
+  assert.deepEqual(error.publishedArchives, []);
+});
+
+test("release rechecks HEAD after the final publication hook and before linking", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context);
+  const outputParent = sandbox(context, "release-head-link-race-");
+  const distRoot = resolve(outputParent, "dist");
+  let error;
+
+  assert.throws(() => buildRelease({
+    repositoryRoot,
+    distRoot,
+    publicationHooks: {
+      beforeArchiveLink() {
+        runGit(
+          repositoryRoot,
+          "-c",
+          "commit.gpgsign=false",
+          "commit",
+          "--allow-empty",
+          "-q",
+          "-m",
+          "head changed at link",
+        );
+      },
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError
+      && /Git HEAD changed/u.test(caught.errors[0]?.message);
+  });
+
+  assert.deepEqual(readdirSync(distRoot), []);
+  assert.deepEqual(error.publishedArchives, []);
+});
+
 test("a source mutation retains private recovery staging without publication", async (context) => {
   const { buildRelease } = await import(RELEASE_BUILDER);
   const repositoryRoot = fixtureRegistry(context);
@@ -344,7 +550,8 @@ test("a source mutation retains private recovery staging without publication", a
   }), (caught) => {
     error = caught;
     return caught instanceof AggregateError
-      && /source bundle.*changed/u.test(caught.errors[0]?.message);
+      && /source bundle.*changed|consumed registry paths are not committed/u
+        .test(caught.errors[0]?.message);
   });
 
   assert.equal(realpathSync(error.recoveryPath), error.recoveryPath);

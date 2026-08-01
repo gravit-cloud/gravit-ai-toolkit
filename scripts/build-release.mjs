@@ -38,8 +38,9 @@ import {
   walkFiles,
 } from "./lib/path-safety.mjs";
 import {
+  assertRegistryRevisionClaim,
+  claimRegistryRevision,
   openRegistry,
-  registryRevision,
   releaseSource,
 } from "./lib/registry-reader.mjs";
 
@@ -451,6 +452,7 @@ function publishArchive({
   destination,
   dist,
   publicationHooks,
+  beforeLinkValidation,
   recordPublished,
 }) {
   assertDirectoryClaim(dist.parentPath, dist.parentIdentity, "release DIST_DIR parent");
@@ -462,6 +464,7 @@ function publishArchive({
     throw new Error("release archive already exists: " + destination);
   }
   publicationHooks.beforeArchiveLink?.({ source, destination });
+  beforeLinkValidation();
   assertDirectoryClaim(dist.parentPath, dist.parentIdentity, "release DIST_DIR parent");
   assertDirectoryClaim(dist.path, dist.identity, "release DIST_DIR");
   readBoundFile(source, sourceEntry, "staged release archive");
@@ -507,10 +510,11 @@ export function buildRelease({
   const reader = openRegistry(repository);
   const verification = reader.verify();
   if (!verification.ok) throw new Error(verification.errors.join("\n"));
-  const revision = registryRevision(repository, {
-    environment: { LC_ALL: "C", PATH: "/usr/bin:/bin" },
-  });
   const summaries = reader.list();
+  const sources = summaries.map(({ name }) => releaseSource(reader, name));
+  const pluginNames = summaries.map(({ name }) => name);
+  const revisionClaim = claimRegistryRevision(reader, pluginNames);
+  const revision = assertRegistryRevisionClaim(reader, revisionClaim, pluginNames);
   const archiveNames = summaries.map(safeArchiveName);
   if (new Set(archiveNames).size !== archiveNames.length) {
     throw new Error("release archive names collide");
@@ -552,12 +556,13 @@ export function buildRelease({
     createBoundDirectory(payloadRoot, 0o700, "release payload root");
     createBoundDirectory(archivesRoot, 0o700, "release archives root");
     for (const [index, summary] of summaries.entries()) {
-      const source = releaseSource(reader, summary.name);
+      const source = sources[index];
       const sourceClaim = claimAtomicArtifact(
         source.bundleRoot,
         summary.name + " source bundle",
       );
       publicationHooks.afterSourceClaim?.({ source, sourceClaim });
+      assertRegistryRevisionClaim(reader, revisionClaim, pluginNames);
       const bundleStage = resolve(payloadRoot, summary.name);
       copyClaimedBundle(
         source.bundleRoot,
@@ -575,6 +580,7 @@ export function buildRelease({
       if (payloadDigest !== source.bundleDigest) {
         throw new Error(summary.name + ": staged release digest mismatch");
       }
+      assertRegistryRevisionClaim(reader, revisionClaim, pluginNames);
       const receipt = {
         schemaVersion: 1,
         registry: "gravit-cloud",
@@ -607,6 +613,7 @@ export function buildRelease({
       }));
     }
 
+    assertRegistryRevisionClaim(reader, revisionClaim, pluginNames);
     for (const item of staged) {
       if (pathEntry(item.destination)) {
         throw new Error("release archive already exists: " + item.destination);
@@ -615,6 +622,7 @@ export function buildRelease({
     const stageClaim = claimAtomicArtifact(stageRoot, "completed release stage");
     publicationHooks.beforePublication?.({ staged: Object.freeze([...staged]), dist });
     for (const item of staged) {
+      assertRegistryRevisionClaim(reader, revisionClaim, pluginNames);
       assertAtomicArtifactClaim(stageRoot, stageClaim, "completed release stage");
       const archiveEntry = stageClaim.entries.find((entry) => (
         entry.relativePath === `archives/${item.archiveName}`
@@ -628,6 +636,9 @@ export function buildRelease({
         destination: item.destination,
         dist,
         publicationHooks,
+        beforeLinkValidation() {
+          assertRegistryRevisionClaim(reader, revisionClaim, pluginNames);
+        },
         recordPublished(destination) {
           published.push(destination);
         },

@@ -95,12 +95,18 @@ function assertAdapterResult({ plugin, target, bundleRoot, neutralComponents, re
   const components = Object.fromEntries(neutralComponents.map((component) => {
     const expected = component.targets[target];
     const actual = result.components[component.id];
+    const openClawRelocation = target === "openclaw"
+      && ["asset", "executable"].includes(component.type)
+      && expected.status === "preserved"
+      && expected.reasonCode === "native-component"
+      && actual?.status === "transformed"
+      && actual?.reasonCode === "target-translation";
     if (
       !actual
       || typeof actual !== "object"
       || Array.isArray(actual)
-      || actual.status !== expected.status
-      || actual.reasonCode !== expected.reasonCode
+      || (!openClawRelocation && actual.status !== expected.status)
+      || (!openClawRelocation && actual.reasonCode !== expected.reasonCode)
     ) {
       throw new Error(
         plugin.name + ": incorrect adapter disposition for " + target + " " + component.id,

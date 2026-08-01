@@ -18,7 +18,10 @@ import {
 } from "./atomic-output.mjs";
 import { sha256, treeHash } from "./hash.mjs";
 import { stableJson } from "./json.mjs";
-import { materializationSource } from "./registry-reader.mjs";
+import {
+  assertRegistryRevisionClaim,
+  materializationSource,
+} from "./registry-reader.mjs";
 import { canonicalPath, pathsOverlap } from "./path-safety.mjs";
 
 const RECEIPT = ".gravit-plugin-receipt.json";
@@ -330,14 +333,11 @@ export function materialize({
   pluginName,
   target,
   outputPath: requestedOutputPath,
-  registryRevision,
+  registryRevisionClaim,
   publicationHooks = {},
 }) {
   if (!TARGETS.has(target)) {
     throw new Error("unsupported materialization target: " + String(target));
-  }
-  if (typeof registryRevision !== "string" || !/^[a-f0-9]{40}$/u.test(registryRevision)) {
-    throw new Error("invalid materialization receipt: registryRevision must be 40 lowercase hex characters");
   }
   if (typeof requestedOutputPath !== "string" || requestedOutputPath.length === 0) {
     throw new Error("materialization output must be a non-empty path");
@@ -348,6 +348,11 @@ export function materialize({
   }
 
   const source = materializationSource(reader, pluginName, target);
+  const registryRevision = assertRegistryRevisionClaim(
+    reader,
+    registryRevisionClaim,
+    [pluginName],
+  );
   const prospectiveOutput = canonicalPath(lexicalOutput);
   if (
     pathsOverlap(prospectiveOutput, source.targetRoot)
@@ -388,6 +393,7 @@ export function materialize({
     source.targetRoot,
     pluginName + " source target " + target,
   );
+  assertRegistryRevisionClaim(reader, registryRevisionClaim, [pluginName]);
 
   const beforeOutputCreate = publicationHooks.beforeOutputCreate ?? (() => {});
   const beforeOutputMkdir = publicationHooks.beforeOutputMkdir ?? (() => {});
@@ -447,6 +453,7 @@ export function materialize({
       sourceClaim,
       pluginName + " source target " + target,
     );
+    assertRegistryRevisionClaim(reader, registryRevisionClaim, [pluginName]);
     if (pathEntry(resolve(outputPath, RECEIPT))) {
       throw new Error("materialization output contains reserved receipt: " + outputPath);
     }
@@ -486,6 +493,7 @@ export function materialize({
       sourceClaim,
       pluginName + " source target " + target,
     );
+    assertRegistryRevisionClaim(reader, registryRevisionClaim, [pluginName]);
     assertParentClaim(parentPath, parentIdentity);
     assertRootIdentity(outputPath, outputIdentity, "materialization output");
     if (pathEntry(receiptPath)) {
@@ -501,6 +509,7 @@ export function materialize({
       sourceClaim,
       pluginName + " source target " + target,
     );
+    assertRegistryRevisionClaim(reader, registryRevisionClaim, [pluginName]);
     if (pathEntry(receiptPath)) {
       throw new Error("materialization output contains reserved receipt: " + receiptPath);
     }

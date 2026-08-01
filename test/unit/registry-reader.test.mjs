@@ -26,6 +26,7 @@ function fixtureRegistry(context) {
   const repositoryRoot = resolve(parent, "repository");
   const sourceRoot = resolve(repositoryRoot, "sources/nested-skills");
   mkdirSync(resolve(sourceRoot, "skills/parent/child"), { recursive: true });
+  writeFileSync(resolve(sourceRoot, "LICENSE"), "fixture license\n");
   writeFileSync(resolve(sourceRoot, "skills/parent/SKILL.md"), [
     "---",
     "name: parent",
@@ -70,7 +71,37 @@ function fixtureRegistry(context) {
     outputRoot: repositoryRoot,
     production: true,
   });
+  runGit(repositoryRoot, "init", "-q");
+  runGit(repositoryRoot, "add", ".");
+  runGit(
+    repositoryRoot,
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "-q",
+    "-m",
+    "fixture",
+  );
   return repositoryRoot;
+}
+
+function runGit(repositoryRoot, ...args) {
+  const result = spawnSync("/usr/bin/git", args, {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    env: {
+      GIT_AUTHOR_EMAIL: "registry-reader-test@example.invalid",
+      GIT_AUTHOR_NAME: "Registry Reader Test",
+      GIT_COMMITTER_EMAIL: "registry-reader-test@example.invalid",
+      GIT_COMMITTER_NAME: "Registry Reader Test",
+      LC_ALL: "C",
+      PATH: "/usr/bin:/bin",
+    },
+    maxBuffer: 1024 * 1024,
+    shell: false,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
 }
 
 function copyFixtureRegistry(context) {
@@ -180,6 +211,68 @@ test("release source is narrow, fresh, frozen, verified, and bound to the reader
   assert.throws(
     () => registryReader.releaseSource({ verify: reader.verify }, "nested-skills"),
     /trusted registry reader/,
+  );
+});
+
+test("revision claims are opaque, reader-bound, plugin-bound, and commit-bound", (context) => {
+  const root = fixtureRegistry(context);
+  const reader = openRegistry(root);
+  const claim = registryReader.claimRegistryRevision(reader, ["nested-skills"]);
+  const expected = runGit(root, "rev-parse", "HEAD");
+
+  assert.equal(Object.isFrozen(claim), true);
+  assert.deepEqual(Object.keys(claim), []);
+  assert.equal(
+    registryReader.assertRegistryRevisionClaim(reader, claim, ["nested-skills"]),
+    expected,
+  );
+  assert.throws(
+    () => registryReader.assertRegistryRevisionClaim(reader, {}, ["nested-skills"]),
+    /trusted registry revision claim/,
+  );
+  assert.throws(
+    () => registryReader.assertRegistryRevisionClaim(reader, claim, ["other-skills"]),
+    /unknown registry plugin|plugin selection mismatch/,
+  );
+
+  runGit(root, "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-q", "-m", "next");
+  assert.throws(
+    () => registryReader.assertRegistryRevisionClaim(reader, claim, ["nested-skills"]),
+    /Git HEAD changed/,
+  );
+});
+
+test("revision claims reject coherent but uncommitted registry regeneration", (context) => {
+  const root = fixtureRegistry(context);
+  appendFileSync(resolve(root, "sources/nested-skills/skills/parent/SKILL.md"), "\nChanged.\n");
+  const catalogPath = resolve(root, "registry/catalog.json");
+  const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+  catalog.plugins[0].distributionVersion = "1.0.0-gravit.2";
+  writeJson(catalogPath, catalog);
+  buildRegistry({
+    repositoryRoot: root,
+    catalogPath: "registry/catalog.json",
+    outputRoot: root,
+    production: true,
+  });
+  const reader = openRegistry(root);
+  assert.deepEqual(reader.verify("nested-skills"), { ok: true, errors: [] });
+
+  assert.throws(
+    () => registryReader.claimRegistryRevision(reader, ["nested-skills"]),
+    /consumed registry paths are not committed/,
+  );
+});
+
+test("revision claims reject untracked files below a selected bundle", (context) => {
+  const root = fixtureRegistry(context);
+  const reader = openRegistry(root);
+  const claim = registryReader.claimRegistryRevision(reader, ["nested-skills"]);
+  writeFileSync(resolve(root, "plugins/nested-skills/untracked.txt"), "untracked\n");
+
+  assert.throws(
+    () => registryReader.assertRegistryRevisionClaim(reader, claim, ["nested-skills"]),
+    /consumed registry paths are not committed/,
   );
 });
 
