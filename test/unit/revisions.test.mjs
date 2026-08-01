@@ -402,18 +402,24 @@ test("Renovate managers update only GitHub sources in the neutral catalog", () =
 
   const [tagManager, branchManager] = config.customManagers;
   const tagSource = JSON.stringify({
-    source: githubSource({
-      repo: "owner/tagged",
-      ref: "v1.2.3-rc.1+build.5",
-      sha: "b".repeat(40),
-    }),
+    plugins: [{
+      name: "tagged",
+      source: githubSource({
+        repo: "owner/tagged",
+        ref: "v1.2.3-rc.1+build.5",
+        sha: "b".repeat(40),
+      }),
+    }],
   }, null, 2);
   const branchSource = JSON.stringify({
-    source: githubSource({
-      repo: "owner/branch",
-      ref: "master",
-      sha: "c".repeat(40),
-    }),
+    plugins: [{
+      name: "branch",
+      source: githubSource({
+        repo: "owner/branch",
+        ref: "master",
+        sha: "c".repeat(40),
+      }),
+    }],
   }, null, 2);
   const tagMatch = new RegExp(tagManager.matchStrings[0]).exec(tagSource);
   const branchMatch = new RegExp(branchManager.matchStrings[0]).exec(branchSource);
@@ -473,6 +479,21 @@ test("Renovate managers update only GitHub sources in the neutral catalog", () =
   assert.deepEqual(configuredMatches(tagManager, unrelatedSourceObject), []);
   assert.deepEqual(configuredMatches(branchManager, unrelatedSourceObject), []);
 
+  const productionCatalogText = readFileSync(
+    resolve(repositoryRoot, "registry/catalog.json"),
+    "utf8",
+  );
+  const productionCatalog = JSON.parse(productionCatalogText);
+  const expectedRepositories = productionCatalog.plugins
+    .filter((plugin) => plugin.source.type === "github")
+    .map((plugin) => plugin.source.repo)
+    .sort();
+  const discoveredRepositories = config.customManagers
+    .flatMap((manager) => configuredMatches(manager, productionCatalogText))
+    .map((match) => match.packageName)
+    .sort();
+  assert.deepEqual(discoveredRepositories, expectedRepositories);
+
   const customRule = config.packageRules.find(
     (rule) => rule.matchManagers?.includes("custom.regex"),
   );
@@ -484,6 +505,80 @@ test("Renovate managers update only GitHub sources in the neutral catalog", () =
     ".agents/**",
     "plugins/**",
   ]);
+});
+
+test("Renovate ignores exact source-shaped objects outside direct plugin records", () => {
+  const config = JSON.parse(readFileSync(resolve(repositoryRoot, "renovate.json"), "utf8"));
+  const [tagManager, branchManager] = config.customManagers;
+  const prettyMetadata = JSON.stringify({
+    metadata: [
+      {
+        source: {
+          type: "github",
+          repo: "metadata/type-first-tag",
+          ref: "v1.2.3",
+          sha: "a".repeat(40),
+          root: ".",
+        },
+      },
+      {
+        source: {
+          ref: "master",
+          repo: "metadata/canonical-branch",
+          sha: "b".repeat(40),
+          type: "github",
+        },
+      },
+    ],
+  }, null, 2);
+  const compactMetadata = JSON.stringify({
+    metadata: [
+      {
+        source: {
+          ref: "v1.2.3-rc.1+build.5",
+          repo: "metadata/canonical-tag",
+          root: ".",
+          sha: "c".repeat(40),
+          type: "github",
+        },
+      },
+      {
+        source: {
+          type: "github",
+          repo: "metadata/type-first-branch",
+          ref: "main",
+          sha: "d".repeat(40),
+        },
+      },
+    ],
+  });
+
+  for (const unrelated of [prettyMetadata, compactMetadata]) {
+    assert.deepEqual(configuredMatches(tagManager, unrelated), []);
+    assert.deepEqual(configuredMatches(branchManager, unrelated), []);
+  }
+});
+
+test("Renovate regexes scan the production catalog within bounded time", () => {
+  const probe = spawnSync(
+    process.execPath,
+    [
+      "-e",
+      `const { readFileSync } = require("node:fs");
+const config = JSON.parse(readFileSync(process.argv[1], "utf8"));
+const catalog = readFileSync(process.argv[2], "utf8");
+for (const manager of config.customManagers) {
+  for (const pattern of manager.matchStrings) {
+    [...catalog.matchAll(new RegExp(pattern, "g"))];
+  }
+}`,
+      resolve(repositoryRoot, "renovate.json"),
+      resolve(repositoryRoot, "registry/catalog.json"),
+    ],
+    { encoding: "utf8", timeout: 2_000 },
+  );
+
+  assert.equal(probe.status, 0, probe.error?.message || probe.stderr);
 });
 
 test("post-upgrade script runs only the safe registry synchronization sequence", (t) => {
