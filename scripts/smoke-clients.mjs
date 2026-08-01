@@ -5,12 +5,18 @@ import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   realpathSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { pathIsInside } from "./lib/path-safety.mjs";
+import {
+  canonicalPath,
+  pathIsInside,
+  pathIsStrictlyInside,
+  pathsOverlap,
+} from "./lib/path-safety.mjs";
 
 const CLIENT_TIMEOUT_MS = 45_000;
 const CLIENT_MAX_OUTPUT_BYTES = 1024 * 1024;
@@ -135,6 +141,17 @@ function parseJsonStdout(name, stdout) {
   return value;
 }
 
+function parseJsonFile(path, label) {
+  let value;
+  try {
+    value = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    throw new Error(label + " must contain valid JSON", { cause: error });
+  }
+  if (!plainObject(value)) throw new Error(label + " JSON root must be an object");
+  return value;
+}
+
 function validateCodexMarketplace(stdout, expectedRoot) {
   const value = parseJsonStdout("codex-marketplace-add", stdout);
   if (
@@ -170,20 +187,70 @@ function validateCodexAvailable(stdout) {
   }
 }
 
-function assertDisabledCodexBundle(plugin, name) {
+function assertExactRealDirectory(value, expected, root, label) {
+  if (typeof value !== "string" || value !== expected) {
+    throw new Error(label + " did not report the expected path: " + String(value));
+  }
+  let canonical;
+  try {
+    canonical = assertRealDirectory(value, label);
+  } catch (error) {
+    throw new Error(label + " is not a real installed directory", { cause: error });
+  }
+  if (canonical !== expected || !pathIsStrictlyInside(root, canonical)) {
+    throw new Error(label + " escapes its isolated root: " + value);
+  }
+  return canonical;
+}
+
+function assertExactCanonicalPath(value, expected, root, label) {
+  if (typeof value !== "string" || value !== expected) {
+    throw new Error(label + " did not report the expected path: " + String(value));
+  }
+  let canonical;
+  try {
+    canonical = canonicalPath(value);
+  } catch (error) {
+    throw new Error(label + " cannot be resolved canonically", { cause: error });
+  }
+  if (canonical !== expected || !pathIsStrictlyInside(root, canonical)) {
+    throw new Error(label + " escapes its isolated root: " + value);
+  }
+  return canonical;
+}
+
+function assertDisabledCodexBundle(plugin, name, expected) {
   if (
     !plainObject(plugin)
     || plugin.id !== "azure"
+    || plugin.name !== "azure"
+    || plugin.version !== expected.version
     || plugin.format !== "bundle"
     || plugin.bundleFormat !== "codex"
+    || plugin.origin !== "global"
     || plugin.enabled !== false
     || plugin.status !== "disabled"
   ) {
     throw new Error(name + " did not report one disabled Codex-format Azure bundle");
   }
+  const source = assertExactRealDirectory(
+    plugin.source,
+    expected.installPath,
+    expected.stateDir,
+    name + " plugin.source",
+  );
+  const rootDir = assertExactRealDirectory(
+    plugin.rootDir,
+    expected.installPath,
+    expected.stateDir,
+    name + " plugin.rootDir",
+  );
+  if (source !== rootDir) {
+    throw new Error(name + " source and rootDir identify different artifacts");
+  }
 }
 
-function validateOpenClawList(stdout) {
+function validateOpenClawList(stdout, expected, observed) {
   const value = parseJsonStdout("openclaw-list", stdout);
   if (!Array.isArray(value.plugins)) {
     throw new Error("openclaw-list returned a malformed plugin list");
@@ -194,15 +261,80 @@ function validateOpenClawList(stdout) {
   if (azure.length !== 1) {
     throw new Error("openclaw-list must contain exactly one Azure record");
   }
-  assertDisabledCodexBundle(azure[0], "openclaw-list");
+  assertDisabledCodexBundle(azure[0], "openclaw-list", expected);
+  observed.listArtifact = Object.freeze({
+    rootDir: azure[0].rootDir,
+    source: azure[0].source,
+    version: azure[0].version,
+  });
 }
 
-function validateOpenClawInspect(stdout) {
+function validateOpenClawInspect(stdout, expected, observed) {
   const value = parseJsonStdout("openclaw-inspect", stdout);
-  assertDisabledCodexBundle(value.plugin, "openclaw-inspect");
-  if (value.plugin.activated !== false) {
+  assertDisabledCodexBundle(value.plugin, "openclaw-inspect", expected);
+  if (
+    value.plugin.activated !== false
+    || value.plugin.explicitlyEnabled !== false
+    || value.plugin.activationSource !== "disabled"
+    || value.plugin.activationReason !== "disabled in config"
+    || value.plugin.error !== "disabled in config"
+  ) {
     throw new Error("openclaw-inspect reported the Azure bundle as activated");
   }
+  if (
+    !Array.isArray(value.plugin.bundleCapabilities)
+    || value.plugin.bundleCapabilities.length !== 3
+    || value.plugin.bundleCapabilities[0] !== "skills"
+    || value.plugin.bundleCapabilities[1] !== "hooks"
+    || value.plugin.bundleCapabilities[2] !== "mcpServers"
+  ) {
+    throw new Error("openclaw-inspect reported the wrong Codex bundle capabilities");
+  }
+  if (!observed.listArtifact) {
+    throw new Error("openclaw-inspect was validated before openclaw-list");
+  }
+  if (
+    value.plugin.source !== observed.listArtifact.source
+    || value.plugin.rootDir !== observed.listArtifact.rootDir
+    || value.plugin.version !== observed.listArtifact.version
+  ) {
+    throw new Error("openclaw list and inspect identify different Azure artifacts");
+  }
+  if (!plainObject(value.install) || value.install.source !== "path") {
+    throw new Error("openclaw-inspect did not report a path installation");
+  }
+  assertExactRealDirectory(
+    value.install.sourcePath,
+    expected.sourcePath,
+    expected.repository,
+    "openclaw-inspect install.sourcePath",
+  );
+  const installPath = assertExactRealDirectory(
+    value.install.installPath,
+    expected.installPath,
+    expected.stateDir,
+    "openclaw-inspect install.installPath",
+  );
+  if (
+    installPath !== value.plugin.source
+    || installPath !== value.plugin.rootDir
+    || value.install.version !== value.plugin.version
+  ) {
+    throw new Error("openclaw-inspect installation identifies a different Azure artifact");
+  }
+  if (
+    typeof value.install.installedAt !== "string"
+    || Number.isNaN(Date.parse(value.install.installedAt))
+    || new Date(value.install.installedAt).toISOString() !== value.install.installedAt
+  ) {
+    throw new Error("openclaw-inspect returned an invalid installation timestamp");
+  }
+  assertExactCanonicalPath(
+    value.workspaceDir,
+    expected.workspaceDir,
+    expected.homeDir,
+    "openclaw-inspect workspaceDir",
+  );
 }
 
 export function smokeCommands({
@@ -229,11 +361,22 @@ export function smokeCommands({
   if (!pathIsInside(repository, openclawBundle)) {
     throw new Error("OpenClaw Azure bundle escapes repository root: " + openclawBundle);
   }
-  assertRepositoryFile(
+  const openclawManifestPath = assertRepositoryFile(
     repository,
     resolve(openclawBundle, ".codex-plugin/plugin.json"),
     "OpenClaw Azure bundle marker",
   );
+  const openclawManifest = parseJsonFile(
+    openclawManifestPath,
+    "OpenClaw Azure bundle marker",
+  );
+  if (
+    openclawManifest.name !== "azure"
+    || typeof openclawManifest.version !== "string"
+    || openclawManifest.version.length === 0
+  ) {
+    throw new Error("OpenClaw Azure bundle marker must pin Azure name and version");
+  }
 
   const claudePackage = resolve(repository, "node_modules/@anthropic-ai/claude-code");
   const codexPackage = resolve(repository, "node_modules/@openai/codex");
@@ -283,6 +426,25 @@ export function smokeCommands({
     recursive: true,
     mode: 0o700,
   });
+  const openclawHome = realpathSync(openclawEnv.HOME);
+  const openclawState = realpathSync(openclawEnv.OPENCLAW_STATE_DIR);
+  const openclawExpected = Object.freeze({
+    homeDir: openclawHome,
+    installPath: resolve(openclawState, "extensions/azure"),
+    repository,
+    sourcePath: openclawBundle,
+    stateDir: openclawState,
+    version: openclawManifest.version,
+    workspaceDir: resolve(openclawHome, ".openclaw/workspace"),
+  });
+  if (
+    pathsOverlap(openclawExpected.sourcePath, openclawExpected.stateDir)
+    || pathsOverlap(openclawExpected.sourcePath, openclawExpected.workspaceDir)
+    || pathsOverlap(openclawExpected.stateDir, openclawExpected.workspaceDir)
+  ) {
+    throw new Error("OpenClaw source, state, and workspace paths must be distinct");
+  }
+  const openclawObserved = { listArtifact: undefined };
 
   return [
     {
@@ -357,7 +519,9 @@ export function smokeCommands({
       command: process.execPath,
       args: [openclawEntry, "--no-color", "plugins", "list", "--json"],
       env: openclawEnv,
-      validateStdout: validateOpenClawList,
+      validateStdout(stdout) {
+        validateOpenClawList(stdout, openclawExpected, openclawObserved);
+      },
     },
     {
       name: "openclaw-inspect",
@@ -371,7 +535,9 @@ export function smokeCommands({
         "--json",
       ],
       env: openclawEnv,
-      validateStdout: validateOpenClawInspect,
+      validateStdout(stdout) {
+        validateOpenClawInspect(stdout, openclawExpected, openclawObserved);
+      },
     },
   ].map(freezeSpec);
 }
