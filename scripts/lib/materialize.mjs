@@ -305,7 +305,20 @@ function writeReceiptExclusive(path, receipt) {
 }
 
 export function validateReceipt(receipt) {
-  if (validateReceiptSchema(receipt)) return;
+  if (validateReceiptSchema(receipt)) {
+    if (
+      receipt.target === "universal"
+      && (
+        receipt.sourceTargetDigest !== receipt.sourceBundleDigest
+        || receipt.materializedDigest !== receipt.sourceBundleDigest
+      )
+    ) {
+      throw new Error(
+        "invalid materialization receipt: universal receipt digests must equal sourceBundleDigest",
+      );
+    }
+    return;
+  }
   const details = (validateReceiptSchema.errors || [])
     .map((error) => `${error.instancePath || "/"} ${error.message}`)
     .join("; ");

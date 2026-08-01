@@ -6,6 +6,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -15,7 +16,9 @@ import { spawnSync } from "node:child_process";
 import { buildRegistry } from "../../scripts/build-registry.mjs";
 import { treeHash } from "../../scripts/lib/hash.mjs";
 import { writeJson } from "../../scripts/lib/json.mjs";
-import { openRegistry } from "../../scripts/lib/registry-reader.mjs";
+import * as registryReader from "../../scripts/lib/registry-reader.mjs";
+
+const { openRegistry } = registryReader;
 
 function fixtureRegistry(context) {
   const parent = mkdtempSync(resolve(tmpdir(), "registry-reader-"));
@@ -155,6 +158,45 @@ test("public reader APIs cannot expose or poison captured registry state", (cont
   assert.deepEqual(reader.list()[0].targets, ["claude", "codex", "openclaw"]);
   assert.equal(reader.inspect("nested-skills").source.path, "sources/nested-skills");
   assert.notEqual(reader.inspect("nested-skills").components[0].id, "poisoned");
+});
+
+test("release source is narrow, fresh, frozen, verified, and bound to the reader", (context) => {
+  const root = fixtureRegistry(context);
+  const reader = openRegistry(root);
+  const first = registryReader.releaseSource(reader, "nested-skills");
+  const second = registryReader.releaseSource(reader, "nested-skills");
+
+  assert.deepEqual(Object.keys(reader).sort(), ["inspect", "list", "verify"]);
+  assert.deepEqual(Object.keys(first).sort(), [
+    "bundleDigest",
+    "bundleRoot",
+    "distributionVersion",
+    "plugin",
+  ]);
+  assert.notEqual(first, second);
+  assert.equal(Object.isFrozen(first), true);
+  assert.equal(first.bundleRoot, realpathSync(resolve(root, "plugins/nested-skills")));
+  assert.equal(first.bundleDigest, treeHash(first.bundleRoot));
+  assert.throws(
+    () => registryReader.releaseSource({ verify: reader.verify }, "nested-skills"),
+    /trusted registry reader/,
+  );
+});
+
+test("release source rejects a reserved universal receipt even if it is relocked", (context) => {
+  const root = fixtureRegistry(context);
+  const bundleRoot = resolve(root, "plugins/nested-skills");
+  writeFileSync(resolve(bundleRoot, ".gravit-plugin-receipt.json"), "reserved\n");
+  const lockPath = resolve(root, "registry/lock.json");
+  const lock = JSON.parse(readFileSync(lockPath, "utf8"));
+  lock.plugins["nested-skills"].bundleDigest = treeHash(bundleRoot);
+  writeJson(lockPath, lock);
+
+  assert.deepEqual(openRegistry(root).verify("nested-skills"), { ok: true, errors: [] });
+  assert.throws(
+    () => registryReader.releaseSource(openRegistry(root), "nested-skills"),
+    /reserved receipt/,
+  );
 });
 
 test("verify reports a mutated bundle file", (context) => {

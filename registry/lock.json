@@ -1,5 +1,5 @@
 {
-  "generatorDigest": "6bcb0481366f1bb078e84b0225c373d52ca585c264540f35d038acee0b0d152a",
+  "generatorDigest": "9163f3681fb9fb39a2e4b8199374965e006614c9397f24ec5b77602d866b753a",
   "plugins": {
     "azure": {
       "bundleDigest": "db4e78f33c9ae68983eb0652f47971d903ab59cb8ab77f3684da699851f82020",
@@ -841,7 +841,7 @@
         }
       ],
       "distributionVersion": "1.2.5-gravit.2",
-      "generatorDigest": "6bcb0481366f1bb078e84b0225c373d52ca585c264540f35d038acee0b0d152a",
+      "generatorDigest": "9163f3681fb9fb39a2e4b8199374965e006614c9397f24ec5b77602d866b753a",
       "name": "azure",
       "source": {
         "ref": "v1.2.5",
@@ -1694,7 +1694,7 @@
         }
       ],
       "distributionVersion": "2.2.4-gravit.2",
-      "generatorDigest": "6bcb0481366f1bb078e84b0225c373d52ca585c264540f35d038acee0b0d152a",
+      "generatorDigest": "9163f3681fb9fb39a2e4b8199374965e006614c9397f24ec5b77602d866b753a",
       "name": "claude-seo",
       "source": {
         "ref": "v2.2.4",
@@ -1710,7 +1710,7 @@
       }
     },
     "gravit-custom": {
-      "bundleDigest": "de0b9f8ea4403d4dc9a0d5dc36fcf89a67ce3b51f724fa2a7d6075fa451915ea",
+      "bundleDigest": "3eac12dbdf014def3d237b94b8ec0d15fee550dfaec06cb6d604d5d4a3276609",
       "components": [
         {
           "digest": "7c51b29eaca5f86121a67ecd9b357fd496a31f6f3a497b87f09ec25e325f07cc",
@@ -1867,8 +1867,8 @@
           "type": "skill"
         }
       ],
-      "distributionVersion": "1.0.0-gravit.2",
-      "generatorDigest": "6bcb0481366f1bb078e84b0225c373d52ca585c264540f35d038acee0b0d152a",
+      "distributionVersion": "1.0.0-gravit.3",
+      "generatorDigest": "9163f3681fb9fb39a2e4b8199374965e006614c9397f24ec5b77602d866b753a",
       "name": "gravit-custom",
       "source": {
         "path": "sources/gravit-custom",
@@ -1876,9 +1876,9 @@
         "type": "local"
       },
       "targets": {
-        "claude": "cfd3ead253337df5836183f11f35a49dbb4ae2cd72889da7eef293bc2a3dcfa4",
-        "codex": "52e7ae016ed558b3b2b277f4efc1bcf0742d1b5846f1f9a6d12388c77e4f1929",
-        "openclaw": "52e7ae016ed558b3b2b277f4efc1bcf0742d1b5846f1f9a6d12388c77e4f1929"
+        "claude": "7215f100088590ea2779354eddad4bc5ab95f070447fbcff8518d03b9bf144f3",
+        "codex": "ff67830e3220c2cdc4aafa060d833d87254a0cca3e2a0e24f4fe53d8a3ec4051",
+        "openclaw": "ff67830e3220c2cdc4aafa060d833d87254a0cca3e2a0e24f4fe53d8a3ec4051"
       }
     },
     "mattpocock-skills": {
@@ -2348,7 +2348,7 @@
         }
       ],
       "distributionVersion": "1.1.0-gravit.2",
-      "generatorDigest": "6bcb0481366f1bb078e84b0225c373d52ca585c264540f35d038acee0b0d152a",
+      "generatorDigest": "9163f3681fb9fb39a2e4b8199374965e006614c9397f24ec5b77602d866b753a",
       "name": "mattpocock-skills",
       "source": {
         "ref": "v1.1.0",
@@ -2478,7 +2478,7 @@
         }
       ],
       "distributionVersion": "1.0.1-gravit.2",
-      "generatorDigest": "6bcb0481366f1bb078e84b0225c373d52ca585c264540f35d038acee0b0d152a",
+      "generatorDigest": "9163f3681fb9fb39a2e4b8199374965e006614c9397f24ec5b77602d866b753a",
       "name": "obsidian",
       "source": {
         "ref": "main",
@@ -2849,7 +2849,7 @@
         }
       ],
       "distributionVersion": "6.2.0-gravit.2",
-      "generatorDigest": "6bcb0481366f1bb078e84b0225c373d52ca585c264540f35d038acee0b0d152a",
+      "generatorDigest": "9163f3681fb9fb39a2e4b8199374965e006614c9397f24ec5b77602d866b753a",
       "name": "superpowers",
       "source": {
         "ref": "v6.2.0",

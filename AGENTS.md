@@ -90,7 +90,7 @@ metadata:
 
 2. Für Releases `npm run version:set -- <version>` verwenden; das aktualisiert Paket- und Pluginversion gemeinsam.
 3. `npm run plugins:sync` ausführen, damit neutrale Bundles und beide Zielprojektionen konsistent bleiben.
-4. `bash build.sh` erkennt Skills automatisch und baut die versionierten Archive.
+4. `bash build.sh` verifiziert die committed Registry und baut genau ein versioniertes universelles Archiv je Katalog-Plugin. Einzelne Skill-ZIPs werden nicht mehr erzeugt.
 
 ---
 
@@ -137,9 +137,53 @@ npm test
 npm run validate
 ```
 
+Für Produktionsverbraucher ist die Registry-CLI die verifizierte Schnittstelle:
+
+```bash
+npm run registry -- list
+npm run registry -- inspect --plugin azure
+npm run registry -- verify --plugin azure
+```
+
+Materialisierungen sind write-once und müssen unter einem Pfad der Form
+`<shared-root>/<plugin>/<distributionVersion>/<registryRevision>/<target>`
+liegen. Der unmittelbare Parent existiert, das Ziel noch nicht. Ein gültiges
+`.gravit-plugin-receipt.json` schließt die Materialisierung ab; unvollständige
+Ausgaben ohne gültiges Receipt bleiben als Recovery-Signal erhalten. Nur ein
+Deployment-Controller darf nach Receipt- und Digest-Prüfung seinen eigenen
+`current`-Pointer umschalten. Der Registry-Materializer löscht, ersetzt oder
+aktiviert keinen Consumer-Zustand.
+
 Der Sync inventarisiert die vom Upstream deklarierten Komponenten, baut ein neutrales Bundle und erzeugt daraus Claude- und Codex-Projektionen. Claude-spezifische `disable-model-invocation: true`-Flags werden nur in generierten Codex-Skills entfernt. Unterstützte MCP-Definitionen werden in die jeweilige Zielprojektion eingebettet und aus dem Host-Manifest referenziert; Laufzeitpakete müssen im Katalog exakt gepinnt sein.
 
 Die Codex-Projektion belegt nur die erzeugte Dateistruktur und ihre internen Referenzen. Sie garantiert weder, dass `bin/` automatisch in `PATH` liegt, noch dass Claude-spezifische Upstream-Umgebungsvariablen durch Codex bereitgestellt werden. Hook-Konfigurationen und lokale Skripte werden statisch validiert, aber während Sync und Validierung nicht ausgeführt.
+
+Die OpenClaw-Projektion ist ein Codex-formatkompatibler Adapter für Installation
+und statische Inspektion im deaktivierten Zustand. Sie lädt keinen nativen
+In-Process-Plugin-Code; im neutralen Manifest markierte, nicht unterstützte
+Komponenten wie Claude-Hook-JSON bleiben nicht lauffähig. Installation ist
+keine allgemeine Runtime-Kompatibilitätsgarantie.
+
+### Universelle Release-Archive
+
+`npm run build` verifiziert die committed Registry und erzeugt write-once genau
+ein deterministisches `dist/<plugin>-v<distributionVersion>.zip` je
+Katalog-Plugin. Jedes Archiv enthält unter genau einem Plugin-Root das
+universelle Bundle, alle Zielprojektionen, `LICENSE` und ein Receipt mit Ziel
+`universal`. Dieses Ziel gilt nur im Receipt-Schema; Materialisierung unterstützt
+weiterhin ausschließlich `claude`, `codex` und `openclaw`.
+
+Vorhandene Archive oder Output-Bäume nie löschen, ersetzen oder bereinigen.
+Für Wiederholungs- oder Determinismusprüfungen zwei frische `DIST_DIR`-Roots
+verwenden. Private Release-Stages bleiben auf Erfolg und Fehler erhalten. ZIP
+und UnZIP werden ausschließlich über vertrauenswürdige absolute Systempfade,
+statische Argumentarrays und minimale Umgebungen aufgerufen; Bundle-Inhalte
+werden nie ausgeführt.
+
+Produktionsconsumer pinnen immer ein Release-Tag oder einen exakten Commit,
+niemals `main`. CI installiert mit `npm ci --ignore-scripts`, verwendet Node 24
+und pinnt Container/Actions unveränderlich. Shared-Volume-Consumer mounten nur
+eine vom Controller vollständig verifizierte Revision read-only.
 
 ---
 

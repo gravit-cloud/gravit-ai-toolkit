@@ -162,7 +162,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.0.0-gravit.2",
+  "distributionVersion": "1.0.0-gravit.3",
   "name": "gravit-custom",
   "schemaVersion": 1,
   "targets": {
@@ -204,7 +204,7 @@
           "status": "preserved"
         }
       },
-      "digest": "cfd3ead253337df5836183f11f35a49dbb4ae2cd72889da7eef293bc2a3dcfa4",
+      "digest": "7215f100088590ea2779354eddad4bc5ab95f070447fbcff8518d03b9bf144f3",
       "path": "targets/claude"
     },
     "codex": {
@@ -245,7 +245,7 @@
           "status": "transformed"
         }
       },
-      "digest": "52e7ae016ed558b3b2b277f4efc1bcf0742d1b5846f1f9a6d12388c77e4f1929",
+      "digest": "ff67830e3220c2cdc4aafa060d833d87254a0cca3e2a0e24f4fe53d8a3ec4051",
       "path": "targets/codex"
     },
     "openclaw": {
@@ -286,7 +286,7 @@
           "status": "transformed"
         }
       },
-      "digest": "52e7ae016ed558b3b2b277f4efc1bcf0742d1b5846f1f9a6d12388c77e4f1929",
+      "digest": "ff67830e3220c2cdc4aafa060d833d87254a0cca3e2a0e24f4fe53d8a3ec4051",
       "path": "targets/openclaw"
     }
   }

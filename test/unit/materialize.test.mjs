@@ -599,6 +599,20 @@ test("validates complete receipts and rejects malformed receipt values", () => {
     () => validateReceipt({ ...valid, registryRevision: "HEAD" }),
     /invalid materialization receipt/,
   );
+  assert.doesNotThrow(() => validateReceipt({
+    ...valid,
+    target: "universal",
+    sourceTargetDigest: valid.sourceBundleDigest,
+    materializedDigest: valid.sourceBundleDigest,
+  }));
+  assert.throws(
+    () => validateReceipt({ ...valid, target: "universal" }),
+    /universal receipt digests must equal sourceBundleDigest/,
+  );
+  assert.throws(
+    () => materialize({ target: "universal" }),
+    /unsupported materialization target: universal/,
+  );
 });
 
 test("CLI validates materialize options and target before output resolution", (context) => {

@@ -10,7 +10,7 @@ import {
 import { relative, resolve } from "node:path";
 import { withAtomicOutput } from "./atomic-output.mjs";
 import { copyComponent } from "./component-files.mjs";
-import { externalLicenseSource } from "./external-license.mjs";
+import { canonicalLicenseSource } from "./external-license.mjs";
 import { treeHash } from "./hash.mjs";
 import { inventorySource } from "./inventory.mjs";
 import { writeJson } from "./json.mjs";
@@ -31,7 +31,7 @@ const TARGET_RENDERERS = {
   codex: renderCodexTarget,
   openclaw: renderOpenClawTarget,
 };
-function materializeExternalLicense({ sourcePath, bundleRoot }) {
+function materializeCanonicalLicense({ sourcePath, bundleRoot }) {
   if (!sourcePath) return;
   const bundleStats = lstatSync(bundleRoot);
   if (bundleStats.isSymbolicLink() || !bundleStats.isDirectory()) {
@@ -132,7 +132,7 @@ function assertAdapterResult({ plugin, target, bundleRoot, neutralComponents, re
 }
 
 export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
-  const externalLicense = externalLicenseSource({
+  const canonicalLicense = canonicalLicenseSource({
     sourceType: plugin.source?.type,
     sourceRoot,
   });
@@ -155,7 +155,7 @@ export function buildPluginBundle({ plugin, sourceRoot, bundleRoot }) {
   const accountingById = new Map(accounting.map((component) => [component.id, component]));
 
   mkdirSync(bundleRoot, { recursive: true });
-  materializeExternalLicense({ sourcePath: externalLicense, bundleRoot });
+  materializeCanonicalLicense({ sourcePath: canonicalLicense, bundleRoot });
   const neutralRoot = resolve(bundleRoot, "components");
   const materialized = [];
   const resourceMappings = [];

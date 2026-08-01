@@ -20,7 +20,9 @@ const ajv = new Ajv({ allErrors: true, strict: true });
 const validateLock = ajv.compile(loadSchema("lock"));
 const validatePluginManifest = ajv.compile(loadSchema("agent-plugin"));
 const materializationReaders = new WeakMap();
+const releaseReaders = new WeakMap();
 const MATERIALIZATION_TARGETS = new Set(["claude", "codex", "openclaw"]);
+const RELEASE_RECEIPT = ".gravit-plugin-receipt.json";
 
 function messageOf(error) {
   return String(error instanceof Error ? error.message : error)
@@ -88,6 +90,16 @@ function safeExistingPath(root, candidate, label, type) {
 
 function safeJson(root, relativePath, label) {
   return readJson(safeExistingPath(root, resolve(root, relativePath), label, "file"));
+}
+
+function pathEntryExists(path) {
+  try {
+    lstatSync(path);
+    return true;
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
 }
 
 function exactKeys(value) {
@@ -249,6 +261,7 @@ function verifyPlugin({ root, plugin, locked }) {
 export function openRegistry(repositoryRoot) {
   let state;
   let loadError;
+  let completeVerificationSucceeded = false;
   try {
     state = loadState(repositoryRoot);
   } catch (error) {
@@ -271,8 +284,14 @@ export function openRegistry(repositoryRoot) {
   }
 
   function verify(name) {
-    if (loadError) return { ok: false, errors: [loadError] };
-    if (state.error) return { ok: false, errors: [state.error] };
+    if (loadError) {
+      if (name === undefined) completeVerificationSucceeded = false;
+      return { ok: false, errors: [loadError] };
+    }
+    if (state.error) {
+      if (name === undefined) completeVerificationSucceeded = false;
+      return { ok: false, errors: [state.error] };
+    }
     const names = name === undefined
       ? state.catalog.plugins.map((plugin) => plugin.name)
       : [assertRegistryName(name, "registry plugin name")];
@@ -291,7 +310,9 @@ export function openRegistry(repositoryRoot) {
         selectedPlugins: names,
       }));
     }
-    return { ok: errors.length === 0, errors };
+    const result = { ok: errors.length === 0, errors };
+    if (name === undefined) completeVerificationSucceeded = result.ok;
+    return result;
   }
 
   const reader = {
@@ -348,6 +369,28 @@ export function openRegistry(repositoryRoot) {
       targetRoot,
     });
   });
+  releaseReaders.set(reader, (name) => {
+    if (!completeVerificationSucceeded) {
+      const verification = verify(name);
+      if (!verification.ok) throw new Error(verification.errors.join("\n"));
+    }
+    const selected = entry(name);
+    const bundleRoot = safeExistingPath(
+      state.root,
+      resolve(state.root, "plugins", name),
+      `${name} bundle`,
+      "directory",
+    );
+    if (pathEntryExists(resolve(bundleRoot, RELEASE_RECEIPT))) {
+      throw new Error(name + ": source bundle contains reserved receipt");
+    }
+    return Object.freeze({
+      plugin: selected.plugin.name,
+      distributionVersion: selected.plugin.distributionVersion,
+      bundleDigest: selected.locked.bundleDigest,
+      bundleRoot,
+    });
+  });
   return Object.freeze(reader);
 }
 
@@ -355,6 +398,12 @@ export function materializationSource(reader, name, target) {
   const select = materializationReaders.get(reader);
   if (!select) throw new Error("materialization requires a trusted registry reader");
   return select(name, target);
+}
+
+export function releaseSource(reader, name) {
+  const select = releaseReaders.get(reader);
+  if (!select) throw new Error("release requires a trusted registry reader");
+  return select(name);
 }
 
 export function registryRevision(repositoryRoot) {

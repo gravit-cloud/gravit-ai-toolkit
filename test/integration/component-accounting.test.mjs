@@ -49,7 +49,7 @@ function completePlugin() {
       path: "test/fixtures/complete-plugin",
       root: ".",
     },
-    sourceContext: ["LICENSE", "README.md"].map((path) => ({
+    sourceContext: ["README.md"].map((path) => ({
       path,
       digest: sourceContextHash(resolve(completeFixture, path)),
     })),

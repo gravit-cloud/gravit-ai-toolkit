@@ -75,7 +75,7 @@ test("production catalog is neutral and fully pinned", () => {
       "1.1.0-gravit.2",
       "1.2.5-gravit.2",
       "6.2.0-gravit.2",
-      "1.0.0-gravit.2",
+      "1.0.0-gravit.3",
     ],
   );
   for (const plugin of catalog.plugins.filter(({ source }) => source.type === "github")) {

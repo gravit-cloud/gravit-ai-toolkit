@@ -7,7 +7,7 @@ import {
 } from "node:fs";
 import { isAbsolute, relative, resolve, win32 } from "node:path";
 import { sourceContextHash, treeHash, sha256 } from "./hash.mjs";
-import { externalLicenseSource } from "./external-license.mjs";
+import { canonicalLicenseSource } from "./external-license.mjs";
 import { stableJson } from "./json.mjs";
 import { compareCodePoints } from "./ordering.mjs";
 import {
@@ -434,7 +434,7 @@ function assertSourceContextDisjoint({
   sourceRoot,
   sourceContext,
   manifestPaths,
-  externalLicense,
+  canonicalLicense,
   components,
   skills,
   skillPaths,
@@ -447,7 +447,7 @@ function assertSourceContextDisjoint({
         throw new Error("source context overlaps upstream manifest: " + context.path);
       }
     }
-    if (externalLicense && contextOverlaps(context, externalLicense)) {
+    if (canonicalLicense && contextOverlaps(context, canonicalLicense)) {
       throw new Error("source context overlaps redistributed license: " + context.path);
     }
     for (const skill of skills) {
@@ -500,7 +500,7 @@ export function inventorySource({
   };
   const manifestPaths = [manifestEntries.claude.path, manifestEntries.codex.path]
     .filter(Boolean);
-  const externalLicense = externalLicenseSource({ sourceType, sourceRoot });
+  const canonicalLicense = canonicalLicenseSource({ sourceType, sourceRoot });
   const manifests = {
     claude: manifestOverrides.claude ?? loadedManifests.claude,
     codex: manifestOverrides.codex ?? loadedManifests.codex,
@@ -557,7 +557,7 @@ export function inventorySource({
     sourceRoot,
     sourceContext: sourceContextRecords,
     manifestPaths,
-    externalLicense,
+    canonicalLicense,
     components,
     skills,
     skillPaths,
@@ -567,7 +567,7 @@ export function inventorySource({
     components,
     skills,
     sourceContextPaths: sourceContextRecords.map(({ sourcePath }) => sourcePath),
-    intrinsicContextPaths: [...manifestPaths, externalLicense].filter(Boolean),
+    intrinsicContextPaths: [...manifestPaths, canonicalLicense].filter(Boolean),
   });
 
   return {
