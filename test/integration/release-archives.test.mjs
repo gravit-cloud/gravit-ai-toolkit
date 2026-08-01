@@ -19,6 +19,7 @@ import { buildRegistry } from "../../scripts/build-registry.mjs";
 import { sha256 } from "../../scripts/lib/hash.mjs";
 import { writeJson } from "../../scripts/lib/json.mjs";
 import { validateReceipt } from "../../scripts/lib/materialize.mjs";
+import { pathIsInside } from "../../scripts/lib/path-safety.mjs";
 
 const REPOSITORY_ROOT = resolve(import.meta.dirname, "../..");
 const RELEASE_BUILDER = new URL("../../scripts/build-release.mjs", import.meta.url);
@@ -350,6 +351,118 @@ test("an archive publication race preserves foreign bytes and retains staging", 
   assert.equal(realpathSync(error.recoveryPath), error.recoveryPath);
   assert.equal(lstatSync(error.recoveryPath).isDirectory(), true);
   assert.deepEqual(error.publishedArchives, []);
+});
+
+test("a pre-link failure leaves no permanent archive", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context);
+  const root = sandbox(context, "release-pre-link-");
+  const distRoot = resolve(root, "dist");
+  mkdirSync(distRoot);
+  let error;
+
+  assert.throws(() => buildRelease({
+    repositoryRoot,
+    distRoot,
+    publicationHooks: {
+      beforeArchiveLink() {
+        throw new Error("injected pre-link failure");
+      },
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError
+      && /injected pre-link failure/u.test(caught.errors[0]?.message);
+  });
+
+  assert.deepEqual(readdirSync(distRoot), []);
+  assert.deepEqual(error.publishedArchives, []);
+  assert.equal(realpathSync(error.recoveryPath), error.recoveryPath);
+});
+
+test("a post-link failure reports one complete permanent archive", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context);
+  const root = sandbox(context, "release-post-link-");
+  const distRoot = resolve(root, "dist");
+  mkdirSync(distRoot);
+  let linkedArchive;
+  let error;
+
+  assert.throws(() => buildRelease({
+    repositoryRoot,
+    distRoot,
+    publicationHooks: {
+      afterArchiveLink({ destination }) {
+        linkedArchive = destination;
+        assert.deepEqual(archiveEntries(destination), [
+          "fixture/.agent-plugin/plugin.json",
+          "fixture/.gravit-plugin-receipt.json",
+          "fixture/LICENSE",
+          "fixture/components/skills/fixture/SKILL.md",
+          "fixture/targets/claude/.claude-plugin/plugin.json",
+          "fixture/targets/claude/skills/fixture/SKILL.md",
+          "fixture/targets/codex/.codex-plugin/plugin.json",
+          "fixture/targets/codex/skills/fixture/SKILL.md",
+          "fixture/targets/openclaw/.codex-plugin/plugin.json",
+          "fixture/targets/openclaw/skills/fixture/SKILL.md",
+        ]);
+        assert.doesNotThrow(() => validateReceipt(archiveReceipt(destination, "fixture")));
+        throw new Error("injected post-link failure");
+      },
+    },
+  }), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError
+      && /injected post-link failure/u.test(caught.errors[0]?.message);
+  });
+
+  assert.equal(lstatSync(linkedArchive).isFile(), true);
+  assert.deepEqual(error.publishedArchives, [linkedArchive]);
+  assert.equal(realpathSync(error.recoveryPath), error.recoveryPath);
+});
+
+test("ambient TMPDIR cannot stage inside managed plugin inputs", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context);
+  const distRoot = resolve(repositoryRoot, "dist");
+  const managedPlugins = resolve(repositoryRoot, "plugins");
+  const previous = process.env.TMPDIR;
+  let result;
+  try {
+    process.env.TMPDIR = managedPlugins;
+    result = buildRelease({ repositoryRoot, distRoot });
+  } finally {
+    if (previous === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = previous;
+  }
+
+  assert.equal(pathIsInside(repositoryRoot, result.stagePath), false);
+  assert.equal(resolve(result.stagePath, ".."), resolve(repositoryRoot, ".."));
+  assert.equal(lstatSync(result.stagePath).dev, lstatSync(distRoot).dev);
+  assert.deepEqual(readdirSync(managedPlugins), ["fixture"]);
+});
+
+test("ambient TMPDIR cannot stage inside an external DIST_DIR", async (context) => {
+  const { buildRelease } = await import(RELEASE_BUILDER);
+  const repositoryRoot = fixtureRegistry(context);
+  const root = sandbox(context, "release-external-stage-");
+  const distRoot = resolve(root, "dist");
+  mkdirSync(distRoot);
+  const previous = process.env.TMPDIR;
+  let result;
+  try {
+    process.env.TMPDIR = distRoot;
+    result = buildRelease({ repositoryRoot, distRoot });
+  } finally {
+    if (previous === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = previous;
+  }
+
+  assert.equal(pathIsInside(distRoot, result.stagePath), false);
+  assert.equal(resolve(result.stagePath, ".."), resolve(distRoot, ".."));
+  assert.equal(lstatSync(result.stagePath).dev, lstatSync(distRoot).dev);
+  assert.deepEqual(readdirSync(distRoot), ["fixture-v1.0.0-gravit.1.zip"]);
 });
 
 test("a staged archive mutation is retained and never published", async (context) => {
