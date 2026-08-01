@@ -1,43 +1,23 @@
 #!/usr/bin/env node
 
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
   realpathSync,
-  rmSync,
-  statSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { delimiter, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { pathIsInside } from "./lib/path-safety.mjs";
 
 const CLIENT_TIMEOUT_MS = 45_000;
-const CLIENT_MAX_BUFFER = 1024 * 1024;
+const CLIENT_MAX_OUTPUT_BYTES = 1024 * 1024;
+const TERMINATION_GRACE_MS = 250;
+const FINALIZATION_GRACE_MS = 250;
 const ERROR_OUTPUT_LIMIT = 8 * 1024;
-const ALLOWED_PARENT_ENV = Object.freeze([
-  "PATH",
-  "Path",
-  "LANG",
-  "LC_ALL",
-  "LC_CTYPE",
-  "TZ",
-  "SystemRoot",
-  "WINDIR",
-  "ComSpec",
-  "PATHEXT",
-]);
-
-function pathEntry(path) {
-  try {
-    return lstatSync(path);
-  } catch (error) {
-    if (error.code === "ENOENT") return undefined;
-    throw error;
-  }
-}
+const ALLOWED_PARENT_ENV = Object.freeze(["LANG", "LC_ALL", "LC_CTYPE", "TZ"]);
 
 function assertRealDirectory(path, label) {
   const absolute = resolve(path);
@@ -45,39 +25,21 @@ function assertRealDirectory(path, label) {
   if (stats.isSymbolicLink() || !stats.isDirectory()) {
     throw new Error(label + " must be a real directory: " + absolute);
   }
-  const canonical = realpathSync(absolute);
-  return canonical;
+  return realpathSync(absolute);
 }
 
-function assertRepositoryFile(repositoryRoot, path, label) {
+function assertRepositoryFile(repositoryRoot, path, label, expectedRoot = repositoryRoot) {
   const absolute = resolve(path);
   const stats = lstatSync(absolute);
   if (stats.isSymbolicLink() || !stats.isFile()) {
     throw new Error(label + " must be a real file: " + absolute);
   }
   const canonical = realpathSync(absolute);
-  if (!pathIsInside(repositoryRoot, canonical)) {
-    throw new Error(label + " escapes repository root: " + absolute);
+  const boundary = realpathSync(expectedRoot);
+  if (!pathIsInside(boundary, canonical) || !pathIsInside(repositoryRoot, canonical)) {
+    throw new Error(label + " escapes its exact package root: " + absolute);
   }
   return canonical;
-}
-
-function localExecutable(repositoryRoot, name) {
-  const suffix = process.platform === "win32" ? ".cmd" : "";
-  const binPath = resolve(repositoryRoot, "node_modules/.bin", name + suffix);
-  const entry = lstatSync(binPath);
-  if (!entry.isFile() && !entry.isSymbolicLink()) {
-    throw new Error("local client executable has wrong type: " + binPath);
-  }
-  const executable = realpathSync(binPath);
-  if (!statSync(executable).isFile()) {
-    throw new Error("local client executable target is not a file: " + binPath);
-  }
-  const nodeModules = resolve(repositoryRoot, "node_modules");
-  if (!pathIsInside(nodeModules, executable)) {
-    throw new Error("local client executable escapes node_modules: " + binPath);
-  }
-  return binPath;
 }
 
 function createClientDirectory(temporaryRoot, client) {
@@ -87,15 +49,26 @@ function createClientDirectory(temporaryRoot, client) {
   if (!pathIsInside(temporaryRoot, canonical) || canonical === temporaryRoot) {
     throw new Error(client + " smoke root escapes temporary root: " + canonical);
   }
-  for (const name of ["home", "config", "cache", "data", "state", "tmp"]) {
-    const path = resolve(root, name);
-    mkdirSync(path, { recursive: true, mode: 0o700 });
-    const child = assertRealDirectory(path, client + " " + name + " directory");
-    if (!pathIsInside(canonical, child) || child === canonical) {
-      throw new Error(client + " state directory escapes client root: " + child);
-    }
+  return canonical;
+}
+
+function windowsSystemRoot(parentEnv) {
+  const systemRoot = parentEnv.SystemRoot || parentEnv.WINDIR;
+  if (typeof systemRoot !== "string" || systemRoot.length === 0) {
+    throw new Error("client smoke requires SystemRoot on Windows");
   }
-  return root;
+  return systemRoot;
+}
+
+function trustedPath(parentEnv) {
+  const paths = [dirname(process.execPath)];
+  if (process.platform === "win32") {
+    const systemRoot = windowsSystemRoot(parentEnv);
+    paths.push(resolve(systemRoot, "System32"), resolve(systemRoot));
+  } else {
+    paths.push("/usr/bin", "/bin");
+  }
+  return [...new Set(paths)].join(delimiter);
 }
 
 function isolatedEnvironment(parentEnv, clientRoot) {
@@ -108,9 +81,14 @@ function isolatedEnvironment(parentEnv, clientRoot) {
       env[key] = parentEnv[key];
     }
   }
-  if (typeof env.PATH !== "string" && typeof env.Path !== "string") {
-    throw new Error("client smoke requires an explicit PATH runtime variable");
+  if (process.platform === "win32") {
+    const systemRoot = windowsSystemRoot(parentEnv);
+    env.SystemRoot = systemRoot;
+    env.WINDIR = systemRoot;
+    env.ComSpec = resolve(systemRoot, "System32/cmd.exe");
+    env.PATHEXT = ".COM;.EXE;.BAT;.CMD";
   }
+  env.PATH = trustedPath(parentEnv);
   const home = resolve(clientRoot, "home");
   env.HOME = home;
   env.USERPROFILE = home;
@@ -142,6 +120,91 @@ function freezeSpec(spec) {
   return Object.freeze(spec);
 }
 
+function plainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function parseJsonStdout(name, stdout) {
+  let value;
+  try {
+    value = JSON.parse(stdout);
+  } catch (error) {
+    throw new Error(name + " returned malformed JSON", { cause: error });
+  }
+  if (!plainObject(value)) throw new Error(name + " JSON root must be an object");
+  return value;
+}
+
+function validateCodexMarketplace(stdout, expectedRoot) {
+  const value = parseJsonStdout("codex-marketplace-add", stdout);
+  if (
+    value.marketplaceName !== "gravit-cloud"
+    || value.installedRoot !== expectedRoot
+    || typeof value.alreadyAdded !== "boolean"
+  ) {
+    throw new Error("codex-marketplace-add returned the wrong local marketplace");
+  }
+}
+
+function validateCodexAvailable(stdout) {
+  const value = parseJsonStdout("codex-plugin-list-available", stdout);
+  if (!Array.isArray(value.installed) || !Array.isArray(value.available)) {
+    throw new Error("codex-plugin-list-available returned malformed plugin arrays");
+  }
+  const installedAzure = value.installed.filter(
+    (entry) => plainObject(entry) && entry.pluginId === "azure@gravit-cloud",
+  );
+  const availableAzure = value.available.filter(
+    (entry) => plainObject(entry) && entry.pluginId === "azure@gravit-cloud",
+  );
+  if (installedAzure.length !== 0 || availableAzure.length !== 1) {
+    throw new Error("codex-plugin-list-available must contain one uninstalled Azure record");
+  }
+  const azure = availableAzure[0];
+  if (
+    azure.name !== "azure"
+    || azure.marketplaceName !== "gravit-cloud"
+    || azure.installed !== false
+  ) {
+    throw new Error("codex-plugin-list-available returned the wrong Azure disposition");
+  }
+}
+
+function assertDisabledCodexBundle(plugin, name) {
+  if (
+    !plainObject(plugin)
+    || plugin.id !== "azure"
+    || plugin.format !== "bundle"
+    || plugin.bundleFormat !== "codex"
+    || plugin.enabled !== false
+    || plugin.status !== "disabled"
+  ) {
+    throw new Error(name + " did not report one disabled Codex-format Azure bundle");
+  }
+}
+
+function validateOpenClawList(stdout) {
+  const value = parseJsonStdout("openclaw-list", stdout);
+  if (!Array.isArray(value.plugins)) {
+    throw new Error("openclaw-list returned a malformed plugin list");
+  }
+  const azure = value.plugins.filter(
+    (plugin) => plainObject(plugin) && plugin.id === "azure",
+  );
+  if (azure.length !== 1) {
+    throw new Error("openclaw-list must contain exactly one Azure record");
+  }
+  assertDisabledCodexBundle(azure[0], "openclaw-list");
+}
+
+function validateOpenClawInspect(stdout) {
+  const value = parseJsonStdout("openclaw-inspect", stdout);
+  assertDisabledCodexBundle(value.plugin, "openclaw-inspect");
+  if (value.plugin.activated !== false) {
+    throw new Error("openclaw-inspect reported the Azure bundle as activated");
+  }
+}
+
 export function smokeCommands({
   repositoryRoot,
   temporaryRoot,
@@ -171,16 +234,45 @@ export function smokeCommands({
     resolve(openclawBundle, ".codex-plugin/plugin.json"),
     "OpenClaw Azure bundle marker",
   );
-  const claudeRoot = createClientDirectory(temporary, "claude");
-  const codexRoot = createClientDirectory(temporary, "codex");
-  const openclawRoot = createClientDirectory(temporary, "openclaw");
-  const claudeEnv = isolatedEnvironment(parentEnv, claudeRoot);
+
+  const claudePackage = resolve(repository, "node_modules/@anthropic-ai/claude-code");
+  const codexPackage = resolve(repository, "node_modules/@openai/codex");
+  const openclawPackage = resolve(repository, "node_modules/openclaw");
+  const claudeNative = assertRepositoryFile(
+    repository,
+    resolve(claudePackage, "bin/claude.exe"),
+    "Claude native client",
+    claudePackage,
+  );
+  const codexEntry = assertRepositoryFile(
+    repository,
+    resolve(codexPackage, "bin/codex.js"),
+    "Codex JavaScript entrypoint",
+    codexPackage,
+  );
+  const openclawEntry = assertRepositoryFile(
+    repository,
+    resolve(openclawPackage, "openclaw.mjs"),
+    "OpenClaw JavaScript entrypoint",
+    openclawPackage,
+  );
+
+  const claudeEnv = isolatedEnvironment(
+    parentEnv,
+    createClientDirectory(temporary, "claude"),
+  );
   claudeEnv.CLAUDE_CONFIG_DIR = resolve(claudeEnv.HOME, "claude-config");
   mkdirSync(claudeEnv.CLAUDE_CONFIG_DIR, { recursive: true, mode: 0o700 });
-  const codexEnv = isolatedEnvironment(parentEnv, codexRoot);
+  const codexEnv = isolatedEnvironment(
+    parentEnv,
+    createClientDirectory(temporary, "codex"),
+  );
   codexEnv.CODEX_HOME = resolve(codexEnv.HOME, "codex-state");
   mkdirSync(codexEnv.CODEX_HOME, { recursive: true, mode: 0o700 });
-  const openclawEnv = isolatedEnvironment(parentEnv, openclawRoot);
+  const openclawEnv = isolatedEnvironment(
+    parentEnv,
+    createClientDirectory(temporary, "openclaw"),
+  );
   openclawEnv.OPENCLAW_STATE_DIR = resolve(openclawEnv.HOME, "openclaw-state");
   openclawEnv.OPENCLAW_CONFIG_PATH = resolve(
     openclawEnv.HOME,
@@ -192,28 +284,28 @@ export function smokeCommands({
     mode: 0o700,
   });
 
-  const claude = localExecutable(repository, "claude");
-  const codex = localExecutable(repository, "codex");
-  const openclaw = localExecutable(repository, "openclaw");
   return [
     {
       name: "claude-validate",
-      command: claude,
+      command: claudeNative,
       args: ["plugin", "validate", "--strict", repository],
       env: claudeEnv,
-      expectedPattern: /Validation passed/i,
+      expectedPattern: /(?:^|\n).*Validation passed(?:\n|$)/u,
     },
     {
       name: "codex-marketplace-add",
-      command: codex,
-      args: ["plugin", "marketplace", "add", repository, "--json"],
+      command: process.execPath,
+      args: [codexEntry, "plugin", "marketplace", "add", repository, "--json"],
       env: codexEnv,
-      expectedPattern: /"marketplaceName"\s*:\s*"gravit-cloud"/u,
+      validateStdout(stdout) {
+        validateCodexMarketplace(stdout, repository);
+      },
     },
     {
       name: "codex-plugin-list-available",
-      command: codex,
+      command: process.execPath,
       args: [
+        codexEntry,
         "plugin",
         "list",
         "--marketplace",
@@ -222,12 +314,13 @@ export function smokeCommands({
         "--json",
       ],
       env: codexEnv,
-      expectedPattern: /"available"[\s\S]*"pluginId"\s*:\s*"azure@gravit-cloud"/u,
+      validateStdout: validateCodexAvailable,
     },
     {
       name: "openclaw-disable-all",
-      command: openclaw,
+      command: process.execPath,
       args: [
+        openclawEntry,
         "--no-color",
         "config",
         "set",
@@ -240,8 +333,9 @@ export function smokeCommands({
     },
     {
       name: "openclaw-install",
-      command: openclaw,
+      command: process.execPath,
       args: [
+        openclawEntry,
         "--no-color",
         "plugins",
         "install",
@@ -253,62 +347,33 @@ export function smokeCommands({
     },
     {
       name: "openclaw-disable-azure",
-      command: openclaw,
-      args: ["--no-color", "plugins", "disable", "azure"],
+      command: process.execPath,
+      args: [openclawEntry, "--no-color", "plugins", "disable", "azure"],
       env: openclawEnv,
       expectedPattern: /Disabled plugin\s+"azure"/u,
     },
     {
       name: "openclaw-list",
-      command: openclaw,
-      args: ["--no-color", "plugins", "list", "--json"],
+      command: process.execPath,
+      args: [openclawEntry, "--no-color", "plugins", "list", "--json"],
       env: openclawEnv,
-      expectedPattern: /"id"\s*:\s*"azure"[\s\S]{0,8192}"enabled"\s*:\s*false/u,
+      validateStdout: validateOpenClawList,
     },
     {
       name: "openclaw-inspect",
-      command: openclaw,
-      args: ["--no-color", "plugins", "inspect", "azure", "--json"],
+      command: process.execPath,
+      args: [
+        openclawEntry,
+        "--no-color",
+        "plugins",
+        "inspect",
+        "azure",
+        "--json",
+      ],
       env: openclawEnv,
-      expectedPattern: /"id"\s*:\s*"azure"[\s\S]*"bundleFormat"\s*:\s*"codex"[\s\S]*"enabled"\s*:\s*false/u,
+      validateStdout: validateOpenClawInspect,
     },
   ].map(freezeSpec);
-}
-
-function rootClaim(path) {
-  const stats = lstatSync(path);
-  if (stats.isSymbolicLink() || !stats.isDirectory()) {
-    throw new Error("client smoke temporary root must be a real directory: " + path);
-  }
-  return Object.freeze({
-    path: realpathSync(path),
-    device: stats.dev,
-    inode: stats.ino,
-  });
-}
-
-function cleanupOwnedRoot(claim) {
-  const current = pathEntry(claim.path);
-  if (
-    !current
-    || current.isSymbolicLink()
-    || !current.isDirectory()
-    || current.dev !== claim.device
-    || current.ino !== claim.inode
-    || realpathSync(claim.path) !== claim.path
-  ) {
-    const error = new Error(
-      "client smoke temporary root ownership changed; retained recovery path: "
-        + claim.path,
-    );
-    error.recoveryPath = claim.path;
-    throw error;
-  }
-  rmSync(claim.path, { recursive: true, force: false });
-}
-
-function boundedOutput(result) {
-  return String(result.stdout || "") + String(result.stderr || "");
 }
 
 function failureOutput(output) {
@@ -316,26 +381,145 @@ function failureOutput(output) {
   return output.slice(0, ERROR_OUTPUT_LIMIT) + "\n[output truncated]";
 }
 
-function commandFailure(spec, detail, output) {
+function commandFailure(spec, detail, output = "") {
   const suffix = output.length > 0 ? "\n" + failureOutput(output) : "";
   return new Error(spec.name + " failed: " + detail + suffix);
 }
 
-function runCommand(spec, repositoryRoot, processRunner) {
-  const result = processRunner(spec.command, spec.args, {
-    cwd: repositoryRoot,
-    env: spec.env,
-    encoding: "utf8",
-    shell: false,
-    stdio: ["ignore", "pipe", "pipe"],
-    timeout: CLIENT_TIMEOUT_MS,
-    maxBuffer: CLIENT_MAX_BUFFER,
-    windowsHide: true,
-  });
-  if (!result || typeof result !== "object") {
-    throw commandFailure(spec, "process runner returned no result", "");
+function signalProcessTree(child, signal) {
+  if (process.platform !== "win32" && Number.isInteger(child.pid)) {
+    try {
+      process.kill(-child.pid, signal);
+      return;
+    } catch (error) {
+      if (error.code !== "ESRCH") throw error;
+      return;
+    }
   }
-  const output = boundedOutput(result);
+  // Stock Node has no Windows process-group/job-object API. The safest portable
+  // fallback terminates the direct child; CI's outer job timeout owns descendants.
+  try {
+    child.kill(signal);
+  } catch (error) {
+    if (error.code !== "ESRCH") throw error;
+  }
+}
+
+export function runBoundedCommand(spec, {
+  repositoryRoot,
+  timeoutMs = CLIENT_TIMEOUT_MS,
+  terminationGraceMs = TERMINATION_GRACE_MS,
+  finalizationGraceMs = FINALIZATION_GRACE_MS,
+  maxOutputBytes = CLIENT_MAX_OUTPUT_BYTES,
+  spawnProcess = spawn,
+} = {}) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    let child;
+    try {
+      child = spawnProcess(spec.command, spec.args, {
+        cwd: repositoryRoot,
+        env: spec.env,
+        detached: process.platform !== "win32",
+        shell: false,
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      });
+    } catch (error) {
+      rejectPromise(commandFailure(spec, error.message || String(error)));
+      return;
+    }
+
+    let settled = false;
+    let terminationReason;
+    let outputBytes = 0;
+    const stdout = [];
+    const stderr = [];
+    let timeoutTimer;
+    let terminationTimer;
+    let finalizationTimer;
+
+    function clearTimers() {
+      clearTimeout(timeoutTimer);
+      clearTimeout(terminationTimer);
+      clearTimeout(finalizationTimer);
+    }
+
+    function outputText() {
+      return Buffer.concat(stdout).toString("utf8") + Buffer.concat(stderr).toString("utf8");
+    }
+
+    function finish(error, result) {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      if (error) rejectPromise(error);
+      else resolvePromise(result);
+    }
+
+    function forceFinish() {
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+      child.unref?.();
+      finish(commandFailure(spec, terminationReason, outputText()));
+    }
+
+    function beginTermination(reason) {
+      if (terminationReason) return;
+      terminationReason = reason;
+      try {
+        signalProcessTree(child, "SIGTERM");
+      } catch {}
+      terminationTimer = setTimeout(() => {
+        try {
+          signalProcessTree(child, "SIGKILL");
+        } catch {}
+        finalizationTimer = setTimeout(forceFinish, finalizationGraceMs);
+      }, terminationGraceMs);
+    }
+
+    function collect(target, chunk) {
+      if (settled) return;
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      const remaining = Math.max(0, maxOutputBytes - outputBytes);
+      if (remaining > 0) target.push(bytes.subarray(0, remaining));
+      outputBytes += bytes.length;
+      if (outputBytes > maxOutputBytes) {
+        beginTermination("exceeded the " + maxOutputBytes + " byte output limit");
+      }
+    }
+
+    child.stdout?.on("data", (chunk) => collect(stdout, chunk));
+    child.stderr?.on("data", (chunk) => collect(stderr, chunk));
+    child.once("error", (error) => {
+      finish(commandFailure(spec, error.message || String(error), outputText()));
+    });
+    child.once("close", (status, signal) => {
+      const result = {
+        status,
+        signal,
+        stdout: Buffer.concat(stdout).toString("utf8"),
+        stderr: Buffer.concat(stderr).toString("utf8"),
+      };
+      if (terminationReason) {
+        finish(commandFailure(spec, terminationReason, result.stdout + result.stderr));
+      } else {
+        finish(undefined, result);
+      }
+    });
+
+    timeoutTimer = setTimeout(() => {
+      beginTermination("timed out after " + timeoutMs + "ms");
+    }, timeoutMs);
+  });
+}
+
+function validateResult(spec, result) {
+  if (!result || typeof result !== "object") {
+    throw commandFailure(spec, "process runner returned no result");
+  }
+  const stdout = String(result.stdout || "");
+  const stderr = String(result.stderr || "");
+  const output = stdout + stderr;
   if (result.error) {
     throw commandFailure(spec, result.error.message || String(result.error), output);
   }
@@ -354,50 +538,56 @@ function runCommand(spec, repositoryRoot, processRunner) {
       throw commandFailure(spec, "expected output was not observed", output);
     }
   }
+  if (spec.validateStdout) {
+    try {
+      spec.validateStdout(stdout);
+    } catch (error) {
+      throw commandFailure(spec, error.message || String(error), output);
+    }
+  }
 }
 
-export function runClientSmoke(repositoryRoot, {
+export async function runClientSmoke(repositoryRoot, {
   parentEnv = process.env,
-  processRunner = spawnSync,
+  commandRunner = runBoundedCommand,
 } = {}) {
   const temporaryRoot = realpathSync(mkdtempSync(
     resolve(tmpdir(), "gravit-client-smoke-"),
   ));
-  const claim = rootClaim(temporaryRoot);
   const completed = [];
-  let activeError;
   try {
+    const repository = assertRealDirectory(repositoryRoot, "repository root");
     const commands = smokeCommands({
-      repositoryRoot,
+      repositoryRoot: repository,
       temporaryRoot,
       parentEnv,
     });
     for (const spec of commands) {
-      runCommand(spec, assertRealDirectory(repositoryRoot, "repository root"), processRunner);
+      const result = await commandRunner(spec, {
+        repositoryRoot: repository,
+        timeoutMs: CLIENT_TIMEOUT_MS,
+        maxOutputBytes: CLIENT_MAX_OUTPUT_BYTES,
+      });
+      validateResult(spec, result);
       completed.push(spec.name);
     }
-  } catch (error) {
-    activeError = error;
+    return Object.freeze({
+      completed: Object.freeze(completed.slice()),
+      recoveryPath: temporaryRoot,
+    });
+  } catch (caught) {
+    const error = caught instanceof Error ? caught : new Error(String(caught));
+    error.recoveryPath = temporaryRoot;
+    if (!error.message.includes(temporaryRoot)) {
+      error.message += "\nRetained client state: " + temporaryRoot;
+    }
+    throw error;
   }
-
-  try {
-    cleanupOwnedRoot(claim);
-  } catch (cleanupError) {
-    if (!activeError) throw cleanupError;
-    const aggregate = new AggregateError(
-      [activeError, cleanupError],
-      activeError.message + "; temporary cleanup also failed: " + cleanupError.message,
-    );
-    aggregate.recoveryPath = cleanupError.recoveryPath;
-    throw aggregate;
-  }
-  if (activeError) throw activeError;
-  return completed;
 }
 
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : undefined;
 if (invokedPath && pathToFileURL(invokedPath).href === import.meta.url) {
   const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-  runClientSmoke(repositoryRoot);
-  console.log("Client smoke tests passed.");
+  const result = await runClientSmoke(repositoryRoot);
+  console.log("Client smoke tests passed. Retained state: " + result.recoveryPath);
 }
