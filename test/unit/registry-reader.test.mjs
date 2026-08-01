@@ -20,7 +20,7 @@ import * as registryReader from "../../scripts/lib/registry-reader.mjs";
 
 const { openRegistry } = registryReader;
 
-function fixtureRegistry(context) {
+function fixtureRegistry(context, { objectFormat = "sha1" } = {}) {
   const parent = mkdtempSync(resolve(tmpdir(), "registry-reader-"));
   context.after(() => rmSync(parent, { recursive: true, force: true }));
   const repositoryRoot = resolve(parent, "repository");
@@ -71,7 +71,12 @@ function fixtureRegistry(context) {
     outputRoot: repositoryRoot,
     production: true,
   });
-  runGit(repositoryRoot, "init", "-q");
+  runGit(
+    repositoryRoot,
+    "init",
+    "-q",
+    ...(objectFormat === "sha1" ? [] : [`--object-format=${objectFormat}`]),
+  );
   runGit(repositoryRoot, "add", ".");
   runGit(
     repositoryRoot,
@@ -273,6 +278,67 @@ test("revision claims reject untracked files below a selected bundle", (context)
   assert.throws(
     () => registryReader.assertRegistryRevisionClaim(reader, claim, ["nested-skills"]),
     /consumed registry paths are not committed/,
+  );
+});
+
+test("revision claims reject changed bytes hidden by assume-unchanged for NUL-delimited paths", (context) => {
+  const root = fixtureRegistry(context);
+  const relativePath = "plugins/nested-skills/strange name\npayload.txt";
+  const path = resolve(root, relativePath);
+  writeFileSync(path, "committed\n");
+  runGit(root, "add", "--", relativePath);
+  runGit(root, "-c", "commit.gpgsign=false", "commit", "-q", "-m", "strange path");
+  runGit(root, "update-index", "--assume-unchanged", "--", relativePath);
+  writeFileSync(path, "changed but hidden\n");
+  assert.equal(runGit(root, "status", "--porcelain=v1", "--", relativePath), "");
+
+  assert.throws(
+    () => registryReader.claimRegistryRevision(openRegistry(root), ["nested-skills"]),
+    /index flags|committed registry tree/,
+  );
+});
+
+test("revision claims reject skip-worktree entries even before bytes diverge", (context) => {
+  const root = fixtureRegistry(context);
+  const relativePath = "plugins/nested-skills/LICENSE";
+  runGit(root, "update-index", "--skip-worktree", "--", relativePath);
+
+  assert.throws(
+    () => registryReader.claimRegistryRevision(openRegistry(root), ["nested-skills"]),
+    /index flags/,
+  );
+});
+
+test("revision claims reject ignored files and untracked empty directories", (context) => {
+  for (const mutation of ["ignored-file", "empty-directory"]) {
+    const root = fixtureRegistry(context);
+    if (mutation === "ignored-file") {
+      appendFileSync(
+        resolve(root, ".git/info/exclude"),
+        "\nplugins/nested-skills/ignored.txt\n",
+      );
+      writeFileSync(resolve(root, "plugins/nested-skills/ignored.txt"), "ignored\n");
+    } else {
+      mkdirSync(resolve(root, "plugins/nested-skills/untracked-empty"));
+    }
+    assert.equal(runGit(root, "status", "--porcelain=v1"), "");
+
+    assert.throws(
+      () => registryReader.claimRegistryRevision(openRegistry(root), ["nested-skills"]),
+      /committed registry tree/,
+      mutation,
+    );
+  }
+});
+
+test("revision claims support SHA-256 Git object IDs", (context) => {
+  const root = fixtureRegistry(context, { objectFormat: "sha256" });
+  const reader = openRegistry(root);
+  const claim = registryReader.claimRegistryRevision(reader, ["nested-skills"]);
+
+  assert.match(
+    registryReader.assertRegistryRevisionClaim(reader, claim, ["nested-skills"]),
+    /^[a-f0-9]{64}$/u,
   );
 });
 

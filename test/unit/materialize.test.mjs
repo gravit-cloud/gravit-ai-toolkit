@@ -648,6 +648,10 @@ test("validates complete receipts and rejects malformed receipt values", () => {
     materializedDigest: "d".repeat(64),
   };
   assert.doesNotThrow(() => validateReceipt(valid));
+  assert.doesNotThrow(() => validateReceipt({
+    ...valid,
+    registryRevision: "e".repeat(64),
+  }));
   assert.throws(
     () => validateReceipt({ ...valid, registryRevision: "HEAD" }),
     /invalid materialization receipt/,

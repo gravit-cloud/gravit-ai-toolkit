@@ -28,6 +28,11 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+function sameValues(left, right) {
+  return left.length === right.length
+    && left.every((value, index) => value === right[index]);
+}
+
 function assertPlainObject(value, label) {
   if (!isPlainObject(value)) throw new Error(label + " must be a plain object");
   return value;
@@ -190,6 +195,84 @@ function assertSafeSource(sourcePath) {
   }
 }
 
+function assertBoundDirectory(path, expected, label) {
+  const stats = lstatSync(path);
+  if (
+    stats.isSymbolicLink()
+    || !stats.isDirectory()
+    || stats.dev !== expected.dev
+    || stats.ino !== expected.ino
+  ) {
+    throw new Error(label + " changed while copying: " + path);
+  }
+}
+
+function materializeDirectory({
+  source,
+  destination,
+  bundleRoot,
+  canonicalBundleRoot,
+}) {
+  const sourceStats = lstatSync(source);
+  if (sourceStats.isSymbolicLink() || !sourceStats.isDirectory()) {
+    throw new Error("component source directory changed while copying: " + source);
+  }
+  const mode = sourceStats.mode & 0o7777;
+  mkdirSync(destination, { mode });
+  const destinationStats = lstatSync(destination);
+  if (
+    destinationStats.isSymbolicLink()
+    || !destinationStats.isDirectory()
+    || (destinationStats.mode & 0o7777) !== mode
+  ) {
+    throw new Error("component destination directory mode was not preserved: " + destination);
+  }
+  const destinationIdentity = { dev: destinationStats.dev, ino: destinationStats.ino };
+  assertNoDestinationSymlinks(bundleRoot, resolve(destination, ".copy-claim"));
+  assertCanonicalMaterializedDestinationContainment({ canonicalBundleRoot, destination });
+  const names = readdirSync(source).sort(compareCodePoints);
+  for (const name of names) {
+    assertBoundDirectory(destination, destinationIdentity, "component destination directory");
+    const sourceChild = resolve(source, name);
+    const destinationChild = resolve(destination, name);
+    const childStats = lstatSync(sourceChild);
+    assertNoDestinationSymlinks(bundleRoot, destinationChild);
+    assertCanonicalMaterializedDestinationContainment({
+      canonicalBundleRoot,
+      destination: destinationChild,
+    });
+    if (childStats.isSymbolicLink() || (!childStats.isDirectory() && !childStats.isFile())) {
+      throw new Error("component source must contain only regular files: " + sourceChild);
+    }
+    if (childStats.isDirectory()) {
+      materializeDirectory({
+        source: sourceChild,
+        destination: destinationChild,
+        bundleRoot,
+        canonicalBundleRoot,
+      });
+    } else {
+      cpSync(sourceChild, destinationChild, { errorOnExist: true, force: false });
+    }
+    assertBoundDirectory(destination, destinationIdentity, "component destination directory");
+  }
+  const finalSource = lstatSync(source);
+  if (
+    finalSource.isSymbolicLink()
+    || !finalSource.isDirectory()
+    || finalSource.dev !== sourceStats.dev
+    || finalSource.ino !== sourceStats.ino
+    || (finalSource.mode & 0o7777) !== mode
+    || !sameValues(names, readdirSync(source).sort(compareCodePoints))
+  ) {
+    throw new Error("component source directory changed while copying: " + source);
+  }
+  assertBoundDirectory(destination, destinationIdentity, "component destination directory");
+  if (!sameValues(names, readdirSync(destination).sort(compareCodePoints))) {
+    throw new Error("component destination directory changed while copying: " + destination);
+  }
+}
+
 function validateComponent(component) {
   assertPlainObject(component, "component");
   assertNoPrototypeKeys(component, "component");
@@ -305,6 +388,13 @@ export function materializeComponent(input) {
   }
   if (component.sourceFormat === "inline") {
     writeFileSync(destination, stableJson(component.inline));
+  } else if (lstatSync(component.sourcePath).isDirectory()) {
+    materializeDirectory({
+      source: component.sourcePath,
+      destination,
+      bundleRoot,
+      canonicalBundleRoot,
+    });
   } else {
     cpSync(component.sourcePath, destination, {
       recursive: true,

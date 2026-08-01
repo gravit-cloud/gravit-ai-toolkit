@@ -1,4 +1,10 @@
-import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  lstatSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+} from "node:fs";
 import { spawnSync } from "node:child_process";
 import { relative, resolve } from "node:path";
 import Ajv from "ajv/dist/2020.js";
@@ -25,8 +31,9 @@ const revisionReaders = new WeakMap();
 const revisionClaims = new WeakMap();
 const MATERIALIZATION_TARGETS = new Set(["claude", "codex", "openclaw"]);
 const RELEASE_RECEIPT = ".gravit-plugin-receipt.json";
-const MAX_GIT_OUTPUT = 1024 * 1024;
+const MAX_GIT_OUTPUT = 16 * 1024 * 1024;
 const GIT_ENVIRONMENT = Object.freeze({ LC_ALL: "C", PATH: "/usr/bin:/bin" });
+const UTF8_DECODER = new TextDecoder("utf-8", { fatal: true });
 
 function messageOf(error) {
   return String(error instanceof Error ? error.message : error)
@@ -433,7 +440,6 @@ export function releaseSource(reader, name) {
 function runGit(repositoryRoot, args, label) {
   const result = spawnSync("git", args, {
     cwd: repositoryRoot,
-    encoding: "utf8",
     env: GIT_ENVIRONMENT,
     maxBuffer: MAX_GIT_OUTPUT,
     shell: false,
@@ -444,16 +450,216 @@ function runGit(repositoryRoot, args, label) {
   return result.stdout;
 }
 
-function gitHead(repositoryRoot) {
-  const output = runGit(
+function decodeGitText(output, label) {
+  try {
+    return UTF8_DECODER.decode(output);
+  } catch {
+    throw new Error(label);
+  }
+}
+
+function splitGitRecords(output, label) {
+  if (output.length === 0) return [];
+  if (output.at(-1) !== 0) throw new Error(label);
+  const records = [];
+  let start = 0;
+  for (let index = 0; index < output.length; index += 1) {
+    if (output[index] !== 0) continue;
+    if (index === start) throw new Error(label);
+    records.push(decodeGitText(output.subarray(start, index), label));
+    start = index + 1;
+  }
+  return records;
+}
+
+function gitObjectFormat(repositoryRoot) {
+  const output = decodeGitText(runGit(
+    repositoryRoot,
+    ["rev-parse", "--show-object-format"],
+    "registry checkout must have a resolvable Git HEAD",
+  ), "registry checkout must expose its Git object format").trim();
+  if (output !== "sha1" && output !== "sha256") {
+    throw new Error("registry checkout uses an unsupported Git object format");
+  }
+  return output;
+}
+
+function gitHead(repositoryRoot, objectFormat) {
+  const output = decodeGitText(runGit(
     repositoryRoot,
     ["rev-parse", "HEAD"],
     "registry checkout must have a resolvable Git HEAD",
-  );
-  if (!/^[a-f0-9]{40}\n?$/u.test(output)) {
+  ), "registry checkout must have a resolvable Git HEAD").trim();
+  const length = objectFormat === "sha1" ? 40 : 64;
+  if (!new RegExp(`^[a-f0-9]{${length}}$`, "u").test(output)) {
     throw new Error("registry checkout must have a resolvable Git HEAD");
   }
-  return output.trim();
+  return output;
+}
+
+function consumedRevisionPaths(pluginNames) {
+  return [
+    "registry/catalog.json",
+    "registry/lock.json",
+    ...pluginNames.map((name) => `plugins/${name}`),
+  ];
+}
+
+function isSelectedTreePath(path, bundleRoots) {
+  return bundleRoots.some((root) => path === root || path.startsWith(root + "/"));
+}
+
+function parseHeadTree({ root, revision, objectFormat, pluginNames, pathspecs }) {
+  const output = runGit(
+    root,
+    ["ls-tree", "-r", "-t", "-z", "--full-tree", revision, "--", ...pathspecs],
+    "committed registry tree could not be read",
+  );
+  const bundleRoots = pluginNames.map((name) => `plugins/${name}`);
+  const exactFiles = new Set(["registry/catalog.json", "registry/lock.json"]);
+  const objectLength = objectFormat === "sha1" ? 40 : 64;
+  const entries = new Map();
+  for (const record of splitGitRecords(output, "committed registry tree has invalid records")) {
+    const separator = record.indexOf("\t");
+    if (separator === -1) throw new Error("committed registry tree has invalid records");
+    const header = record.slice(0, separator);
+    const path = record.slice(separator + 1);
+    const match = /^(\d{6}) (blob|tree|commit) ([a-f0-9]+)$/u.exec(header);
+    if (!match || match[3].length !== objectLength) {
+      throw new Error("committed registry tree has invalid records");
+    }
+    if (!exactFiles.has(path) && !isSelectedTreePath(path, bundleRoots)) continue;
+    const [, mode, type, objectId] = match;
+    if (
+      (type === "tree" && mode !== "040000")
+      || (type === "blob" && mode !== "100644" && mode !== "100755")
+      || (type !== "tree" && type !== "blob")
+    ) {
+      throw new Error("committed registry tree contains unsupported entry: " + path);
+    }
+    if (entries.has(path)) throw new Error("committed registry tree contains duplicate paths");
+    entries.set(path, Object.freeze({ mode, type, objectId }));
+  }
+  for (const path of [...exactFiles, ...bundleRoots]) {
+    if (!entries.has(path)) throw new Error("committed registry tree is missing: " + path);
+  }
+  return entries;
+}
+
+function parseIndexEntries({ root, pathspecs }) {
+  const output = runGit(
+    root,
+    ["ls-files", "-v", "-z", "--", ...pathspecs],
+    "registry index flags could not be verified",
+  );
+  const paths = new Set();
+  for (const record of splitGitRecords(output, "registry index has invalid records")) {
+    if (record.length < 3 || record[1] !== " ") {
+      throw new Error("registry index has invalid records");
+    }
+    const flag = record[0];
+    const path = record.slice(2);
+    if (flag !== "H") {
+      throw new Error("consumed registry paths use unsupported index flags: " + path);
+    }
+    if (paths.has(path)) throw new Error("registry index contains duplicate paths");
+    paths.add(path);
+  }
+  return paths;
+}
+
+function gitBlobId(contents, objectFormat) {
+  return createHash(objectFormat)
+    .update(Buffer.from(`blob ${contents.length}\0`, "utf8"))
+    .update(contents)
+    .digest("hex");
+}
+
+function sameFileIdentity(left, right) {
+  return left.dev === right.dev && left.ino === right.ino && left.size === right.size;
+}
+
+function snapshotWorktreeEntry({ root, relativePath, objectFormat, entries }) {
+  const path = resolve(root, relativePath);
+  let before;
+  try {
+    before = lstatSync(path);
+  } catch {
+    throw new Error("working registry tree differs from committed registry tree: " + relativePath);
+  }
+  if (before.isSymbolicLink() || (!before.isDirectory() && !before.isFile())) {
+    throw new Error("working registry tree contains unsupported entry: " + relativePath);
+  }
+  if (entries.has(relativePath)) {
+    throw new Error("working registry tree contains duplicate paths: " + relativePath);
+  }
+  if (before.isFile()) {
+    const contents = readFileSync(path);
+    const after = lstatSync(path);
+    if (!after.isFile() || after.isSymbolicLink() || !sameFileIdentity(before, after)) {
+      throw new Error("working registry tree changed while reading: " + relativePath);
+    }
+    entries.set(relativePath, Object.freeze({
+      mode: (after.mode & 0o111) === 0 ? "100644" : "100755",
+      type: "blob",
+      objectId: gitBlobId(contents, objectFormat),
+    }));
+    return;
+  }
+  entries.set(relativePath, Object.freeze({ mode: "040000", type: "tree" }));
+  const names = readdirSync(path).sort(compareCodePoints);
+  for (const name of names) {
+    snapshotWorktreeEntry({
+      root,
+      relativePath: relativePath + "/" + name,
+      objectFormat,
+      entries,
+    });
+  }
+  const namesAfter = readdirSync(path).sort(compareCodePoints);
+  const after = lstatSync(path);
+  if (
+    !after.isDirectory()
+    || after.isSymbolicLink()
+    || before.dev !== after.dev
+    || before.ino !== after.ino
+    || !sameValues(names, namesAfter)
+  ) {
+    throw new Error("working registry tree changed while reading: " + relativePath);
+  }
+}
+
+function snapshotWorktree({ root, pluginNames, objectFormat }) {
+  const entries = new Map();
+  for (const relativePath of ["registry/catalog.json", "registry/lock.json"]) {
+    snapshotWorktreeEntry({ root, relativePath, objectFormat, entries });
+  }
+  for (const name of pluginNames) {
+    snapshotWorktreeEntry({
+      root,
+      relativePath: `plugins/${name}`,
+      objectFormat,
+      entries,
+    });
+  }
+  return entries;
+}
+
+function assertSameRegistryTree(expected, actual) {
+  if (expected.size !== actual.size) {
+    throw new Error("working registry tree differs from committed registry tree");
+  }
+  for (const [path, committed] of expected) {
+    const working = actual.get(path);
+    if (
+      !working
+      || working.mode !== committed.mode
+      || working.type !== committed.type
+      || (committed.type === "blob" && working.objectId !== committed.objectId)
+    ) {
+      throw new Error("working registry tree differs from committed registry tree: " + path);
+    }
+  }
 }
 
 function normalizeRevisionNames(names, knownNames) {
@@ -473,16 +679,16 @@ function normalizeRevisionNames(names, knownNames) {
   return normalized;
 }
 
-function assertCommittedRevision({ root, revision, pluginNames }) {
-  const before = gitHead(root);
+function assertCommittedRevision({ root, revision, objectFormat: claimedFormat, pluginNames }) {
+  const objectFormat = gitObjectFormat(root);
+  if (claimedFormat !== undefined && claimedFormat !== objectFormat) {
+    throw new Error("registry Git object format changed after revision claim");
+  }
+  const before = gitHead(root, objectFormat);
   if (revision !== undefined && before !== revision) {
     throw new Error("registry Git HEAD changed after revision claim");
   }
-  const pathspecs = [
-    "registry/catalog.json",
-    "registry/lock.json",
-    ...pluginNames.map((name) => `plugins/${name}`),
-  ];
+  const pathspecs = consumedRevisionPaths(pluginNames);
   const status = runGit(
     root,
     ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ...pathspecs],
@@ -491,11 +697,32 @@ function assertCommittedRevision({ root, revision, pluginNames }) {
   if (status.length !== 0) {
     throw new Error("consumed registry paths are not committed at registry revision");
   }
-  const after = gitHead(root);
+  const committed = parseHeadTree({
+    root,
+    revision: before,
+    objectFormat,
+    pluginNames,
+    pathspecs,
+  });
+  const indexPaths = parseIndexEntries({ root, pathspecs });
+  const committedFiles = new Set(
+    [...committed].filter(([, entry]) => entry.type === "blob").map(([path]) => path),
+  );
+  if (
+    indexPaths.size !== committedFiles.size
+    || [...committedFiles].some((path) => !indexPaths.has(path))
+  ) {
+    throw new Error("registry index differs from committed registry tree");
+  }
+  assertSameRegistryTree(
+    committed,
+    snapshotWorktree({ root, pluginNames, objectFormat }),
+  );
+  const after = gitHead(root, objectFormat);
   if (after !== before || (revision !== undefined && after !== revision)) {
     throw new Error("registry Git HEAD changed after revision claim");
   }
-  return after;
+  return Object.freeze({ revision: after, objectFormat });
 }
 
 export function claimRegistryRevision(reader, pluginNames) {
@@ -503,7 +730,7 @@ export function claimRegistryRevision(reader, pluginNames) {
   if (!select) throw new Error("revision claim requires a trusted registry reader");
   const selected = select();
   const names = normalizeRevisionNames(pluginNames, selected.pluginNames);
-  const revision = assertCommittedRevision({
+  const committed = assertCommittedRevision({
     root: selected.root,
     pluginNames: names,
   });
@@ -512,7 +739,8 @@ export function claimRegistryRevision(reader, pluginNames) {
     reader,
     root: selected.root,
     pluginNames: Object.freeze(names),
-    revision,
+    revision: committed.revision,
+    objectFormat: committed.objectFormat,
   }));
   return claim;
 }
@@ -532,6 +760,7 @@ export function assertRegistryRevisionClaim(reader, claim, pluginNames) {
   return assertCommittedRevision({
     root: trusted.root,
     revision: trusted.revision,
+    objectFormat: trusted.objectFormat,
     pluginNames: trusted.pluginNames,
-  });
+  }).revision;
 }

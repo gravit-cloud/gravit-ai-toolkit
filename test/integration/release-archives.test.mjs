@@ -246,7 +246,7 @@ function assertSafeArchive(pluginName, archive, locked) {
     sourceTargetDigest: locked.bundleDigest,
     materializedDigest: locked.bundleDigest,
   });
-  assert.match(receipt.registryRevision, /^[a-f0-9]{40}$/u);
+  assert.match(receipt.registryRevision, /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u);
 }
 
 test("builds one safe deterministic universal archive for every verified plugin", async (context) => {

@@ -15,6 +15,7 @@ import { dirname, resolve } from "node:path";
 import { buildPluginBundle } from "../../scripts/lib/bundle-builder.mjs";
 import { treeHash } from "../../scripts/lib/hash.mjs";
 import { walkFiles } from "../../scripts/lib/path-safety.mjs";
+import { renderCodexFormatTarget } from "../../scripts/lib/targets/codex.mjs";
 import { validateRecursiveSkills } from "../../scripts/lib/validator.mjs";
 
 function writeSourceFile(sourceRoot, relativePath, contents, mode) {
@@ -279,6 +280,74 @@ test("OpenClaw preserves disjoint source trees whose preferred namespaces overla
   assert.equal(
     existsSync(resolve(bundleRoot, "targets/openclaw/assets/plugin-layout/schema/templates.json")),
     true,
+  );
+});
+
+test("OpenClaw preserves nested empty directories and their modes", (context) => {
+  const { sourceRoot, bundleRoot } = fixture(context);
+  const stateRoot = resolve(sourceRoot, "scripts/runtime-state");
+  const emptyRoot = resolve(stateRoot, "empty");
+  mkdirSync(emptyRoot, { recursive: true });
+  chmodSync(stateRoot, 0o750);
+  chmodSync(emptyRoot, 0o710);
+  const openClawPlugin = {
+    ...plugin(),
+    targets: ["openclaw"],
+    adapterOptions: { openclaw: { bundleFormat: "codex" } },
+    targetPolicies: {
+      openclaw: {
+        unsupported: { hook: "openclaw-does-not-run-claude-hook-json" },
+      },
+    },
+  };
+
+  buildPluginBundle({ plugin: openClawPlugin, sourceRoot, bundleRoot });
+  const projectedState = resolve(
+    bundleRoot,
+    "targets/openclaw/bin/plugin-layout/scripts/runtime-state",
+  );
+  assert.equal(statSync(projectedState).mode & 0o777, 0o750);
+  assert.equal(statSync(resolve(projectedState, "empty")).mode & 0o777, 0o710);
+});
+
+test("OpenClaw rejects source components that still overlap after safe relocation", (context) => {
+  const { sourceRoot, bundleRoot } = fixture(context);
+  const nestedEmpty = resolve(sourceRoot, "scripts/empty");
+  mkdirSync(nestedEmpty);
+  mkdirSync(bundleRoot);
+  const records = [
+    {
+      id: "whole-scripts",
+      type: "executable",
+      sourceFormat: "path",
+      sourcePath: resolve(sourceRoot, "scripts"),
+      metadata: { relativePath: "scripts" },
+    },
+    {
+      id: "nested-empty",
+      type: "executable",
+      sourceFormat: "path",
+      sourcePath: nestedEmpty,
+      metadata: { relativePath: "scripts/empty" },
+    },
+  ];
+  const neutralComponents = records.map(({ id, type }) => ({
+    id,
+    type,
+    targets: {
+      openclaw: { status: "preserved", reasonCode: "native-component" },
+    },
+  }));
+
+  assert.throws(
+    () => renderCodexFormatTarget({
+      plugin: plugin(),
+      inventory: { components: records, skills: [] },
+      neutralComponents,
+      bundleRoot,
+      target: "openclaw",
+    }),
+    /duplicate target component destination/,
   );
 });
 
