@@ -56,7 +56,7 @@ function fixtureRepository(context) {
   file(resolve(repositoryRoot, ".agents/plugins/marketplace.json"), "{}\n");
   file(
     resolve(repositoryRoot, "plugins/azure/targets/openclaw/.codex-plugin/plugin.json"),
-    '{"name":"azure","version":"1.2.5-gravit.3"}\n',
+    '{"name":"azure","version":"1.2.5-gravit.4"}\n',
   );
   return repositoryRoot;
 }
@@ -109,7 +109,7 @@ function successfulResult(spec) {
       plugins: [{
         id: "azure",
         name: "azure",
-        version: "1.2.5-gravit.3",
+        version: "1.2.5-gravit.4",
         format: "bundle",
         bundleFormat: "codex",
         source: openclaw?.installPath,
@@ -124,7 +124,7 @@ function successfulResult(spec) {
       plugin: {
         id: "azure",
         name: "azure",
-        version: "1.2.5-gravit.3",
+        version: "1.2.5-gravit.4",
         format: "bundle",
         bundleFormat: "codex",
         bundleCapabilities: ["skills", "mcpServers"],
@@ -143,7 +143,7 @@ function successfulResult(spec) {
         source: "path",
         sourcePath: openclaw?.sourcePath,
         installPath: openclaw?.installPath,
-        version: "1.2.5-gravit.3",
+        version: "1.2.5-gravit.4",
         installedAt: "2026-08-01T12:00:00.000Z",
       },
     }),

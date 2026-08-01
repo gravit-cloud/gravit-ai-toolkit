@@ -76,19 +76,16 @@ function nativeDestination({ component, targetRoot, target }) {
   return assertInside(targetRoot, resolve(targetRoot, nested), "target component");
 }
 
-function preserveOpenClawCollidingLayouts(nativePlans, targetRoot) {
-  const collisions = new Set();
-  for (const [index, left] of nativePlans.entries()) {
-    for (const right of nativePlans.slice(index + 1)) {
-      if (pathsOverlap(left.destination, right.destination)) {
-        collisions.add(left.component.id);
-        collisions.add(right.component.id);
-      }
-    }
-  }
-  for (const plan of nativePlans) {
-    if (!collisions.has(plan.component.id) || plan.component.sourceFormat !== "path") continue;
-    const root = plan.component.type === "asset" ? "assets" : "bin";
+function preserveOpenClawSharedLayout(nativePlans, targetRoot) {
+  const pathPlans = nativePlans.filter(({ component }) => (
+    component.sourceFormat === "path"
+      && ["asset", "executable"].includes(component.type)
+  ));
+  if (pathPlans.length <= 1) return;
+  const root = pathPlans.some(({ component }) => component.type === "executable")
+    ? "bin"
+    : "assets";
+  for (const plan of pathPlans) {
     plan.destination = assertInside(
       targetRoot,
       resolve(targetRoot, root, "plugin-layout", relativeSourcePath(plan.component)),
@@ -176,7 +173,7 @@ export function renderCodexFormatTarget({
     skillRoot,
   ];
   if (target === "openclaw") {
-    preserveOpenClawCollidingLayouts(nativePlans, targetRoot);
+    preserveOpenClawSharedLayout(nativePlans, targetRoot);
   }
   const orderedNativePlans = nativePlans.sort((left, right) => (
     compareCodePoints(left.destination, right.destination)

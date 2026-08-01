@@ -59,7 +59,7 @@ Materialisierung ist unveränderlich und write-once. Der unmittelbare Parent mus
 
 ```bash
 PLUGIN=azure
-DISTRIBUTION_VERSION=1.2.5-gravit.3
+DISTRIBUTION_VERSION=1.2.5-gravit.4
 REGISTRY_REVISION="$(git rev-parse HEAD)"
 TARGET_PARENT="/opt/gravit/plugins/$PLUGIN/$DISTRIBUTION_VERSION/$REGISTRY_REVISION"
 
@@ -92,9 +92,11 @@ HEAD-Wechsel während der Veröffentlichung brechen den Vorgang ab.
 
 Der aktuelle Adapter erzeugt ein Codex-formatkompatibles Bundle, das OpenClaw im oben gezeigten Cold-Flow installieren und im deaktivierten Zustand statisch inspizieren kann. `plugins list --json` und `plugins inspect azure --json` werden dabei ausdrücklich ohne `--runtime` ausgeführt. Er lädt keinen nativen In-Process-Plugin-Code. Nicht unterstützte Komponenten bleiben im neutralen Manifest ausdrücklich markiert, beispielsweise Claude-Hook-JSON. Erfolgreiche Installation oder Inspektion ist deshalb keine pauschale Laufzeit-Kompatibilitätsgarantie.
 
-Ausführbare Ressourcen und Assets liegen ausschließlich unter `bin/` beziehungsweise
-`assets/`. Wenn mehrere Quellbäume relative Laufzeitbeziehungen besitzen, bewahrt
-der Adapter ihr gemeinsames Layout in einem sicheren `plugin-layout`-Unterbaum.
+Ausführbare Ressourcen und Assets liegen ausschließlich unter den sicheren Wurzeln
+`bin/` oder `assets/`. Sobald ein Plugin mehrere Pfadressourcen enthält, bewahrt der
+Adapter ihr gemeinsames Layout in einem `plugin-layout`-Unterbaum. Enthält diese
+Gruppe mindestens eine ausführbare Ressource, liegt der gesamte Baum unter `bin/`;
+reine Asset-Gruppen liegen unter `assets/`.
 Markdown-Links auf katalogisierte Ressourcen werden auf das Ziel umgeschrieben;
 beliebiger Text oder Code-Spans werden nicht als Pfadsemantik interpretiert.
 

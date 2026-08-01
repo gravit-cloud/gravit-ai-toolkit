@@ -62,7 +62,18 @@ function fixture(context) {
     "#!/bin/sh\nexec python3 \"$(dirname \"$0\")/../scripts/runtime.py\"\n",
     0o755,
   );
-  writeSourceFile(sourceRoot, "scripts/runtime.py", "print('fixture')\n", 0o751);
+  writeSourceFile(
+    sourceRoot,
+    "scripts/runtime.py",
+    "from pathlib import Path\nREQUIREMENTS = Path(__file__).resolve().parent.parent / 'requirements.txt'\n",
+    0o751,
+  );
+  writeSourceFile(
+    sourceRoot,
+    "scripts/seo_updates.py",
+    "from pathlib import Path\nDATA = Path(__file__).resolve().parents[1] / 'data' / 'google-updates.json'\n",
+    0o751,
+  );
   writeSourceFile(sourceRoot, "extensions/tool/install.sh", "#!/bin/sh\n", 0o755);
   writeSourceFile(
     sourceRoot,
@@ -84,6 +95,7 @@ function fixture(context) {
   for (const path of [
     "schema/templates.json",
     "data/profile.json",
+    "data/google-updates.json",
     "pdf/template.html",
     "screenshots/example.txt",
   ]) {
@@ -195,7 +207,13 @@ test("OpenClaw relocates path resources under safe namespaces and rewrites skill
   assert.equal(existsSync(launcher), true);
   assert.deepEqual(readFileSync(launcher), readFileSync(resolve(sourceRoot, "bin/claude-seo")));
   assert.match(readFileSync(launcher, "utf8"), /\.\.\/scripts\/runtime\.py/u);
-  assert.equal(existsSync(resolve(dirname(launcher), "../scripts/runtime.py")), true);
+  const runtime = resolve(dirname(launcher), "../scripts/runtime.py");
+  const seoUpdates = resolve(dirname(launcher), "../scripts/seo_updates.py");
+  assert.equal(existsSync(runtime), true);
+  assert.match(readFileSync(runtime, "utf8"), /parent\.parent \/ 'requirements\.txt'/u);
+  assert.equal(existsSync(resolve(dirname(runtime), "../requirements.txt")), true);
+  assert.match(readFileSync(seoUpdates, "utf8"), /parents\[1\] \/ 'data' \/ 'google-updates\.json'/u);
+  assert.equal(existsSync(resolve(dirname(seoUpdates), "../data/google-updates.json")), true);
   const targetFiles = walkFiles(targetRoot)
     .map((path) => path.slice(targetRoot.length + 1));
   for (const suffix of [
@@ -240,9 +258,7 @@ test("OpenClaw relocates path resources under safe namespaces and rewrites skill
     }
     assert.match(
       component.targets.openclaw.path,
-      component.type === "asset"
-        ? /^targets\/openclaw\/assets(?:\/|$)/u
-        : /^targets\/openclaw\/bin(?:\/|$)/u,
+      /^targets\/openclaw\/bin\/plugin-layout(?:\/|$)/u,
       component.id,
     );
   }
@@ -274,11 +290,11 @@ test("OpenClaw preserves disjoint source trees whose preferred namespaces overla
     () => buildPluginBundle({ plugin: openClawPlugin, sourceRoot, bundleRoot }),
   );
   assert.equal(
-    existsSync(resolve(bundleRoot, "targets/openclaw/assets/plugin-layout/assets/schema/templates.json")),
+    existsSync(resolve(bundleRoot, "targets/openclaw/bin/plugin-layout/assets/schema/templates.json")),
     true,
   );
   assert.equal(
-    existsSync(resolve(bundleRoot, "targets/openclaw/assets/plugin-layout/schema/templates.json")),
+    existsSync(resolve(bundleRoot, "targets/openclaw/bin/plugin-layout/schema/templates.json")),
     true,
   );
 });

@@ -70,10 +70,10 @@ test("production catalog is neutral and fully pinned", () => {
   assert.deepEqual(
     catalog.plugins.map((plugin) => plugin.distributionVersion),
     [
-      "2.2.4-gravit.3",
+      "2.2.4-gravit.4",
       "1.0.1-gravit.2",
       "1.1.0-gravit.2",
-      "1.2.5-gravit.3",
+      "1.2.5-gravit.4",
       "6.2.0-gravit.2",
       "1.0.0-gravit.3",
     ],
@@ -215,7 +215,11 @@ test("production OpenClaw resources stay in safe namespaces with runtime-relativ
     assert.equal(existsSync(resolve(root, "hooks")), false);
   }
   assert.equal(
-    existsSync(resolve(azureRoot, "bin/hooks/scripts/track-telemetry.sh")),
+    existsSync(resolve(azureRoot, "bin/plugin-layout/hooks/scripts/track-telemetry.sh")),
+    true,
+  );
+  assert.equal(
+    existsSync(resolve(azureRoot, "bin/plugin-layout/assets/azure-plugin-in-claude.png")),
     true,
   );
 
@@ -226,7 +230,18 @@ test("production OpenClaw resources stay in safe namespaces with runtime-relativ
     readFileSync(resolve(repositoryRoot, "plugins/claude-seo/targets/codex/bin/claude-seo")),
   );
   assert.match(readFileSync(launcher, "utf8"), /\.\.\/scripts\/runtime\.py/u);
-  assert.equal(existsSync(resolve(dirname(launcher), "../scripts/runtime.py")), true);
+  const runtime = resolve(dirname(launcher), "../scripts/runtime.py");
+  const seoUpdates = resolve(dirname(launcher), "../scripts/seo_updates.py");
+  assert.equal(existsSync(runtime), true);
+  assert.match(readFileSync(runtime, "utf8"), /parent\.parent/u);
+  assert.equal(existsSync(resolve(dirname(runtime), "../requirements.txt")), true);
+  assert.match(readFileSync(seoUpdates, "utf8"), /parents\[1\].*"data".*"google-updates\.json"/u);
+  assert.equal(existsSync(resolve(dirname(seoUpdates), "../data/google-updates.json")), true);
+  for (const root of [azureRoot, seoRoot]) {
+    for (const forbidden of ["data", "hooks", "requirements.txt", "scripts"]) {
+      assert.equal(existsSync(resolve(root, forbidden)), false, `${root}:${forbidden}`);
+    }
+  }
 });
 
 test("production build promotes only complete managed registry artifacts", (context) => {

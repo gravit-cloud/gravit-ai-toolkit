@@ -2,12 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   appendFileSync,
+  chmodSync,
   cpSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -329,6 +331,70 @@ test("revision claims reject ignored files and untracked empty directories", (co
       mutation,
     );
   }
+});
+
+test("revision claims reject non-canonical POSIX file modes hidden from Git status", (context) => {
+  for (const { committedMode, workingMode } of [
+    { committedMode: 0o755, workingMode: 0o777 },
+    { committedMode: 0o644, workingMode: 0o666 },
+    { committedMode: 0o644, workingMode: 0o600 },
+  ]) {
+    const root = fixtureRegistry(context);
+    const relativePath = "plugins/nested-skills/LICENSE";
+    const path = resolve(root, relativePath);
+    chmodSync(path, committedMode);
+    runGit(root, "add", "--", relativePath);
+    runGit(
+      root,
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "--allow-empty",
+      "-q",
+      "-m",
+      `canonical mode ${committedMode.toString(8)}`,
+    );
+    chmodSync(path, workingMode);
+    assert.equal(runGit(root, "status", "--porcelain=v1", "--", relativePath), "");
+
+    assert.throws(
+      () => registryReader.claimRegistryRevision(openRegistry(root), ["nested-skills"]),
+      /non-canonical POSIX mode/,
+      `${committedMode.toString(8)} -> ${workingMode.toString(8)}`,
+    );
+  }
+});
+
+test("revision claims reject a setuid executable mode when the filesystem supports it", (context) => {
+  const root = fixtureRegistry(context);
+  const relativePath = "plugins/nested-skills/LICENSE";
+  const path = resolve(root, relativePath);
+  chmodSync(path, 0o755);
+  runGit(root, "add", "--", relativePath);
+  runGit(root, "-c", "commit.gpgsign=false", "commit", "-q", "-m", "executable fixture");
+  chmodSync(path, 0o4755);
+  if ((statSync(path).mode & 0o7777) !== 0o4755) {
+    context.skip("filesystem sandbox does not permit setting setuid");
+    return;
+  }
+  assert.equal(runGit(root, "status", "--porcelain=v1", "--", relativePath), "");
+
+  assert.throws(
+    () => registryReader.claimRegistryRevision(openRegistry(root), ["nested-skills"]),
+    /non-canonical POSIX mode/,
+  );
+});
+
+test("revision claims reject non-canonical POSIX directory modes hidden from Git status", (context) => {
+  const root = fixtureRegistry(context);
+  const relativePath = "plugins/nested-skills/targets";
+  chmodSync(resolve(root, relativePath), 0o777);
+  assert.equal(runGit(root, "status", "--porcelain=v1", "--", relativePath), "");
+
+  assert.throws(
+    () => registryReader.claimRegistryRevision(openRegistry(root), ["nested-skills"]),
+    /non-canonical POSIX mode/,
+  );
 });
 
 test("revision claims support SHA-256 Git object IDs", (context) => {
