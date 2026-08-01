@@ -47,10 +47,6 @@ function permissionMode(stats) {
   return stats.mode & 0o7777;
 }
 
-function writableDirectoryMode(mode) {
-  return mode | 0o700;
-}
-
 function safeOutputPath(requestedPath) {
   if (typeof requestedPath !== "string" || requestedPath.length === 0) {
     throw new Error("materialization output must be a non-empty path");
@@ -100,10 +96,13 @@ function assertRootIdentity(path, expected, label) {
   }
 }
 
-function bindDirectoryMode(path, mode, label) {
+function claimCreatedDirectory(path, mode, label) {
   const before = lstatSync(path);
   if (before.isSymbolicLink() || !before.isDirectory()) {
     throw new Error(label + " must be a real directory: " + path);
+  }
+  if (permissionMode(before) !== mode) {
+    throw new Error(label + " directory mode mismatch: " + path);
   }
   let descriptor;
   try {
@@ -115,19 +114,16 @@ function bindDirectoryMode(path, mode, label) {
     if (!opened.isDirectory() || !sameIdentity(before, opened)) {
       throw new Error(label + " ownership changed: " + path);
     }
-    fchmodSync(descriptor, mode);
-    const after = fstatSync(descriptor);
     const bound = lstatSync(path);
     if (
-      !after.isDirectory()
-      || !sameIdentity(opened, after)
-      || !sameIdentity(after, bound)
+      !sameIdentity(opened, bound)
       || bound.isSymbolicLink()
-      || permissionMode(after) !== mode
+      || !bound.isDirectory()
+      || permissionMode(bound) !== mode
     ) {
       throw new Error(label + " ownership changed: " + path);
     }
-    return { device: after.dev, inode: after.ino };
+    return { device: opened.dev, inode: opened.ino };
   } finally {
     if (descriptor !== undefined) closeSync(descriptor);
   }
@@ -204,13 +200,9 @@ function copyClaimExclusively({
   outputIdentity,
   sourceClaim,
   beforeEntryCreate,
+  afterDirectoryCreate,
 }) {
   const directoryIdentities = new Map([[".", outputIdentity]]);
-  const directories = [{
-    path: outputRoot,
-    identity: outputIdentity,
-    mode: sourceClaim.entries[0].mode,
-  }];
 
   function assertDestinationParents(relativePath) {
     const segments = relativePath.split("/");
@@ -246,37 +238,29 @@ function copyClaimExclusively({
     });
     assertDestinationParents(entry.relativePath);
     if (entry.type === "directory") {
-      const temporaryMode = writableDirectoryMode(entry.mode);
-      mkdirSync(destination, { mode: temporaryMode });
-      const identity = bindDirectoryMode(
+      mkdirSync(destination, { mode: entry.mode });
+      const identity = claimCreatedDirectory(
         destination,
-        temporaryMode,
+        entry.mode,
+        "materialization destination directory",
+      );
+      afterDirectoryCreate({
+        outputPath: outputRoot,
+        destination,
+        relativePath: entry.relativePath,
+      });
+      assertRootIdentity(
+        destination,
+        identity,
         "materialization destination directory",
       );
       directoryIdentities.set(entry.relativePath, identity);
-      directories.push({ path: destination, identity, mode: entry.mode });
     } else {
       createExclusiveFile(
         sourceRoot,
         outputRoot,
         entry,
         assertDestinationParents,
-      );
-    }
-  }
-
-  for (const directory of directories.reverse()) {
-    const actual = bindDirectoryMode(
-      directory.path,
-      directory.mode,
-      "materialization destination directory",
-    );
-    if (
-      actual.device !== directory.identity.device
-      || actual.inode !== directory.identity.inode
-    ) {
-      throw new Error(
-        "materialization destination directory ownership changed: " + directory.path,
       );
     }
   }
@@ -292,10 +276,9 @@ function incompleteMaterialization(error, outputPath) {
   return retained;
 }
 
-function writeReceiptExclusive(path, receipt, beforeOpen) {
+function writeReceiptExclusive(path, receipt) {
   let descriptor;
   try {
-    beforeOpen({ receiptPath: path });
     descriptor = openSync(
       path,
       constants.O_WRONLY
@@ -395,7 +378,9 @@ export function materialize({
 
   const beforeOutputCreate = publicationHooks.beforeOutputCreate ?? (() => {});
   const beforeOutputMkdir = publicationHooks.beforeOutputMkdir ?? (() => {});
+  const afterOutputMkdir = publicationHooks.afterOutputMkdir ?? (() => {});
   const beforeEntryCreate = publicationHooks.beforeEntryCreate ?? (() => {});
+  const afterDirectoryCreate = publicationHooks.afterDirectoryCreate ?? (() => {});
   const afterCopy = publicationHooks.afterCopy ?? (() => {});
   const beforeReceiptCreate = publicationHooks.beforeReceiptCreate ?? (() => {});
   const beforeReceiptOpen = publicationHooks.beforeReceiptOpen ?? (() => {});
@@ -415,7 +400,7 @@ export function materialize({
   beforeOutputMkdir({ outputPath });
 
   try {
-    mkdirSync(outputPath, { mode: writableDirectoryMode(sourceClaim.entries[0].mode) });
+    mkdirSync(outputPath, { mode: sourceClaim.entries[0].mode });
   } catch (error) {
     if (error.code === "EEXIST") {
       throw new Error("materialization output already exists: " + outputPath, { cause: error });
@@ -424,11 +409,13 @@ export function materialize({
   }
 
   try {
-    const outputIdentity = bindDirectoryMode(
+    const outputIdentity = claimCreatedDirectory(
       outputPath,
-      writableDirectoryMode(sourceClaim.entries[0].mode),
+      sourceClaim.entries[0].mode,
       "materialization output",
     );
+    afterOutputMkdir({ outputPath });
+    assertRootIdentity(outputPath, outputIdentity, "materialization output");
     assertParentClaim(parentPath, parentIdentity);
     copyClaimExclusively({
       sourceRoot: source.targetRoot,
@@ -436,6 +423,7 @@ export function materialize({
       outputIdentity,
       sourceClaim,
       beforeEntryCreate,
+      afterDirectoryCreate,
     });
     afterCopy({ outputPath, source });
     assertParentClaim(parentPath, parentIdentity);
@@ -490,7 +478,20 @@ export function materialize({
     if (pathEntry(receiptPath)) {
       throw new Error("materialization output contains reserved receipt: " + receiptPath);
     }
-    writeReceiptExclusive(receiptPath, receipt, beforeReceiptOpen);
+    beforeReceiptOpen({ receiptPath });
+    assertParentClaim(parentPath, parentIdentity);
+    assertRootIdentity(outputPath, outputIdentity, "materialization output");
+    assertAtomicArtifactClaim(outputPath, copiedClaim, "copied materialization target");
+    assertAtomicArtifactClaim(source.bundleRoot, bundleClaim, pluginName + " source bundle");
+    assertAtomicArtifactClaim(
+      source.targetRoot,
+      sourceClaim,
+      pluginName + " source target " + target,
+    );
+    if (pathEntry(receiptPath)) {
+      throw new Error("materialization output contains reserved receipt: " + receiptPath);
+    }
+    writeReceiptExclusive(receiptPath, receipt);
     return receipt;
   } catch (error) {
     throw incompleteMaterialization(error, outputPath);
