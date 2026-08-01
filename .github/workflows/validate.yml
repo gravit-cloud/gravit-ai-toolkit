@@ -25,61 +25,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -eu
-          case "$BASE_SHA" in
-            ''|*[!0-9a-fA-F]*)
-              printf '%s\n' 'BASE_SHA must be a full hexadecimal Git object id' >&2
-              exit 1
-              ;;
-          esac
-          OBJECT_FORMAT="$(git rev-parse --show-object-format)"
-          case "$OBJECT_FORMAT" in
-            sha1) OBJECT_ID_LENGTH=40 ;;
-            sha256) OBJECT_ID_LENGTH=64 ;;
-            *)
-              printf '%s\n' 'unsupported Git object format' >&2
-              exit 1
-              ;;
-          esac
-          if [ "${#BASE_SHA}" -ne "$OBJECT_ID_LENGTH" ]; then
-            printf '%s\n' 'BASE_SHA must be a full hexadecimal Git object id' >&2
-            exit 1
-          fi
-          BASE_COMMIT="$(git rev-parse --verify --end-of-options "${BASE_SHA}^{commit}")"
-          case "$BASE_COMMIT" in
-            ''|*[!0-9a-f]*)
-              printf '%s\n' 'base commit did not resolve to a full object id' >&2
-              exit 1
-              ;;
-          esac
-          if [ "${#BASE_COMMIT}" -ne "$OBJECT_ID_LENGTH" ]; then
-            printf '%s\n' 'base commit did not resolve to a full object id' >&2
-            exit 1
-          fi
-          REGISTRY_BASE_COMMIT="$(git merge-base -- HEAD "$BASE_COMMIT")"
-          case "$REGISTRY_BASE_COMMIT" in
-            ''|*[!0-9a-f]*)
-              printf '%s\n' 'merge base did not resolve to a full object id' >&2
-              exit 1
-              ;;
-          esac
-          if [ "${#REGISTRY_BASE_COMMIT}" -ne "$OBJECT_ID_LENGTH" ]; then
-            printf '%s\n' 'merge base did not resolve to a full object id' >&2
-            exit 1
-          fi
-          LOCK_ENTRY="$(git ls-tree "$REGISTRY_BASE_COMMIT" -- registry/lock.json)"
-          if [ -n "$LOCK_ENTRY" ]; then
-            LOCK_MODE="${LOCK_ENTRY%% *}"
-            if [ "$LOCK_MODE" != '100644' ]; then
-              printf '%s\n' 'merge-base registry lock must be a regular non-executable file' >&2
-              exit 1
-            fi
-            git cat-file blob "${REGISTRY_BASE_COMMIT}:registry/lock.json" \
-              > "$RUNNER_TEMP/gravit-base-lock.json"
-          else
-            printf '%s\n' '{"plugins":{}}' > "$RUNNER_TEMP/gravit-base-lock.json"
-          fi
+        run: node scripts/extract-base-lock.mjs --base-sha "$BASE_SHA" --output "$RUNNER_TEMP/gravit-base-lock.json"
       - name: Validate version identity
         if: github.event_name == 'pull_request'
         run: node scripts/validate.mjs --compare-lock "$RUNNER_TEMP/gravit-base-lock.json"

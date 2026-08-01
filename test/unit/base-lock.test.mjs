@@ -12,6 +12,10 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateVersionHistory } from "../../scripts/lib/validator.mjs";
+import {
+  parseCompareLockJson,
+  parseValidateArguments,
+} from "../../scripts/validate.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const validateScript = resolve(repositoryRoot, "scripts/validate.mjs");
@@ -239,7 +243,7 @@ test("does not mutate frozen history inputs", () => {
   assert.equal(baseLock.plugins.azure.bundleDigest, "b".repeat(64));
 });
 
-test("CLI rejects unknown, repeated, missing, and extra arguments before reading files", () => {
+test("validate argument parser rejects unknown, repeated, missing, and extra arguments", () => {
   const cases = [
     ["--unknown", "/definitely/not/a/lock.json"],
     ["--compare-lock"],
@@ -247,55 +251,63 @@ test("CLI rejects unknown, repeated, missing, and extra arguments before reading
     ["--compare-lock", "/not/read.json", "--compare-lock", "/also-not-read.json"],
   ];
   for (const args of cases) {
-    const result = runValidate(args);
-    assert.equal(result.status, 1, `${args.join(" ")}\n${result.stdout}\n${result.stderr}`);
-    assert.match(result.stderr, /usage: node scripts\/validate\.mjs \[--compare-lock <path>\]/);
-    assert.doesNotMatch(result.stderr, /ENOENT|not\/a\/lock|not\/read|also-not-read/);
+    assert.throws(
+      () => parseValidateArguments(args),
+      /usage: node scripts\/validate\.mjs \[--compare-lock <path>\]/,
+    );
   }
+  assert.deepEqual(parseValidateArguments([]), {});
+  assert.deepEqual(parseValidateArguments(["--compare-lock", "base.json"]), {
+    comparePath: "base.json",
+  });
 });
 
-test("CLI reports collisions from a JSON base lock", (context) => {
-  const temporaryRoot = temporaryDirectory(context);
+test("real validate CLI rejects arguments before reading their paths", () => {
+  const result = runValidate(["--unknown", "/definitely/not/a/lock.json"]);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  assert.match(result.stderr, /usage: node scripts\/validate\.mjs \[--compare-lock <path>\]/);
+  assert.doesNotMatch(result.stderr, /ENOENT|not\/a\/lock/);
+});
+
+test("compare-lock JSON feeds the pure identity collision boundary", () => {
   const baseLock = JSON.parse(readFileSync(resolve(repositoryRoot, "registry/lock.json"), "utf8"));
   const [name] = Object.keys(baseLock.plugins).sort();
   baseLock.plugins[name].bundleDigest = baseLock.plugins[name].bundleDigest === "a".repeat(64)
     ? "b".repeat(64)
     : "a".repeat(64);
-  const basePath = resolve(temporaryRoot, "base-lock.json");
-  writeFileSync(basePath, JSON.stringify(baseLock));
+  const currentLock = JSON.parse(readFileSync(resolve(repositoryRoot, "registry/lock.json"), "utf8"));
 
-  const result = runValidate(["--compare-lock", basePath]);
+  const errors = validateVersionHistory({
+    currentLock,
+    baseLock: parseCompareLockJson(JSON.stringify(baseLock)),
+  });
 
-  assert.equal(result.status, 1, result.stderr || result.stdout);
   assert.match(
-    result.stderr,
+    errors.join("\n"),
     new RegExp(`${name}: distributionVersion [^ ]+ already identifies another bundle`),
   );
 });
 
-test("CLI parses base data only as bounded JSON and rejects invalid shapes", (context) => {
+test("compare-lock parser treats input as bounded inert JSON and rejects invalid shapes", (context) => {
   const temporaryRoot = temporaryDirectory(context);
   const marker = resolve(temporaryRoot, "executed");
-  const malformedPath = resolve(temporaryRoot, "base-lock.mjs");
-  writeFileSync(
-    malformedPath,
-    `{${"x".repeat(10_000)}}; require("node:fs").writeFileSync(${JSON.stringify(marker)}, "bad")`,
-  );
+  const malformed = `{${"x".repeat(10_000)}}; require("node:fs").writeFileSync(${JSON.stringify(marker)}, "bad")`;
 
-  const malformed = runValidate(["--compare-lock", malformedPath]);
-  assert.equal(malformed.status, 1);
-  assert.match(malformed.stderr, /compare lock: invalid JSON/);
-  assert.equal(malformed.stderr.length < 500, true, malformed.stderr.length);
+  assert.throws(
+    () => parseCompareLockJson(malformed),
+    /compare lock: invalid JSON/,
+  );
   assert.equal(existsSync(marker), false);
 
-  const invalidShapePath = resolve(temporaryRoot, "invalid-shape.json");
-  writeFileSync(invalidShapePath, "{}\n");
-  const invalidShape = runValidate(["--compare-lock", invalidShapePath]);
-  assert.equal(invalidShape.status, 1);
-  assert.match(invalidShape.stderr, /base lock requires own plugins/);
+  const errors = validateVersionHistory({
+    currentLock: validLock(),
+    baseLock: parseCompareLockJson("{}\n"),
+  });
+  assert.equal(errors.some((error) => error.includes("base lock requires own plugins")), true);
 });
 
-test("validation workflow extracts only a fully identified merge-base lock", () => {
+test("validation workflow delegates merge-base extraction to the offline helper", () => {
   const workflow = readFileSync(resolve(repositoryRoot, ".github/workflows/validate.yml"), "utf8");
   const checkoutBlocks = workflow.split(/\n(?=\s*- uses: actions\/checkout@)/u).slice(1);
 
@@ -305,17 +317,15 @@ test("validation workflow extracts only a fully identified merge-base lock", () 
   assert.match(workflow, /name: Extract merge-base registry lock/u);
   assert.match(workflow, /if: github\.event_name == 'pull_request'/u);
   assert.match(workflow, /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/u);
-  assert.match(workflow, /git rev-parse --show-object-format/u);
-  assert.match(workflow, /git rev-parse --verify --end-of-options/u);
-  assert.match(workflow, /git merge-base -- HEAD "\$BASE_COMMIT"/u);
-  assert.match(workflow, /git ls-tree "\$REGISTRY_BASE_COMMIT" -- registry\/lock\.json/u);
-  assert.match(workflow, /"\$RUNNER_TEMP\/gravit-base-lock\.json"/u);
-  assert.match(workflow, /printf '%s\\n' '\{"plugins":\{\}\}'/u);
   assert.match(
     workflow,
-    /node scripts\/validate\.mjs --compare-lock "\$RUNNER_TEMP\/gravit-base-lock\.json"/u,
+    /run: node scripts\/extract-base-lock\.mjs --base-sha "\$BASE_SHA" --output "\$RUNNER_TEMP\/gravit-base-lock\.json"/u,
   );
-  assert.doesNotMatch(workflow, /git (?:fetch|checkout|worktree)/u);
+  assert.match(
+    workflow,
+    /run: node scripts\/validate\.mjs --compare-lock "\$RUNNER_TEMP\/gravit-base-lock\.json"/u,
+  );
+  assert.doesNotMatch(workflow, /run: \|[\s\S]*?git (?:fetch|checkout|worktree|rev-parse|merge-base|ls-tree|cat-file)/u);
 });
 
 function validLock() {
