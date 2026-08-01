@@ -6,7 +6,7 @@
       "name": "claude-seo",
       "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
       "category": "seo",
-      "distributionVersion": "2.2.4-gravit.3",
+      "distributionVersion": "2.2.4-gravit.4",
       "source": {
         "type": "github",
         "repo": "AgricIDaniel/claude-seo",
@@ -169,7 +169,7 @@
       "name": "azure",
       "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
       "category": "cloud",
-      "distributionVersion": "1.2.5-gravit.3",
+      "distributionVersion": "1.2.5-gravit.4",
       "runtimeDependencies": {
         "@azure/mcp": "2.0.5"
       },

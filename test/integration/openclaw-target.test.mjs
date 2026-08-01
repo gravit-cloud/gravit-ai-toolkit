@@ -47,8 +47,8 @@ test("renders one Codex-format OpenClaw bundle with honest statuses", (context) 
   assert.equal(existsSync(resolve(target, ".codex-plugin/plugin.json")), true);
   assert.equal(existsSync(resolve(target, "openclaw.plugin.json")), false);
   assert.equal(existsSync(resolve(target, ".mcp.json")), true);
-  assert.equal(existsSync(resolve(target, "assets/icon.svg")), true);
-  assert.equal(existsSync(resolve(target, "bin/helper")), true);
+  assert.equal(existsSync(resolve(target, "bin/plugin-layout/assets/icon.svg")), true);
+  assert.equal(existsSync(resolve(target, "bin/plugin-layout/bin/helper")), true);
   assert.equal(existsSync(resolve(target, "skills/release/SKILL.md")), true);
   assert.deepEqual(readJson(resolve(target, ".mcp.json")), {
     mcp_servers: {
@@ -61,10 +61,13 @@ test("renders one Codex-format OpenClaw bundle with honest statuses", (context) 
   });
   assert.doesNotMatch(readFileSync(resolve(target, ".mcp.json"), "utf8"), /@latest/);
   assert.deepEqual(
-    readFileSync(resolve(target, "bin/helper")),
+    readFileSync(resolve(target, "bin/plugin-layout/bin/helper")),
     readFileSync(resolve(completeFixtureRoot, "bin/helper")),
   );
-  assert.equal(statSync(resolve(target, "bin/helper")).mode & 0o777, 0o755);
+  assert.equal(
+    statSync(resolve(target, "bin/plugin-layout/bin/helper")).mode & 0o777,
+    0o755,
+  );
   const unsupported = Object.fromEntries(manifest.components
     .filter((component) => component.targets.openclaw.status === "unsupported")
     .map((component) => [component.type, component.targets.openclaw.reasonCode]));

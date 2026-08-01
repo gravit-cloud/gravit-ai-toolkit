@@ -576,7 +576,10 @@ function gitBlobId(contents, objectFormat) {
 }
 
 function sameFileIdentity(left, right) {
-  return left.dev === right.dev && left.ino === right.ino && left.size === right.size;
+  return left.dev === right.dev
+    && left.ino === right.ino
+    && left.size === right.size
+    && (left.mode & 0o7777) === (right.mode & 0o7777);
 }
 
 function snapshotWorktreeEntry({ root, relativePath, objectFormat, entries }) {
@@ -601,12 +604,17 @@ function snapshotWorktreeEntry({ root, relativePath, objectFormat, entries }) {
     }
     entries.set(relativePath, Object.freeze({
       mode: (after.mode & 0o111) === 0 ? "100644" : "100755",
+      posixMode: after.mode & 0o7777,
       type: "blob",
       objectId: gitBlobId(contents, objectFormat),
     }));
     return;
   }
-  entries.set(relativePath, Object.freeze({ mode: "040000", type: "tree" }));
+  entries.set(relativePath, Object.freeze({
+    mode: "040000",
+    posixMode: before.mode & 0o7777,
+    type: "tree",
+  }));
   const names = readdirSync(path).sort(compareCodePoints);
   for (const name of names) {
     snapshotWorktreeEntry({
@@ -623,6 +631,7 @@ function snapshotWorktreeEntry({ root, relativePath, objectFormat, entries }) {
     || after.isSymbolicLink()
     || before.dev !== after.dev
     || before.ino !== after.ino
+    || (before.mode & 0o7777) !== (after.mode & 0o7777)
     || !sameValues(names, namesAfter)
   ) {
     throw new Error("working registry tree changed while reading: " + relativePath);
@@ -651,6 +660,20 @@ function assertSameRegistryTree(expected, actual) {
   }
   for (const [path, committed] of expected) {
     const working = actual.get(path);
+    const canonicalMode = committed.type === "tree"
+      ? 0o755
+      : committed.mode === "100755" ? 0o755 : 0o644;
+    if (working && working.type === committed.type && working.posixMode !== canonicalMode) {
+      throw new Error(
+        "working registry tree has non-canonical POSIX mode: "
+          + path
+          + " (expected 0"
+          + canonicalMode.toString(8)
+          + ", found 0"
+          + working.posixMode.toString(8)
+          + ")",
+      );
+    }
     if (
       !working
       || working.mode !== committed.mode

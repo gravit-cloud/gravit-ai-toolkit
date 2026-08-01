@@ -62,9 +62,9 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/assets",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/assets",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         }
       },
       "type": "asset"
@@ -729,7 +729,7 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/bin/hooks/scripts",
+          "path": "targets/openclaw/bin/plugin-layout/hooks/scripts",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -874,7 +874,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.2.5-gravit.3",
+  "distributionVersion": "1.2.5-gravit.4",
   "name": "azure",
   "schemaVersion": 1,
   "targets": {
@@ -1071,7 +1071,7 @@
           "status": "preserved"
         }
       },
-      "digest": "e8f5b475ada144bc149c0f261a530467b878091d3bffaa9159f99ee995c26b77",
+      "digest": "c3f1b9fdf5d20184aafcfeaf44a8fddeba21cbeb8331ff8df289486549d6274b",
       "path": "targets/claude"
     },
     "codex": {
@@ -1267,7 +1267,7 @@
           "status": "transformed"
         }
       },
-      "digest": "c43676fb5f8a601961983d2e983a3ca109c769629303457b66de3b1d38df4fba",
+      "digest": "bbe5f4f990b017fa20549a3cc854e1f6faadf9865b1671a79fb0eecf09002f35",
       "path": "targets/codex"
     },
     "openclaw": {
@@ -1283,9 +1283,9 @@
           "status": "transformed"
         },
         "asset-8bf729ffe074": {
-          "path": "targets/openclaw/assets",
-          "reasonCode": "native-component",
-          "status": "preserved"
+          "path": "targets/openclaw/bin/plugin-layout/assets",
+          "reasonCode": "target-translation",
+          "status": "transformed"
         },
         "azure-ai": {
           "path": "targets/openclaw/skills/azure-ai",
@@ -1428,7 +1428,7 @@
           "status": "transformed"
         },
         "executable-3cfb0a3c9667": {
-          "path": "targets/openclaw/bin/hooks/scripts",
+          "path": "targets/openclaw/bin/plugin-layout/hooks/scripts",
           "reasonCode": "target-translation",
           "status": "transformed"
         },
@@ -1462,7 +1462,7 @@
           "status": "transformed"
         }
       },
-      "digest": "785e5813669dd1884e3f9294bbceee264836ca98e6c6328fceddaf3b970d121f",
+      "digest": "38ccebdf2d73db02b46511ff0b21e7f9310f86d7d435ca997a18d8288471cf41",
       "path": "targets/openclaw"
     }
   }

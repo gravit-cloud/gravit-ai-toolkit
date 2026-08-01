@@ -37,7 +37,7 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/assets/plugin-layout/data",
+          "path": "targets/openclaw/bin/plugin-layout/data",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -60,7 +60,7 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/assets/plugin-layout/requirements.txt",
+          "path": "targets/openclaw/bin/plugin-layout/requirements.txt",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -83,7 +83,7 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/assets/plugin-layout/assets",
+          "path": "targets/openclaw/bin/plugin-layout/assets",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -106,7 +106,7 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/assets/plugin-layout/screenshots",
+          "path": "targets/openclaw/bin/plugin-layout/screenshots",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -129,7 +129,7 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/assets/plugin-layout/pdf",
+          "path": "targets/openclaw/bin/plugin-layout/pdf",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -152,7 +152,7 @@
           "status": "preserved"
         },
         "openclaw": {
-          "path": "targets/openclaw/assets/plugin-layout/schema",
+          "path": "targets/openclaw/bin/plugin-layout/schema",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -872,7 +872,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "2.2.4-gravit.3",
+  "distributionVersion": "2.2.4-gravit.4",
   "name": "claude-seo",
   "schemaVersion": 1,
   "targets": {
@@ -1069,7 +1069,7 @@
           "status": "preserved"
         }
       },
-      "digest": "d335f465492493a1db4a1c0cb533b830e39f6f4ec04b71190e39cdb2827b655c",
+      "digest": "9ef280125fb4ca89bc69593c71b1e8fe3158ea018af6ae509ae286cdaf22a772",
       "path": "targets/claude"
     },
     "codex": {
@@ -1264,7 +1264,7 @@
           "status": "transformed"
         }
       },
-      "digest": "82558d7bc6d2556ccbef990afa3053c7e09a5dcd7f01feadf70a9a6dfa1131e9",
+      "digest": "3d0ebece37ddf27e26b4ed38fe5ca3813d533934084cd66b79b1ce39490742d9",
       "path": "targets/codex"
     },
     "openclaw": {
@@ -1274,32 +1274,32 @@
           "status": "unsupported"
         },
         "asset-3a6eb0790f39": {
-          "path": "targets/openclaw/assets/plugin-layout/data",
+          "path": "targets/openclaw/bin/plugin-layout/data",
           "reasonCode": "target-translation",
           "status": "transformed"
         },
         "asset-4d7c51b1efe9": {
-          "path": "targets/openclaw/assets/plugin-layout/requirements.txt",
+          "path": "targets/openclaw/bin/plugin-layout/requirements.txt",
           "reasonCode": "target-translation",
           "status": "transformed"
         },
         "asset-8bf729ffe074": {
-          "path": "targets/openclaw/assets/plugin-layout/assets",
+          "path": "targets/openclaw/bin/plugin-layout/assets",
           "reasonCode": "target-translation",
           "status": "transformed"
         },
         "asset-98d875b61ff2": {
-          "path": "targets/openclaw/assets/plugin-layout/screenshots",
+          "path": "targets/openclaw/bin/plugin-layout/screenshots",
           "reasonCode": "target-translation",
           "status": "transformed"
         },
         "asset-c35b21d6ca39": {
-          "path": "targets/openclaw/assets/plugin-layout/pdf",
+          "path": "targets/openclaw/bin/plugin-layout/pdf",
           "reasonCode": "target-translation",
           "status": "transformed"
         },
         "asset-df0ad6e43880": {
-          "path": "targets/openclaw/assets/plugin-layout/schema",
+          "path": "targets/openclaw/bin/plugin-layout/schema",
           "reasonCode": "target-translation",
           "status": "transformed"
         },
@@ -1458,7 +1458,7 @@
           "status": "transformed"
         }
       },
-      "digest": "5f9f259923a59c6f5dd918657e0cdeaf6417d1519b1ec4e9fff0a84490bde590",
+      "digest": "38c9461354a89eb9014ac13684d6747aad4f0810037a0b7d4fa239f455e39b78",
       "path": "targets/openclaw"
     }
   }
