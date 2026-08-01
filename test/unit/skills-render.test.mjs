@@ -60,6 +60,33 @@ test("parent and child render exactly once per target", (context) => {
   );
 });
 
+test("nested child exclusion does not leave uncommittable empty ancestors", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-empty-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const source = resolve(temporaryRoot, "source");
+  const parent = resolve(source, "skills/parent");
+  const child = resolve(parent, "nested/child");
+  mkdirSync(child, { recursive: true });
+  writeFileSync(
+    resolve(parent, "SKILL.md"),
+    "---\nname: parent\ndescription: Parent\n---\n",
+  );
+  writeFileSync(
+    resolve(child, "SKILL.md"),
+    "---\nname: child\ndescription: Child\n---\n",
+  );
+  const destinationRoot = resolve(temporaryRoot, "codex");
+
+  renderSkills({
+    skills: discoverSkills({ sourceRoot: source }),
+    destinationRoot,
+    target: "codex",
+  });
+
+  assert.equal(existsSync(resolve(destinationRoot, "parent/nested")), false);
+  assert.equal(existsSync(resolve(destinationRoot, "child/SKILL.md")), true);
+});
+
 test("rejects recursive frontmatter name duplicates after projection", (context) => {
   const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skills-"));
   context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));

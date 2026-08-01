@@ -6,6 +6,7 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
+  rmdirSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, extname, isAbsolute, relative, resolve, win32 } from "node:path";
@@ -142,6 +143,14 @@ function projectedSourceFiles(directory, excludedRoots, result = []) {
     else if (entry.isFile()) result.push(path);
   }
   return result.sort(compareCodePoints);
+}
+
+function pruneEmptyRenderedDirectories(directory, preserveRoot = true) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) pruneEmptyRenderedDirectories(path, false);
+  }
+  if (!preserveRoot && readdirSync(directory).length === 0) rmdirSync(directory);
 }
 
 function codexMarkdown(markdown) {
@@ -541,6 +550,7 @@ export function renderSkills({ skills, destinationRoot, target, resourceMappings
         );
       },
     });
+    pruneEmptyRenderedDirectories(destination);
     for (const sourceFile of projectedSourceFiles(skill.sourceDirectory, descendantRoots)) {
       copiedFiles.push({
         destinationFile: resolve(

@@ -1,10 +1,5 @@
-import {
-  cpSync,
-  lstatSync,
-  mkdirSync,
-  readFileSync,
-} from "node:fs";
-import { basename, dirname, extname, relative, resolve } from "node:path";
+import { lstatSync, readFileSync } from "node:fs";
+import { basename, extname, relative, resolve } from "node:path";
 import {
   assertJsonSingletonComponent,
   commandSourceFiles,
@@ -19,7 +14,6 @@ import { normalizeMcp, writeMcpConfig } from "../mcp.mjs";
 import { compareCodePoints } from "../ordering.mjs";
 import {
   assertInside,
-  pathIsInside,
   pathsOverlap,
   walkFiles,
 } from "../path-safety.mjs";
@@ -82,15 +76,6 @@ function nativeDestination({ component, targetRoot, target }) {
   return assertInside(targetRoot, resolve(targetRoot, nested), "target component");
 }
 
-function projectedPathFiles(plan) {
-  const stats = lstatSync(plan.component.sourcePath);
-  if (stats.isFile()) return [plan.destination];
-  return walkFiles(plan.component.sourcePath).map((sourcePath) => resolve(
-    plan.destination,
-    relative(plan.component.sourcePath, sourcePath),
-  ));
-}
-
 function preserveOpenClawCollidingLayouts(nativePlans, targetRoot) {
   const collisions = new Set();
   for (const [index, left] of nativePlans.entries()) {
@@ -109,69 +94,6 @@ function preserveOpenClawCollidingLayouts(nativePlans, targetRoot) {
       resolve(targetRoot, root, "plugin-layout", relativeSourcePath(plan.component)),
       "OpenClaw target component",
     );
-  }
-}
-
-function assertOpenClawLeafIsolation(nativePlans) {
-  const pathPlans = nativePlans.filter(({ component }) => component.sourceFormat === "path");
-  const files = nativePlans.flatMap((plan) => (
-    plan.component.sourceFormat === "path" ? projectedPathFiles(plan) : [plan.destination]
-  ).map((path) => ({
-    component: plan.component,
-    path,
-  })));
-  for (const [index, left] of files.entries()) {
-    for (const right of files.slice(index + 1)) {
-      if (pathsOverlap(left.path, right.path)) {
-        throw new Error(
-          "duplicate OpenClaw target file: "
-            + left.component.id + " and " + right.component.id + ": " + left.path,
-        );
-      }
-    }
-  }
-  const filePlans = nativePlans.filter(({ component }) => (
-    component.sourceFormat !== "path" || lstatSync(component.sourcePath).isFile()
-  ));
-  const directoryPlans = pathPlans.filter(({ component }) => (
-    lstatSync(component.sourcePath).isDirectory()
-  ));
-  for (const filePlan of filePlans) {
-    for (const directoryPlan of directoryPlans) {
-      if (
-        filePlan.destination === directoryPlan.destination
-        || pathIsInside(filePlan.destination, directoryPlan.destination)
-      ) {
-        throw new Error(
-          "OpenClaw target file conflicts with a component directory: "
-            + filePlan.component.id + " and " + directoryPlan.component.id,
-        );
-      }
-    }
-  }
-}
-
-function materializeOpenClawPathPlan(plan) {
-  const sourceStats = lstatSync(plan.component.sourcePath);
-  if (sourceStats.isFile()) {
-    mkdirSync(dirname(plan.destination), { recursive: true });
-    cpSync(plan.component.sourcePath, plan.destination, {
-      errorOnExist: true,
-      force: false,
-    });
-    return;
-  }
-  mkdirSync(plan.destination, {
-    recursive: true,
-    mode: sourceStats.mode & 0o777,
-  });
-  for (const sourcePath of walkFiles(plan.component.sourcePath)) {
-    const destination = resolve(
-      plan.destination,
-      relative(plan.component.sourcePath, sourcePath),
-    );
-    mkdirSync(dirname(destination), { recursive: true });
-    cpSync(sourcePath, destination, { errorOnExist: true, force: false });
   }
 }
 
@@ -255,7 +177,6 @@ export function renderCodexFormatTarget({
   ];
   if (target === "openclaw") {
     preserveOpenClawCollidingLayouts(nativePlans, targetRoot);
-    assertOpenClawLeafIsolation(nativePlans);
   }
   const orderedNativePlans = nativePlans.sort((left, right) => (
     compareCodePoints(left.destination, right.destination)
@@ -269,7 +190,7 @@ export function renderCodexFormatTarget({
   }
   for (const [index, left] of orderedNativePlans.entries()) {
     for (const right of orderedNativePlans.slice(index + 1)) {
-      if (target !== "openclaw" && pathsOverlap(left.destination, right.destination)) {
+      if (pathsOverlap(left.destination, right.destination)) {
         throw new Error(
           "duplicate target component destination: "
             + left.component.id + " (" + relativeSourcePath(left.component) + ") and "
@@ -282,15 +203,11 @@ export function renderCodexFormatTarget({
 
   const resourceMappings = [];
   for (const plan of nativePlans) {
-    if (target === "openclaw" && plan.component.sourceFormat === "path") {
-      materializeOpenClawPathPlan(plan);
-    } else {
-      materializeComponent({
-        component: plan.component,
-        bundleRoot,
-        destination: plan.destination,
-      });
-    }
+    materializeComponent({
+      component: plan.component,
+      bundleRoot,
+      destination: plan.destination,
+    });
     const neutral = neutralComponents.find(({ id }) => id === plan.component.id);
     const relocated = target === "openclaw"
       && plan.component.sourceFormat === "path"

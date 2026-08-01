@@ -33,11 +33,11 @@ test("rejects reuse of one distribution version for another digest", () => {
   const currentLock = lockWith("1.2.5-gravit.4", "b".repeat(64));
 
   assert.deepEqual(validateVersionHistory({ currentLock, baseLock }), [
-    "azure: distributionVersion 1.2.5-gravit.4 already identifies another bundle",
+    "azure: bundle changed without distributionVersion bump",
   ]);
 });
 
-test("allows unchanged identities and deliberate version changes", () => {
+test("allows unchanged identities and version-only corrections", () => {
   const digestA = "a".repeat(64);
   const digestB = "b".repeat(64);
 
@@ -47,12 +47,15 @@ test("allows unchanged identities and deliberate version changes", () => {
   }), []);
   assert.deepEqual(validateVersionHistory({
     baseLock: lockWith("9.0.0-gravit.8", digestA),
-    currentLock: lockWith("1.0.0-gravit.1", digestB),
-  }), []);
-  assert.deepEqual(validateVersionHistory({
-    baseLock: lockWith("9.0.0-gravit.8", digestA),
     currentLock: lockWith("1.0.0-gravit.1", digestA),
   }), []);
+});
+
+test("rejects a distribution version regression when bundle bytes change", () => {
+  assert.deepEqual(validateVersionHistory({
+    baseLock: lockWith("1.2.5-gravit.3", "a".repeat(64)),
+    currentLock: lockWith("1.2.5-gravit.2", "b".repeat(64)),
+  }), ["azure: bundle changed without distributionVersion bump"]);
 });
 
 test("allows new current plugins and removed base plugins", () => {
@@ -84,8 +87,8 @@ test("returns unique collisions sorted by registry plugin name", () => {
   };
 
   assert.deepEqual(validateVersionHistory({ currentLock, baseLock }), [
-    "alpha: distributionVersion 1.0.0-gravit.7 already identifies another bundle",
-    "zeta: distributionVersion 2.0.0-gravit.3 already identifies another bundle",
+    "alpha: bundle changed without distributionVersion bump",
+    "zeta: bundle changed without distributionVersion bump",
   ]);
 });
 
@@ -285,8 +288,28 @@ test("compare-lock JSON feeds the pure identity collision boundary", () => {
 
   assert.match(
     errors.join("\n"),
-    new RegExp(`${name}: distributionVersion [^ ]+ already identifies another bundle`),
+    new RegExp(`${name}: bundle changed without distributionVersion bump`),
   );
+});
+
+test("real validate CLI rejects a changed bundle with a regressed version", (context) => {
+  const baseLock = JSON.parse(readFileSync(resolve(repositoryRoot, "registry/lock.json"), "utf8"));
+  const [name] = Object.keys(baseLock.plugins).sort();
+  const current = baseLock.plugins[name];
+  const match = /^(\d+\.\d+\.\d+-gravit\.)(\d+)$/u.exec(current.distributionVersion);
+  assert.notEqual(match, null);
+  current.distributionVersion = match[1] + String(Number(match[2]) + 1);
+  current.bundleDigest = current.bundleDigest === "a".repeat(64)
+    ? "b".repeat(64)
+    : "a".repeat(64);
+  const root = temporaryDirectory(context);
+  const basePath = resolve(root, "base-lock.json");
+  writeFileSync(basePath, JSON.stringify(baseLock));
+
+  const result = runValidate(["--compare-lock", basePath]);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  assert.match(result.stderr, new RegExp(`${name}: bundle changed without distributionVersion bump`));
 });
 
 test("compare-lock parser treats input as bounded inert JSON and rejects invalid shapes", (context) => {

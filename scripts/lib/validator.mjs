@@ -1692,14 +1692,11 @@ export function validateVersionHistory(input) {
     : historyEntries(baseLock, "base lock", errors);
   for (const [name, current] of currentEntries) {
     const previous = baseEntries.get(name);
-    if (
-      previous
-      && previous.distributionVersion === current.distributionVersion
-      && previous.bundleDigest !== current.bundleDigest
-    ) {
-      errors.push(
-        `${name}: distributionVersion ${current.distributionVersion} already identifies another bundle`,
-      );
+    if (!previous) continue;
+    try {
+      assertVersionChange({ previousEntry: previous, nextEntry: current });
+    } catch (error) {
+      errors.push(`${name}: ${messageOf(error)}`);
     }
   }
   return sortedUnique(errors);

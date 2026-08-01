@@ -378,7 +378,9 @@ test("command-to-skill rejects non-Markdown and invalid command filenames", (con
 test("materializes path directories, path files, and inline records at exact destinations", (context) => {
   const { root, bundleRoot } = sandbox(context, "component-materialize-");
   const directory = resolve(root, "source-directory");
-  mkdirSync(resolve(directory, "nested"), { recursive: true });
+  mkdirSync(resolve(directory, "nested/empty"), { recursive: true });
+  chmodSync(resolve(directory, "nested"), 0o750);
+  chmodSync(resolve(directory, "nested/empty"), 0o710);
   writeFileSync(resolve(directory, "root.txt"), "root\n");
   writeFileSync(resolve(directory, "nested/data.bin"), Buffer.from([0x00, 0xff]));
   chmodSync(resolve(directory, "nested/data.bin"), 0o751);
@@ -394,6 +396,8 @@ test("materializes path directories, path files, and inline records at exact des
     Buffer.from([0x00, 0xff]),
   );
   assert.equal(statSync(resolve(directoryDestination, "nested/data.bin")).mode & 0o777, 0o751);
+  assert.equal(statSync(resolve(directoryDestination, "nested")).mode & 0o777, 0o750);
+  assert.equal(statSync(resolve(directoryDestination, "nested/empty")).mode & 0o777, 0o710);
 
   const file = resolve(root, "settings-source.json");
   writeFileSync(file, "{\"enabled\":true}\n");
