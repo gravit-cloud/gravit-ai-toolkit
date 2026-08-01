@@ -51,6 +51,10 @@ const LINK_DESTINATION_TYPES = new Set([
   "definitionDestinationString",
   "resourceDestinationString",
 ]);
+const HISTORY_PLUGIN_NAME = /^[a-z0-9][a-z0-9-]*$/;
+const HISTORY_DISTRIBUTION_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-gravit\.([1-9]\d*)$/;
+const HISTORY_DIGEST = /^[a-f0-9]{64}$/;
+const HISTORY_MISSING = Symbol("history-missing");
 
 function loadSchema(name) {
   return JSON.parse(readFileSync(
@@ -1574,6 +1578,142 @@ function previousLockValue(compareLock, repositoryRoot, currentLock, errors) {
   if (isPlainObject(compareLock)) return compareLock;
   errors.push("compareLock must be a prior lock object or callback");
   return undefined;
+}
+
+function isHistoryContainer(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  } catch {
+    return false;
+  }
+}
+
+function historyOwnData(value, key, label, errors) {
+  let descriptor;
+  try {
+    descriptor = Object.getOwnPropertyDescriptor(value, key);
+  } catch {
+    errors.push(`${label} could not be inspected safely`);
+    return HISTORY_MISSING;
+  }
+  if (!descriptor) {
+    errors.push(`${label} requires own ${key}`);
+    return HISTORY_MISSING;
+  }
+  if (!Object.hasOwn(descriptor, "value")) {
+    errors.push(`${label} ${key} must be an own data property`);
+    return HISTORY_MISSING;
+  }
+  return descriptor.value;
+}
+
+function historyNameLabel(name) {
+  const encoded = typeof name === "string" ? JSON.stringify(name) : String(name);
+  return encoded.length <= 96 ? encoded : `${encoded.slice(0, 93)}...`;
+}
+
+function validHistoryVersion(value) {
+  if (typeof value !== "string") return false;
+  const match = HISTORY_DISTRIBUTION_VERSION.exec(value);
+  if (!match) return false;
+  return match.slice(1).every((part) => {
+    const numeric = Number(part);
+    return Number.isSafeInteger(numeric) && numeric >= 0;
+  });
+}
+
+function historyEntries(lock, label, errors) {
+  if (!isHistoryContainer(lock)) {
+    errors.push(`${label} must be a plain object`);
+    return new Map();
+  }
+  const plugins = historyOwnData(lock, "plugins", label, errors);
+  if (plugins === HISTORY_MISSING) return new Map();
+  if (!isHistoryContainer(plugins)) {
+    errors.push(`${label} plugins must be a plain object`);
+    return new Map();
+  }
+  let names;
+  try {
+    names = Reflect.ownKeys(plugins).sort((left, right) => (
+      compareCodePoints(String(left), String(right))
+    ));
+  } catch {
+    errors.push(`${label} plugins could not be inspected safely`);
+    return new Map();
+  }
+  const entries = new Map();
+  for (const name of names) {
+    const nameLabel = historyNameLabel(name);
+    if (
+      typeof name !== "string"
+      || PROTOTYPE_NAMES.has(name)
+      || !HISTORY_PLUGIN_NAME.test(name)
+    ) {
+      errors.push(`${label} has invalid registry plugin name ${nameLabel}`);
+      continue;
+    }
+    const entry = historyOwnData(plugins, name, `${label} plugins`, errors);
+    const entryLabel = `${label} plugin ${name}`;
+    if (!isHistoryContainer(entry)) {
+      errors.push(`${entryLabel} must be a plain object`);
+      continue;
+    }
+    const distributionVersion = historyOwnData(
+      entry,
+      "distributionVersion",
+      entryLabel,
+      errors,
+    );
+    const bundleDigest = historyOwnData(entry, "bundleDigest", entryLabel, errors);
+    let valid = true;
+    if (
+      distributionVersion !== HISTORY_MISSING
+      && !validHistoryVersion(distributionVersion)
+    ) {
+      errors.push(`${entryLabel} distributionVersion must match X.Y.Z-gravit.N with safe integers and N > 0`);
+      valid = false;
+    }
+    if (bundleDigest !== HISTORY_MISSING && (
+      typeof bundleDigest !== "string" || !HISTORY_DIGEST.test(bundleDigest)
+    )) {
+      errors.push(`${entryLabel} bundleDigest must be a lowercase SHA-256 digest`);
+      valid = false;
+    }
+    if (distributionVersion === HISTORY_MISSING || bundleDigest === HISTORY_MISSING) valid = false;
+    if (valid) entries.set(name, { distributionVersion, bundleDigest });
+  }
+  return entries;
+}
+
+export function validateVersionHistory(input) {
+  const errors = [];
+  if (!isHistoryContainer(input)) {
+    return ["version history input must be a plain object"];
+  }
+  const currentLock = historyOwnData(input, "currentLock", "version history input", errors);
+  const baseLock = historyOwnData(input, "baseLock", "version history input", errors);
+  const currentEntries = currentLock === HISTORY_MISSING
+    ? new Map()
+    : historyEntries(currentLock, "current lock", errors);
+  const baseEntries = baseLock === HISTORY_MISSING
+    ? new Map()
+    : historyEntries(baseLock, "base lock", errors);
+  for (const [name, current] of currentEntries) {
+    const previous = baseEntries.get(name);
+    if (
+      previous
+      && previous.distributionVersion === current.distributionVersion
+      && previous.bundleDigest !== current.bundleDigest
+    ) {
+      errors.push(
+        `${name}: distributionVersion ${current.distributionVersion} already identifies another bundle`,
+      );
+    }
+  }
+  return sortedUnique(errors);
 }
 
 function validatePreviousLock({ compareLock, repositoryRoot, currentLock, errors }) {
