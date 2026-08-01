@@ -343,6 +343,30 @@ test("a parent identity change is detected before output creation", (context) =>
   assert.equal(existsSync(resolve(displacedParent, "consumer")), false);
 });
 
+test("an output swapped after exclusive creation is never chmodded or populated", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  const displaced = resolve(temporaryRoot, "displaced-created-output");
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      afterOutputMkdir({ outputPath: createdOutput }) {
+        renameSync(createdOutput, displaced);
+        mkdirSync(createdOutput, { mode: 0o700 });
+        writeFileSync(resolve(createdOutput, "foreign.txt"), "foreign output\n", {
+          mode: 0o600,
+        });
+      },
+    },
+  })), /materialization output ownership changed/);
+
+  assert.equal(readFileSync(resolve(outputPath, "foreign.txt"), "utf8"), "foreign output\n");
+  assert.equal(statSync(outputPath).mode & 0o777, 0o700);
+  assert.equal(statSync(resolve(outputPath, "foreign.txt")).mode & 0o777, 0o600);
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
+  assert.equal(existsSync(displaced), true);
+});
+
 test("an unexpected directory race is retained without overwrite", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
@@ -414,6 +438,51 @@ test("a nested-directory pivot is detected before another destination create", (
   assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
 });
 
+test("a directory swapped after exclusive creation is never chmodded or populated", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  const displaced = resolve(temporaryRoot, "displaced-created-directory");
+  let swappedDirectory;
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      afterDirectoryCreate({ destination }) {
+        if (swappedDirectory) return;
+        swappedDirectory = destination;
+        renameSync(destination, displaced);
+        mkdirSync(destination, { mode: 0o700 });
+        writeFileSync(resolve(destination, "foreign.txt"), "foreign directory\n", {
+          mode: 0o600,
+        });
+      },
+    },
+  })), /destination directory ownership changed/);
+
+  assert.equal(readFileSync(resolve(swappedDirectory, "foreign.txt"), "utf8"), "foreign directory\n");
+  assert.equal(statSync(swappedDirectory).mode & 0o777, 0o700);
+  assert.equal(statSync(resolve(swappedDirectory, "foreign.txt")).mode & 0o777, 0o600);
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
+  assert.equal(existsSync(displaced), true);
+});
+
+test("directory mode changes caused by umask fail closed without reopening chmod", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  const previousUmask = process.umask(0o077);
+  try {
+    assert.throws(
+      () => materialize(request(outputPath)),
+      /directory mode mismatch/,
+    );
+  } finally {
+    process.umask(previousUmask);
+  }
+
+  assert.equal(existsSync(outputPath), true);
+  assert.equal(statSync(outputPath).mode & 0o777, 0o700);
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
+});
+
 test("a copied payload mutation is retained as explicit incomplete recovery", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
@@ -456,6 +525,7 @@ test("the materializer has no consumer-output rename or deletion path", () => {
   );
 
   assert.doesNotMatch(implementation, /\b(?:rename|unlink|rmdir|rm)Sync\b/u);
+  assert.doesNotMatch(implementation, /\bbindDirectoryMode\b/u);
 });
 
 test("materialization source is narrow, fresh, frozen, and bound to the reader", (context) => {
@@ -645,7 +715,7 @@ test("rejects a reserved receipt introduced into the copied target", (context) =
   assert.throws(() => receiptAt(outputPath), SyntaxError);
 });
 
-test("a receipt open race is rejected exclusively without overwriting foreign data", (context) => {
+test("a receipt seam race is rejected without overwriting foreign data", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
   const foreignReceipt = "foreign receipt race\n";
@@ -656,11 +726,52 @@ test("a receipt open race is rejected exclusively without overwriting foreign da
         writeFileSync(receiptPath, foreignReceipt, { flag: "wx", mode: 0o600 });
       },
     },
-  })), /incomplete.*EEXIST|incomplete.*exist/u);
+  })), /incomplete.*ownership changed/u);
 
   const receiptPath = resolve(outputPath, RECEIPT);
   assert.equal(readFileSync(receiptPath, "utf8"), foreignReceipt);
   assert.equal(statSync(receiptPath).mode & 0o777, 0o600);
+});
+
+test("the complete bundle is revalidated after the final receipt seam", (context) => {
+  const { repositoryRoot, temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  const neutralManifest = resolve(
+    repositoryRoot,
+    "plugins/nested-skills/.agent-plugin/plugin.json",
+  );
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      beforeReceiptOpen() {
+        writeFileSync(neutralManifest, readFileSync(neutralManifest, "utf8") + " ");
+      },
+    },
+  })), /bundle.*(?:ownership|content or metadata) changed/);
+
+  assert.equal(existsSync(outputPath), true);
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
+});
+
+test("an output swapped at the final receipt seam never receives a valid receipt", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  const displaced = resolve(temporaryRoot, "displaced-populated-output");
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      beforeReceiptOpen({ receiptPath }) {
+        const populatedOutput = resolve(receiptPath, "..");
+        renameSync(populatedOutput, displaced);
+        mkdirSync(populatedOutput, { mode: 0o700 });
+        writeFileSync(resolve(populatedOutput, "foreign.txt"), "foreign final output\n");
+      },
+    },
+  })), /materialization output ownership changed/);
+
+  assert.equal(readFileSync(resolve(outputPath, "foreign.txt"), "utf8"), "foreign final output\n");
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
+  assert.equal(existsSync(resolve(displaced, RECEIPT)), false);
 });
 
 test("rejects a reserved receipt already present in a verified source target", (context) => {
