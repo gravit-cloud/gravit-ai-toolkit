@@ -52,6 +52,12 @@ function inputsFor(plugins) {
   };
 }
 
+function configuredMatches(manager, text) {
+  return manager.matchStrings.flatMap((pattern) => (
+    [...text.matchAll(new RegExp(pattern, "g"))].map((match) => ({ ...match.groups }))
+  ));
+}
+
 test("bumps only the plugin whose immutable source changed", () => {
   const catalog = {
     plugins: [
@@ -324,6 +330,69 @@ test("CLI leaves a no-change catalog byte-for-byte untouched", (t) => {
   assert.equal(statSync(resolve(root, "registry/catalog.json")).mtimeMs, beforeMtime);
 });
 
+test("Renovate rediscovers tag and branch sources after the CLI canonicalizes JSON", (t) => {
+  const root = mkdtempSync(resolve(tmpdir(), "registry-revisions-renovate-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(resolve(root, "registry"));
+  const tagged = catalogPlugin("tagged", {
+    source: githubSource({
+      repo: "owner/tagged",
+      ref: "v1.2.3-rc.1+build.5",
+      sha: "b".repeat(40),
+    }),
+  });
+  const branch = catalogPlugin("branch", {
+    source: {
+      type: "github",
+      repo: "owner/branch",
+      ref: "master",
+      sha: "d".repeat(40),
+    },
+  });
+  writeFileSync(
+    resolve(root, "registry/catalog.json"),
+    JSON.stringify({ plugins: [tagged, branch] }),
+  );
+  writeFileSync(
+    resolve(root, "registry/lock.json"),
+    JSON.stringify({
+      plugins: {
+        tagged: { source: githubSource({ repo: "owner/tagged", sha: "a".repeat(40) }) },
+        branch: {
+          source: {
+            type: "github",
+            repo: "owner/branch",
+            ref: "master",
+            sha: "c".repeat(40),
+          },
+        },
+      },
+    }),
+  );
+
+  const cli = spawnSync(process.execPath, [scriptPath], { cwd: root, encoding: "utf8" });
+
+  assert.equal(cli.status, 0, cli.stderr);
+  assert.equal(cli.stdout, "branch\ntagged\n");
+  const serializedCatalog = readFileSync(resolve(root, "registry/catalog.json"), "utf8");
+  const config = JSON.parse(readFileSync(resolve(repositoryRoot, "renovate.json"), "utf8"));
+  const [tagManager, branchManager] = config.customManagers;
+  assert.deepEqual(configuredMatches(tagManager, serializedCatalog), [
+    {
+      currentValue: "v1.2.3-rc.1+build.5",
+      packageName: "owner/tagged",
+      currentDigest: "b".repeat(40),
+    },
+  ]);
+  assert.deepEqual(configuredMatches(branchManager, serializedCatalog), [
+    {
+      currentValue: "master",
+      packageName: "owner/branch",
+      currentDigest: "d".repeat(40),
+    },
+  ]);
+});
+
 test("Renovate managers update only GitHub sources in the neutral catalog", () => {
   const config = JSON.parse(readFileSync(resolve(repositoryRoot, "renovate.json"), "utf8"));
   assert.equal(config.customManagers.length, 2);
@@ -335,7 +404,7 @@ test("Renovate managers update only GitHub sources in the neutral catalog", () =
   const tagSource = JSON.stringify({
     source: githubSource({
       repo: "owner/tagged",
-      ref: "v2.3.4",
+      ref: "v1.2.3-rc.1+build.5",
       sha: "b".repeat(40),
     }),
   }, null, 2);
@@ -356,7 +425,7 @@ test("Renovate managers update only GitHub sources in the neutral catalog", () =
     },
     {
       packageName: "owner/tagged",
-      currentValue: "v2.3.4",
+      currentValue: "v1.2.3-rc.1+build.5",
       currentDigest: "b".repeat(40),
     },
   );
@@ -374,12 +443,35 @@ test("Renovate managers update only GitHub sources in the neutral catalog", () =
   );
   assert.equal(new RegExp(tagManager.matchStrings[0]).test(branchSource), false);
   assert.equal(new RegExp(branchManager.matchStrings[0]).test(tagSource), false);
+  assert.equal(configuredMatches(tagManager, tagSource).length, 1);
+  assert.equal(configuredMatches(branchManager, branchSource).length, 1);
   assert.equal(
     new RegExp(tagManager.matchStrings[0]).test(
       JSON.stringify({ source: { source: "github", repo: "old/shape" } }),
     ),
     false,
   );
+  const contextOnly = JSON.stringify({
+    sourceContext: [{
+      type: "github",
+      repo: "unrelated/context",
+      ref: "v1.2.3",
+      sha: "e".repeat(40),
+    }],
+  });
+  assert.deepEqual(configuredMatches(tagManager, contextOnly), []);
+  assert.deepEqual(configuredMatches(branchManager, contextOnly), []);
+  const unrelatedSourceObject = JSON.stringify({
+    source: {
+      type: "github",
+      repo: "unrelated/object",
+      ref: "v1.2.3",
+      sha: "f".repeat(40),
+      unrelated: true,
+    },
+  });
+  assert.deepEqual(configuredMatches(tagManager, unrelatedSourceObject), []);
+  assert.deepEqual(configuredMatches(branchManager, unrelatedSourceObject), []);
 
   const customRule = config.packageRules.find(
     (rule) => rule.matchManagers?.includes("custom.regex"),

@@ -11,7 +11,8 @@
         "/^registry\\/catalog\\.json$/"
       ],
       "matchStrings": [
-        "\"source\"\\s*:\\s*\\{\\s*\"type\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\""
+        "\"source\"\\s*:\\s*\\{\\s*\"type\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\"(?:,\\s*\"root\"\\s*:\\s*\"[^\"\\r\\n]+\")?\\s*\\}",
+        "\"source\"\\s*:\\s*\\{\\s*\"ref\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*(?:\"root\"\\s*:\\s*\"[^\"\\r\\n]+\",\\s*)?\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\",\\s*\"type\"\\s*:\\s*\"github\"\\s*\\}"
       ],
       "datasourceTemplate": "github-tags",
       "versioningTemplate": "semver-coerced"
@@ -23,7 +24,8 @@
         "/^registry\\/catalog\\.json$/"
       ],
       "matchStrings": [
-        "\"source\"\\s*:\\s*\\{\\s*\"type\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>main|master)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\""
+        "\"source\"\\s*:\\s*\\{\\s*\"type\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>main|master)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\"(?:,\\s*\"root\"\\s*:\\s*\"[^\"\\r\\n]+\")?\\s*\\}",
+        "\"source\"\\s*:\\s*\\{\\s*\"ref\"\\s*:\\s*\"(?<currentValue>main|master)\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*(?:\"root\"\\s*:\\s*\"[^\"\\r\\n]+\",\\s*)?\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\",\\s*\"type\"\\s*:\\s*\"github\"\\s*\\}"
       ],
       "datasourceTemplate": "github-digest"
     }
