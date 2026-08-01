@@ -6,24 +6,24 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Update linked Claude plugin tags and immutable commit pins in marketplace.json",
+      "description": "Update plugin tags and immutable commit pins in the neutral registry catalog",
       "managerFilePatterns": [
-        "/^\\.claude-plugin/marketplace\\.json$/"
+        "/^registry\\/catalog\\.json$/"
       ],
       "matchStrings": [
-        "\"source\"\\s*:\\s*\\{\\s*\"source\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\"\\s*\\}"
+        "\"source\"\\s*:\\s*\\{\\s*\"type\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\""
       ],
       "datasourceTemplate": "github-tags",
       "versioningTemplate": "semver-coerced"
     },
     {
       "customType": "regex",
-      "description": "Update immutable commit pins for linked Claude plugins following a branch",
+      "description": "Update immutable commit pins for catalog plugins following a branch",
       "managerFilePatterns": [
-        "/^\\.claude-plugin/marketplace\\.json$/"
+        "/^registry\\/catalog\\.json$/"
       ],
       "matchStrings": [
-        "\"source\"\\s*:\\s*\\{\\s*\"source\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>main|master)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\"\\s*\\}"
+        "\"source\"\\s*:\\s*\\{\\s*\"type\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>main|master)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\""
       ],
       "datasourceTemplate": "github-digest"
     }
@@ -34,12 +34,12 @@
         "custom.regex"
       ],
       "matchFileNames": [
-        ".claude-plugin/marketplace.json"
+        "registry/catalog.json"
       ],
       "addLabels": [
         "marketplace"
       ],
-      "commitMessageTopic": "linked Claude plugin {{depName}}"
+      "commitMessageTopic": "registry plugin {{depName}}"
     },
     {
       "matchManagers": [
@@ -56,6 +56,8 @@
       "bash scripts/renovate-plugin-sync.sh"
     ],
     "fileFilters": [
+      "registry/catalog.json",
+      "registry/lock.json",
       ".claude-plugin/marketplace.json",
       ".agents/**",
       "plugins/**"
