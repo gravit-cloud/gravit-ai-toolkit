@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   chmodSync,
-  cpSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -16,9 +15,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, parse, resolve } from "node:path";
+import { parse, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { buildRegistry } from "../../scripts/build-registry.mjs";
+import {
+  assertAtomicArtifactClaim,
+  claimAtomicArtifact,
+} from "../../scripts/lib/atomic-output.mjs";
 import { treeHash } from "../../scripts/lib/hash.mjs";
 import { writeJson } from "../../scripts/lib/json.mjs";
 import {
@@ -126,43 +129,57 @@ function runCli(...args) {
   });
 }
 
-test("refuses an existing directory without a matching receipt", (context) => {
+test("refuses every existing output without inspecting or mutating it", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
   mkdirSync(outputPath);
   writeFileSync(resolve(outputPath, "owned-by-user.txt"), "keep\n");
 
-  assert.throws(() => materialize(request(outputPath)), /refusing to replace unowned output/);
+  assert.throws(() => materialize(request(outputPath)), /output already exists/);
   assert.equal(readFileSync(resolve(outputPath, "owned-by-user.txt"), "utf8"), "keep\n");
 });
 
-test("replaces only a matching previously materialized target", (context) => {
+test("a second call refuses while the first payload stays byte and mode identical", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
 
   const first = materialize(request(outputPath));
-  const second = materialize(request(outputPath));
+  const firstClaim = claimAtomicArtifact(outputPath, "first materialization");
+
+  assert.throws(
+    () => materialize(request(outputPath)),
+    /output already exists/,
+  );
 
   assert.equal(first.plugin, "nested-skills");
-  assert.equal(second.target, "codex");
-  assert.deepEqual(second, first);
-  assert.equal(existsSync(resolve(outputPath, RECEIPT)), true);
-  assert.equal(existsSync(resolve(outputPath, ".codex-plugin/plugin.json")), true);
+  assert.deepEqual(receiptAt(outputPath), first);
+  assert.doesNotThrow(() => assertAtomicArtifactClaim(
+    outputPath,
+    firstClaim,
+    "first materialization",
+  ));
 });
 
-test("a failed copy keeps the previous target", (context) => {
+test("a post-create failure retains an incomplete output without a receipt", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
-  const first = materialize(request(outputPath));
+  let error;
 
   assert.throws(() => materialize(request(outputPath, {
-    copyDirectory() {
-      throw new Error("synthetic copy failure");
+    publicationHooks: {
+      afterCopy() {
+        throw new Error("synthetic copy failure");
+      },
     },
-  })), /synthetic copy failure/);
+  })), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError && /synthetic copy failure/.test(caught.message);
+  });
 
-  assert.deepEqual(receiptAt(outputPath), first);
+  assert.equal(error.recoveryPath, realpathSync(outputPath));
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
   assert.equal(existsSync(resolve(outputPath, ".codex-plugin/plugin.json")), true);
+  assert.throws(() => materialize(request(outputPath)), /output already exists/);
 });
 
 test("refuses a target whose committed digest no longer matches the lock", (context) => {
@@ -179,21 +196,21 @@ test("refuses a target whose committed digest no longer matches the lock", (cont
     target: "codex",
     outputPath,
     registryRevision: REVISION,
-  }), /target digest mismatch/);
+  }), /target.*digest mismatch/);
   assert.equal(existsSync(outputPath), false);
 });
 
-test("refuses to replace a receipt-owned directory after payload tampering", (context) => {
+test("payload tampering never turns a completed output into a replacement candidate", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
   materialize(request(outputPath));
   writeFileSync(resolve(outputPath, "tampered.txt"), "changed\n");
 
-  assert.throws(() => materialize(request(outputPath)), /receipt payload digest mismatch/);
+  assert.throws(() => materialize(request(outputPath)), /output already exists/);
   assert.equal(readFileSync(resolve(outputPath, "tampered.txt"), "utf8"), "changed\n");
 });
 
-test("refuses payload mode tampering and preserves executable modes", (context) => {
+test("preserves executable modes and refuses the immutable output after mode tampering", (context) => {
   const { repositoryRoot, temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
   const source = materializationSource(openRegistry(repositoryRoot), "nested-skills", "codex");
@@ -211,11 +228,11 @@ test("refuses payload mode tampering and preserves executable modes", (context) 
   assert.equal(statSync(materializedExecutable).mode & 0o777, sourceMode);
   chmodSync(materializedExecutable, 0o600);
 
-  assert.throws(() => materialize(request(outputPath)), /receipt payload digest mismatch/);
+  assert.throws(() => materialize(request(outputPath)), /output already exists/);
   assert.equal(statSync(materializedExecutable).mode & 0o777, 0o600);
 });
 
-test("receipt identity and schema are required for replacement", (context) => {
+test("a receipt never authorizes replacement", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
   materialize(request(outputPath));
@@ -223,14 +240,14 @@ test("receipt identity and schema are required for replacement", (context) => {
   const receipt = receiptAt(outputPath);
   writeJson(receiptPath, { ...receipt, plugin: "other-plugin" });
 
-  assert.throws(() => materialize(request(outputPath)), /refusing to replace unowned output/);
+  assert.throws(() => materialize(request(outputPath)), /output already exists/);
 
   writeJson(receiptPath, { ...receipt, unexpected: true });
-  assert.throws(() => materialize(request(outputPath)), /invalid materialization receipt/);
+  assert.throws(() => materialize(request(outputPath)), /output already exists/);
   assert.equal(existsSync(resolve(outputPath, ".codex-plugin/plugin.json")), true);
 });
 
-test("a receipt symlink never grants output ownership", (context) => {
+test("a receipt symlink never grants replacement authority", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
   materialize(request(outputPath));
@@ -239,7 +256,7 @@ test("a receipt symlink never grants output ownership", (context) => {
   renameSync(receiptPath, externalReceipt);
   symlinkSync(externalReceipt, receiptPath);
 
-  assert.throws(() => materialize(request(outputPath)), /real regular receipt/);
+  assert.throws(() => materialize(request(outputPath)), /output already exists/);
   assert.equal(lstatSync(receiptPath).isSymbolicLink(), true);
   assert.equal(existsSync(resolve(outputPath, ".codex-plugin/plugin.json")), true);
 });
@@ -264,271 +281,181 @@ test("rejects roots, target overlap, output symlinks, files, and special entries
     /overlaps registry target source/,
   );
   assert.equal(existsSync(nestedSourceParent), false);
-  assert.throws(() => materialize(request(filePath)), /real directory/);
-  assert.throws(() => materialize(request(symlinkPath)), /symbolic output/);
-  assert.throws(() => materialize(request(specialPath)), /special output/);
+  assert.throws(() => materialize(request(filePath)), /output already exists/);
+  assert.throws(() => materialize(request(symlinkPath)), /output already exists/);
+  assert.throws(() => materialize(request(specialPath)), /output already exists/);
   assert.equal(readFileSync(filePath, "utf8"), "keep\n");
   assert.equal(lstatSync(symlinkPath).isSymbolicLink(), true);
 });
 
-test("rejects a symlink pivot at the output parent", (context) => {
+test("canonicalizes an existing symlink parent before publication", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outside = resolve(temporaryRoot, "outside");
   const pivot = resolve(temporaryRoot, "pivot");
   mkdirSync(outside);
   symlinkSync(outside, pivot);
 
-  assert.throws(
-    () => materialize(request(resolve(pivot, "consumer"))),
-    /symbolic output parent|pivot/,
-  );
-  assert.equal(existsSync(resolve(outside, "consumer")), false);
-});
+  const receipt = materialize(request(resolve(pivot, "consumer")));
 
-test("revalidates ownership immediately before replacement", (context) => {
-  const { temporaryRoot, request } = setup(context);
-  const outputPath = resolve(temporaryRoot, "consumer");
-  const displaced = resolve(temporaryRoot, "displaced-owned-output");
-  materialize(request(outputPath));
-
-  let error;
-  assert.throws(() => materialize(request(outputPath, {
-    copyDirectory(source, destination, options) {
-      cpSync(source, destination, options);
-      renameSync(outputPath, displaced);
-      mkdirSync(outputPath);
-      writeFileSync(resolve(outputPath, "foreign.txt"), "foreign\n");
-    },
-  })), (caught) => {
-    error = caught;
-    return /ownership changed/u.test(caught.message);
-  });
-
-  assert.equal(readFileSync(resolve(outputPath, "foreign.txt"), "utf8"), "foreign\n");
-  assert.equal(existsSync(resolve(displaced, RECEIPT)), true);
-  assert.equal(existsSync(error.recoveryPath), true);
-  assert.equal(basename(error.recoveryPath).startsWith(".consumer.stage-"), true);
-});
-
-test("rejects a copied target whose bytes differ and retains the old output", (context) => {
-  const { temporaryRoot, request } = setup(context);
-  const outputPath = resolve(temporaryRoot, "consumer");
-  const first = materialize(request(outputPath));
-
-  assert.throws(() => materialize(request(outputPath, {
-    copyDirectory(source, destination, options) {
-      cpSync(source, destination, options);
-      writeFileSync(resolve(destination, "copy-mutation.txt"), "mutation\n");
-    },
-  })), /copied target digest mismatch/);
-
-  assert.deepEqual(receiptAt(outputPath), first);
-  assert.equal(existsSync(resolve(outputPath, "copy-mutation.txt")), false);
-});
-
-test("retains a stage replaced after its claim and restores the old output", (context) => {
-  const { temporaryRoot, request } = setup(context);
-  const outputPath = resolve(temporaryRoot, "consumer");
-  const first = materialize(request(outputPath));
-  let replaced = false;
-  let error;
-
-  assert.throws(() => materialize(request(outputPath, {
-    atomicFileSystem: {
-      beforeSourceValidation({ phase, source }) {
-        if (replaced || phase !== "before-reservation") return;
-        replaced = true;
-        rmSync(source, { recursive: true });
-        mkdirSync(source);
-        writeFileSync(resolve(source, "foreign.txt"), "foreign stage\n");
-      },
-    },
-  })), (caught) => {
-    error = caught;
-    return /stage ownership changed|content or metadata changed/u.test(caught.message)
-      || caught instanceof AggregateError;
-  });
-
-  assert.equal(replaced, true);
-  assert.deepEqual(receiptAt(outputPath), first);
-  assert.equal(readFileSync(resolve(error.recoveryPath, "foreign.txt"), "utf8"), "foreign stage\n");
-});
-
-test("retains a mutated backup instead of deleting it after publication", (context) => {
-  const { temporaryRoot, request } = setup(context);
-  const outputPath = resolve(temporaryRoot, "consumer");
-  materialize(request(outputPath));
-  let backupPath;
-  let error;
-
-  assert.throws(() => materialize(request(outputPath, {
-    atomicFileSystem: {
-      beforeBackupValidation({ phase, backup }) {
-        if (phase !== "before-cleanup") return;
-        backupPath = backup;
-        writeFileSync(resolve(backup, "foreign.txt"), "foreign backup\n");
-      },
-    },
-  })), (caught) => {
-    error = caught;
-    return caught instanceof AggregateError;
-  });
-
-  assert.equal(existsSync(resolve(outputPath, RECEIPT)), true);
-  assert.equal(readFileSync(resolve(backupPath, "foreign.txt"), "utf8"), "foreign backup\n");
+  assert.equal(receipt.plugin, "nested-skills");
+  assert.equal(existsSync(resolve(outside, "consumer", RECEIPT)), true);
   assert.equal(
-    [error.recoveryPath, ...(error.additionalRecoveryPaths || [])]
-      .some((path) => backupPath.startsWith(path) || path === backupPath),
-    true,
+    realpathSync(resolve(pivot, "consumer")),
+    realpathSync(resolve(outside, "consumer")),
   );
 });
 
-test("retains a mutated backup when promotion needs the previous output restored", (context) => {
+test("an output creation race preserves the complete foreign output", (context) => {
   const { temporaryRoot, request } = setup(context);
   const outputPath = resolve(temporaryRoot, "consumer");
-  materialize(request(outputPath));
-  let stagePath;
-  let stageMoves = 0;
-  let backupPath;
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      beforeOutputMkdir({ outputPath: canonicalOutput }) {
+        mkdirSync(canonicalOutput);
+        writeFileSync(resolve(canonicalOutput, "foreign.txt"), "foreign output\n");
+      },
+    },
+  })), /output already exists/);
+
+  assert.equal(readFileSync(resolve(outputPath, "foreign.txt"), "utf8"), "foreign output\n");
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
+});
+
+test("a parent identity change is detected before output creation", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  const displacedParent = temporaryRoot + "-displaced";
+  context.after(() => rmSync(displacedParent, { recursive: true, force: true }));
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      beforeOutputCreate() {
+        renameSync(temporaryRoot, displacedParent);
+        mkdirSync(temporaryRoot);
+        writeFileSync(resolve(temporaryRoot, "foreign.txt"), "foreign parent\n");
+      },
+    },
+  })), /output parent ownership changed/);
+
+  assert.equal(readFileSync(resolve(temporaryRoot, "foreign.txt"), "utf8"), "foreign parent\n");
+  assert.equal(existsSync(resolve(temporaryRoot, "consumer")), false);
+  assert.equal(existsSync(resolve(displacedParent, "consumer")), false);
+});
+
+test("an unexpected directory race is retained without overwrite", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  let injectedPath;
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      beforeEntryCreate({ destination, type }) {
+        if (injectedPath || type !== "directory") return;
+        injectedPath = destination;
+        mkdirSync(destination);
+        writeFileSync(resolve(destination, "foreign.txt"), "foreign directory\n");
+      },
+    },
+  })), /incomplete.*EEXIST|incomplete.*exist/u);
+
+  assert.equal(readFileSync(resolve(injectedPath, "foreign.txt"), "utf8"), "foreign directory\n");
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
+});
+
+test("an unexpected file race is retained byte-identical without overwrite", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  let injectedPath;
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      beforeEntryCreate({ destination, type }) {
+        if (injectedPath || type !== "file") return;
+        injectedPath = destination;
+        writeFileSync(destination, "foreign file\n", { mode: 0o600 });
+      },
+    },
+  })), /incomplete.*EEXIST|incomplete.*exist/u);
+
+  assert.equal(readFileSync(injectedPath, "utf8"), "foreign file\n");
+  assert.equal(statSync(injectedPath).mode & 0o777, 0o600);
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
+});
+
+test("a nested-directory pivot is detected before another destination create", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  const outside = resolve(temporaryRoot, "outside");
+  mkdirSync(outside);
+  writeFileSync(resolve(outside, "foreign.txt"), "foreign outside\n");
+  let candidateDirectory;
+  let pivoted = false;
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      beforeEntryCreate({ destination, type }) {
+        if (!candidateDirectory && type === "directory") {
+          candidateDirectory = destination;
+          return;
+        }
+        if (pivoted || !destination.startsWith(candidateDirectory + "/")) return;
+        rmSync(candidateDirectory, { recursive: true });
+        symlinkSync(outside, candidateDirectory);
+        pivoted = true;
+      },
+    },
+  })), /destination directory ownership changed/);
+
+  assert.equal(pivoted, true);
+  assert.equal(readFileSync(resolve(outside, "foreign.txt"), "utf8"), "foreign outside\n");
+  assert.equal(existsSync(resolve(outside, "plugin.json")), false);
+  assert.equal(lstatSync(candidateDirectory).isSymbolicLink(), true);
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
+});
+
+test("a copied payload mutation is retained as explicit incomplete recovery", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
   let error;
 
   assert.throws(() => materialize(request(outputPath, {
-    atomicFileSystem: {
-      beforeSourceValidation({ phase, source }) {
-        if (phase === "before-backup") stagePath = source;
-      },
-      beforeBackupValidation({ phase, backup }) {
-        if (phase !== "before-restore") return;
-        backupPath = backup;
-        writeFileSync(resolve(backup, "foreign.txt"), "foreign backup\n");
-      },
-      renameSync(from, to) {
-        if (stagePath && dirname(from) === stagePath && ++stageMoves === 2) {
-          throw new Error("synthetic promotion failure");
-        }
-        renameSync(from, to);
+    publicationHooks: {
+      afterCopy({ outputPath: canonicalOutput }) {
+        writeFileSync(resolve(canonicalOutput, "copy-mutation.txt"), "mutation\n");
       },
     },
   })), (caught) => {
     error = caught;
-    return caught instanceof AggregateError;
+    return caught instanceof AggregateError && /copied target digest mismatch/u.test(caught.message);
   });
 
-  assert.equal(existsSync(outputPath), false);
-  assert.equal(existsSync(resolve(backupPath, RECEIPT)), true);
-  assert.equal(readFileSync(resolve(backupPath, "foreign.txt"), "utf8"), "foreign backup\n");
-  assert.equal(error.errors.some((item) => /synthetic promotion failure/u.test(item.message)), true);
+  assert.equal(error.recoveryPath, realpathSync(outputPath));
+  assert.equal(readFileSync(resolve(outputPath, "copy-mutation.txt"), "utf8"), "mutation\n");
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
 });
 
-test("foreign content added to a promoted entry is retained during rollback", (context) => {
+test("versioned sibling outputs can both be materialized", (context) => {
   const { temporaryRoot, request } = setup(context);
-  const outputPath = resolve(temporaryRoot, "consumer");
-  materialize(request(outputPath));
-  let stagePath;
-  let stageMoves = 0;
-  let foreignPath;
-  let error;
+  const firstPath = resolve(temporaryRoot, "nested-skills-1.0.0-rev-a");
+  const secondPath = resolve(temporaryRoot, "nested-skills-1.0.0-rev-b");
 
-  assert.throws(() => materialize(request(outputPath, {
-    atomicFileSystem: {
-      beforeSourceValidation({ phase, source }) {
-        if (phase === "before-backup") stagePath = source;
-      },
-      beforePromotedValidation({ phase, destination }) {
-        if (phase !== "before-rollback" || foreignPath) return;
-        foreignPath = resolve(destination, "foreign.txt");
-        writeFileSync(foreignPath, "foreign promoted content\n");
-      },
-      renameSync(from, to) {
-        if (stagePath && dirname(from) === stagePath && ++stageMoves === 2) {
-          throw new Error("synthetic later promotion failure");
-        }
-        renameSync(from, to);
-      },
-    },
-  })), (caught) => {
-    error = caught;
-    return caught instanceof AggregateError;
-  });
+  const first = materialize(request(firstPath));
+  const second = materialize(request(secondPath, { registryRevision: "b".repeat(40) }));
 
-  assert.equal(readFileSync(foreignPath, "utf8"), "foreign promoted content\n");
-  assert.equal(error.errors.length > 1, true);
-  assert.equal(
-    [error.recoveryPath, ...(error.additionalRecoveryPaths || [])]
-      .some((path) => path === realpathSync(outputPath)),
-    true,
-  );
+  assert.equal(first.registryRevision, REVISION);
+  assert.equal(second.registryRevision, "b".repeat(40));
+  assert.equal(existsSync(resolve(firstPath, RECEIPT)), true);
+  assert.equal(existsSync(resolve(secondPath, RECEIPT)), true);
 });
 
-test("a rollback rename failure retains stage, public, and backup recovery", (context) => {
-  const { temporaryRoot, request } = setup(context);
-  const outputPath = resolve(temporaryRoot, "consumer");
-  materialize(request(outputPath));
-  let stagePath;
-  let atomicOutputPath;
-  let stageMoves = 0;
-  let error;
-
-  assert.throws(() => materialize(request(outputPath, {
-    atomicFileSystem: {
-      beforeExistingValidation({ outputRoot }) {
-        atomicOutputPath = outputRoot;
-      },
-      beforeSourceValidation({ phase, source }) {
-        if (phase === "before-backup") stagePath = source;
-      },
-      renameSync(from, to) {
-        if (stagePath && dirname(from) === stagePath && ++stageMoves === 2) {
-          throw new Error("synthetic promotion failure");
-        }
-        if (from.startsWith(atomicOutputPath + "/") && to.startsWith(stagePath + "/")) {
-          throw new Error("synthetic rollback failure");
-        }
-        renameSync(from, to);
-      },
-    },
-  })), (caught) => {
-    error = caught;
-    return caught instanceof AggregateError;
-  });
-
-  const recoveryPaths = [error.recoveryPath, ...(error.additionalRecoveryPaths || [])];
-  assert.equal(error.message.includes("recovery data retained"), true);
-  assert.equal(
-    recoveryPaths.some((path) => path === realpathSync(outputPath)),
-    true,
-    JSON.stringify(recoveryPaths),
+test("the materializer has no consumer-output rename or deletion path", () => {
+  const implementation = readFileSync(
+    new URL("../../scripts/lib/materialize.mjs", import.meta.url),
+    "utf8",
   );
-  assert.equal(recoveryPaths.some((path) => basename(path).startsWith(".consumer.stage-")), true);
-  assert.equal(
-    recoveryPaths.some((path) => path.includes(".consumer.backup-") || dirname(path).includes(".consumer.backup-")),
-    true,
-  );
-});
 
-test("an absent-output race preserves the foreign output and retains the stage", (context) => {
-  const { temporaryRoot, request } = setup(context);
-  const outputPath = resolve(temporaryRoot, "consumer");
-  let injected = false;
-  let error;
-
-  assert.throws(() => materialize(request(outputPath, {
-    atomicFileSystem: {
-      beforeExistingValidation({ expectedExisting }) {
-        if (expectedExisting || injected) return;
-        injected = true;
-        mkdirSync(outputPath);
-        writeFileSync(resolve(outputPath, "foreign.txt"), "foreign race\n");
-      },
-    },
-  })), (caught) => {
-    error = caught;
-    return caught instanceof AggregateError;
-  });
-
-  assert.equal(readFileSync(resolve(outputPath, "foreign.txt"), "utf8"), "foreign race\n");
-  assert.equal(existsSync(error.recoveryPath), true);
-  assert.equal(basename(error.recoveryPath).startsWith(".consumer.stage-"), true);
+  assert.doesNotMatch(implementation, /\b(?:rename|unlink|rmdir|rm)Sync\b/u);
 });
 
 test("materialization source is narrow, fresh, frozen, and bound to the reader", (context) => {
@@ -643,4 +570,143 @@ test("CLI materializes a verified target and emits its receipt", (context) => {
   assert.match(receipt.registryRevision, /^[a-f0-9]{40}$/u);
   assert.equal(existsSync(resolve(output, RECEIPT)), true);
   assert.equal(existsSync(resolve(output, ".codex-plugin/plugin.json")), true);
+});
+
+test("artifact claims reject identical nested inode replacements", (context) => {
+  const root = sandbox(context, "materialize-claim-identity-");
+  const nested = resolve(root, "nested.txt");
+  writeFileSync(nested, "same bytes\n", { mode: 0o644 });
+  const claim = claimAtomicArtifact(root, "identity fixture");
+  rmSync(nested);
+  writeFileSync(nested, "same bytes\n", { mode: 0o644 });
+
+  assert.throws(
+    () => assertAtomicArtifactClaim(root, claim, "identity fixture"),
+    /ownership changed/,
+  );
+});
+
+test("reader verification cannot be replaced through the public object", (context) => {
+  const { reader } = setup(context);
+  assert.equal(Object.isFrozen(reader), true);
+  assert.throws(() => {
+    reader.verify = () => ({ ok: true, errors: [] });
+  }, TypeError);
+});
+
+test("requires an existing immediate output parent without creating descendants", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const missingParent = resolve(temporaryRoot, "missing-parent");
+
+  assert.throws(
+    () => materialize(request(resolve(missingParent, "consumer"))),
+    /immediate output parent must exist/,
+  );
+  assert.equal(existsSync(missingParent), false);
+});
+
+test("accepts a canonicalized system symlink as the existing output parent", (context) => {
+  const temporaryParent = "/tmp";
+  if (!lstatSync(temporaryParent).isSymbolicLink()) {
+    context.skip("system /tmp is not a symlink on this platform");
+    return;
+  }
+  const { request } = setup(context);
+  const outputPath = resolve(
+    temporaryParent,
+    `gravit-materialize-${process.pid}-${Date.now()}`,
+  );
+  context.after(() => rmSync(outputPath, { recursive: true, force: true }));
+
+  assert.doesNotThrow(() => materialize(request(outputPath)));
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), true);
+});
+
+test("rejects a reserved receipt introduced into the copied target", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  let error;
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      beforeReceiptCreate({ outputPath: canonicalOutput }) {
+        writeFileSync(resolve(canonicalOutput, RECEIPT), "foreign receipt\n", {
+          flag: "wx",
+        });
+      },
+    },
+  })), (caught) => {
+    error = caught;
+    return caught instanceof AggregateError && /reserved receipt/u.test(caught.message);
+  });
+
+  assert.equal(error.recoveryPath, realpathSync(outputPath));
+  assert.equal(readFileSync(resolve(outputPath, RECEIPT), "utf8"), "foreign receipt\n");
+  assert.throws(() => receiptAt(outputPath), SyntaxError);
+});
+
+test("a receipt open race is rejected exclusively without overwriting foreign data", (context) => {
+  const { temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  const foreignReceipt = "foreign receipt race\n";
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      beforeReceiptOpen({ receiptPath }) {
+        writeFileSync(receiptPath, foreignReceipt, { flag: "wx", mode: 0o600 });
+      },
+    },
+  })), /incomplete.*EEXIST|incomplete.*exist/u);
+
+  const receiptPath = resolve(outputPath, RECEIPT);
+  assert.equal(readFileSync(receiptPath, "utf8"), foreignReceipt);
+  assert.equal(statSync(receiptPath).mode & 0o777, 0o600);
+});
+
+test("rejects a reserved receipt already present in a verified source target", (context) => {
+  const { repositoryRoot, temporaryRoot } = setup(context);
+  const bundleRoot = resolve(repositoryRoot, "plugins/nested-skills");
+  const targetRoot = resolve(bundleRoot, "targets/codex");
+  const manifestPath = resolve(bundleRoot, ".agent-plugin/plugin.json");
+  const lockPath = resolve(repositoryRoot, "registry/lock.json");
+  writeFileSync(resolve(targetRoot, RECEIPT), "reserved source receipt\n");
+
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const targetDigest = treeHash(targetRoot);
+  manifest.targets.codex.digest = targetDigest;
+  writeJson(manifestPath, manifest);
+  const lock = JSON.parse(readFileSync(lockPath, "utf8"));
+  lock.plugins["nested-skills"].targets.codex = targetDigest;
+  lock.plugins["nested-skills"].bundleDigest = treeHash(bundleRoot);
+  writeJson(lockPath, lock);
+
+  const outputPath = resolve(temporaryRoot, "consumer");
+  assert.throws(() => materialize({
+    reader: openRegistry(repositoryRoot),
+    pluginName: "nested-skills",
+    target: "codex",
+    outputPath,
+    registryRevision: REVISION,
+  }), /source target contains reserved receipt/);
+  assert.equal(existsSync(outputPath), false);
+});
+
+test("revalidates the complete bundle immediately before publication", (context) => {
+  const { repositoryRoot, temporaryRoot, request } = setup(context);
+  const outputPath = resolve(temporaryRoot, "consumer");
+  const neutralManifest = resolve(
+    repositoryRoot,
+    "plugins/nested-skills/.agent-plugin/plugin.json",
+  );
+
+  assert.throws(() => materialize(request(outputPath, {
+    publicationHooks: {
+      afterCopy() {
+        writeFileSync(neutralManifest, readFileSync(neutralManifest, "utf8") + " ");
+      },
+    },
+  })), /bundle.*(?:ownership|content or metadata) changed/);
+
+  assert.equal(existsSync(outputPath), true);
+  assert.equal(existsSync(resolve(outputPath, RECEIPT)), false);
 });

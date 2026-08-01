@@ -2,22 +2,22 @@ import Ajv from "ajv/dist/2020.js";
 import {
   closeSync,
   constants,
-  cpSync,
+  fchmodSync,
   fstatSync,
   lstatSync,
   mkdirSync,
   openSync,
   readFileSync,
   realpathSync,
+  writeFileSync,
 } from "node:fs";
 import { basename, dirname, parse, resolve } from "node:path";
 import {
   assertAtomicArtifactClaim,
   claimAtomicArtifact,
-  withClaimedAtomicOutput,
 } from "./atomic-output.mjs";
-import { treeHash } from "./hash.mjs";
-import { writeJson } from "./json.mjs";
+import { sha256, treeHash } from "./hash.mjs";
+import { stableJson } from "./json.mjs";
 import { materializationSource } from "./registry-reader.mjs";
 import { canonicalPath, pathsOverlap } from "./path-safety.mjs";
 
@@ -43,6 +43,14 @@ function sameIdentity(left, right) {
   return left.dev === right.dev && left.ino === right.ino;
 }
 
+function permissionMode(stats) {
+  return stats.mode & 0o7777;
+}
+
+function writableDirectoryMode(mode) {
+  return mode | 0o700;
+}
+
 function safeOutputPath(requestedPath) {
   if (typeof requestedPath !== "string" || requestedPath.length === 0) {
     throw new Error("materialization output must be a non-empty path");
@@ -52,67 +60,262 @@ function safeOutputPath(requestedPath) {
     throw new Error("materialization output must not be a filesystem root");
   }
   const lexicalParent = dirname(lexicalOutput);
-  const missing = [];
-  let existingParent = lexicalParent;
-  let parentStats = pathEntry(existingParent);
-  while (!parentStats) {
-    const next = dirname(existingParent);
-    if (next === existingParent) throw new Error("materialization output has no existing parent");
-    missing.unshift(basename(existingParent));
-    existingParent = next;
-    parentStats = pathEntry(existingParent);
+  if (!pathEntry(lexicalParent)) {
+    throw new Error("materialization immediate output parent must exist: " + lexicalParent);
   }
-  if (parentStats.isSymbolicLink()) {
-    throw new Error("symbolic output parent pivot is not allowed: " + existingParent);
+  const canonicalParent = realpathSync(lexicalParent);
+  const parentStats = lstatSync(canonicalParent);
+  if (parentStats.isSymbolicLink() || !parentStats.isDirectory()) {
+    throw new Error("materialization output parent must be a real directory: " + canonicalParent);
   }
-  if (!parentStats.isDirectory()) {
-    throw new Error("materialization output parent must be a real directory: " + existingParent);
-  }
-  let canonicalParent = realpathSync(existingParent);
-  for (const segment of missing) {
-    const next = resolve(canonicalParent, segment);
-    try {
-      mkdirSync(next);
-    } catch (error) {
-      if (error.code !== "EEXIST") throw error;
-    }
-    const stats = lstatSync(next);
-    if (stats.isSymbolicLink()) {
-      throw new Error("symbolic output parent pivot is not allowed: " + next);
-    }
-    if (!stats.isDirectory() || realpathSync(next) !== next) {
-      throw new Error("materialization output parent must be a real directory: " + next);
-    }
-    canonicalParent = next;
-  }
-  return resolve(canonicalParent, basename(lexicalOutput));
+  return {
+    outputPath: resolve(canonicalParent, basename(lexicalOutput)),
+    parentPath: canonicalParent,
+    parentIdentity: { device: parentStats.dev, inode: parentStats.ino },
+  };
 }
 
-function readBoundReceipt(path) {
+function assertParentClaim(parentPath, expected) {
+  const stats = lstatSync(parentPath);
+  if (
+    stats.isSymbolicLink()
+    || !stats.isDirectory()
+    || stats.dev !== expected.device
+    || stats.ino !== expected.inode
+    || realpathSync(parentPath) !== parentPath
+  ) {
+    throw new Error("materialization output parent ownership changed: " + parentPath);
+  }
+}
+
+function assertRootIdentity(path, expected, label) {
+  const stats = lstatSync(path);
+  if (
+    stats.isSymbolicLink()
+    || !stats.isDirectory()
+    || stats.dev !== expected.device
+    || stats.ino !== expected.inode
+  ) {
+    throw new Error(label + " ownership changed: " + path);
+  }
+}
+
+function bindDirectoryMode(path, mode, label) {
   const before = lstatSync(path);
-  if (before.isSymbolicLink() || !before.isFile()) {
-    throw new Error("materialization ownership requires a real regular receipt: " + path);
+  if (before.isSymbolicLink() || !before.isDirectory()) {
+    throw new Error(label + " must be a real directory: " + path);
   }
   let descriptor;
   try {
-    descriptor = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    descriptor = openSync(
+      path,
+      constants.O_RDONLY | constants.O_NOFOLLOW | (constants.O_DIRECTORY ?? 0),
+    );
     const opened = fstatSync(descriptor);
-    if (!opened.isFile() || !sameIdentity(before, opened)) {
-      throw new Error("materialization receipt ownership changed: " + path);
+    if (!opened.isDirectory() || !sameIdentity(before, opened)) {
+      throw new Error(label + " ownership changed: " + path);
     }
-    const value = JSON.parse(readFileSync(descriptor, "utf8"));
+    fchmodSync(descriptor, mode);
     const after = fstatSync(descriptor);
     const bound = lstatSync(path);
     if (
-      !after.isFile()
+      !after.isDirectory()
       || !sameIdentity(opened, after)
-      || opened.size !== after.size
       || !sameIdentity(after, bound)
       || bound.isSymbolicLink()
+      || permissionMode(after) !== mode
+    ) {
+      throw new Error(label + " ownership changed: " + path);
+    }
+    return { device: after.dev, inode: after.ino };
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
+function sourcePath(root, relativePath) {
+  return relativePath === "."
+    ? root
+    : resolve(root, ...relativePath.split("/"));
+}
+
+function createExclusiveFile(sourceRoot, outputRoot, entry, assertDestinationParents) {
+  const source = sourcePath(sourceRoot, entry.relativePath);
+  const destination = sourcePath(outputRoot, entry.relativePath);
+  const sourceBefore = lstatSync(source);
+  if (
+    sourceBefore.isSymbolicLink()
+    || !sourceBefore.isFile()
+    || sourceBefore.dev !== entry.device
+    || sourceBefore.ino !== entry.inode
+    || permissionMode(sourceBefore) !== entry.mode
+  ) {
+    throw new Error("materialization source file ownership changed: " + source);
+  }
+
+  let sourceDescriptor;
+  let destinationDescriptor;
+  try {
+    sourceDescriptor = openSync(source, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const sourceOpened = fstatSync(sourceDescriptor);
+    if (!sourceOpened.isFile() || !sameIdentity(sourceBefore, sourceOpened)) {
+      throw new Error("materialization source file ownership changed: " + source);
+    }
+    const bytes = readFileSync(sourceDescriptor);
+    const sourceAfter = fstatSync(sourceDescriptor);
+    if (
+      !sameIdentity(sourceOpened, sourceAfter)
+      || permissionMode(sourceAfter) !== entry.mode
+      || sha256(bytes) !== entry.digest
+    ) {
+      throw new Error("materialization source file changed while copying: " + source);
+    }
+
+    assertDestinationParents(entry.relativePath);
+    destinationDescriptor = openSync(
+      destination,
+      constants.O_WRONLY
+        | constants.O_CREAT
+        | constants.O_EXCL
+        | constants.O_NOFOLLOW,
+      entry.mode,
+    );
+    writeFileSync(destinationDescriptor, bytes);
+    fchmodSync(destinationDescriptor, entry.mode);
+    const destinationOpened = fstatSync(destinationDescriptor);
+    const destinationBound = lstatSync(destination);
+    if (
+      !destinationOpened.isFile()
+      || !sameIdentity(destinationOpened, destinationBound)
+      || destinationBound.isSymbolicLink()
+      || permissionMode(destinationOpened) !== entry.mode
+    ) {
+      throw new Error("materialization destination file ownership changed: " + destination);
+    }
+  } finally {
+    if (destinationDescriptor !== undefined) closeSync(destinationDescriptor);
+    if (sourceDescriptor !== undefined) closeSync(sourceDescriptor);
+  }
+}
+
+function copyClaimExclusively({
+  sourceRoot,
+  outputRoot,
+  outputIdentity,
+  sourceClaim,
+  beforeEntryCreate,
+}) {
+  const directoryIdentities = new Map([[".", outputIdentity]]);
+  const directories = [{
+    path: outputRoot,
+    identity: outputIdentity,
+    mode: sourceClaim.entries[0].mode,
+  }];
+
+  function assertDestinationParents(relativePath) {
+    const segments = relativePath.split("/");
+    segments.pop();
+    let currentPath = outputRoot;
+    let currentRelative = ".";
+    assertRootIdentity(outputRoot, outputIdentity, "materialization output");
+    for (const segment of segments) {
+      currentPath = resolve(currentPath, segment);
+      currentRelative = currentRelative === "."
+        ? segment
+        : currentRelative + "/" + segment;
+      const expected = directoryIdentities.get(currentRelative);
+      if (!expected) {
+        throw new Error("materialization destination parent was not created: " + currentPath);
+      }
+      assertRootIdentity(
+        currentPath,
+        expected,
+        "materialization destination directory",
+      );
+    }
+  }
+
+  for (const entry of sourceClaim.entries.slice(1)) {
+    const destination = sourcePath(outputRoot, entry.relativePath);
+    assertDestinationParents(entry.relativePath);
+    beforeEntryCreate({
+      outputPath: outputRoot,
+      destination,
+      relativePath: entry.relativePath,
+      type: entry.type,
+    });
+    assertDestinationParents(entry.relativePath);
+    if (entry.type === "directory") {
+      const temporaryMode = writableDirectoryMode(entry.mode);
+      mkdirSync(destination, { mode: temporaryMode });
+      const identity = bindDirectoryMode(
+        destination,
+        temporaryMode,
+        "materialization destination directory",
+      );
+      directoryIdentities.set(entry.relativePath, identity);
+      directories.push({ path: destination, identity, mode: entry.mode });
+    } else {
+      createExclusiveFile(
+        sourceRoot,
+        outputRoot,
+        entry,
+        assertDestinationParents,
+      );
+    }
+  }
+
+  for (const directory of directories.reverse()) {
+    const actual = bindDirectoryMode(
+      directory.path,
+      directory.mode,
+      "materialization destination directory",
+    );
+    if (
+      actual.device !== directory.identity.device
+      || actual.inode !== directory.identity.inode
+    ) {
+      throw new Error(
+        "materialization destination directory ownership changed: " + directory.path,
+      );
+    }
+  }
+}
+
+function incompleteMaterialization(error, outputPath) {
+  const retained = new AggregateError(
+    [error],
+    "materialization is incomplete; recovery data retained at " + outputPath
+      + ": " + error.message,
+  );
+  retained.recoveryPath = outputPath;
+  return retained;
+}
+
+function writeReceiptExclusive(path, receipt, beforeOpen) {
+  let descriptor;
+  try {
+    beforeOpen({ receiptPath: path });
+    descriptor = openSync(
+      path,
+      constants.O_WRONLY
+        | constants.O_CREAT
+        | constants.O_EXCL
+        | constants.O_NOFOLLOW,
+      0o644,
+    );
+    writeFileSync(descriptor, stableJson(receipt));
+    fchmodSync(descriptor, 0o644);
+    const opened = fstatSync(descriptor);
+    const bound = lstatSync(path);
+    if (
+      !opened.isFile()
+      || !sameIdentity(opened, bound)
+      || bound.isSymbolicLink()
+      || permissionMode(opened) !== 0o644
     ) {
       throw new Error("materialization receipt ownership changed: " + path);
     }
-    return value;
   } finally {
     if (descriptor !== undefined) closeSync(descriptor);
   }
@@ -126,59 +329,13 @@ export function validateReceipt(receipt) {
   throw new Error("invalid materialization receipt: " + details);
 }
 
-function matchingReceipt(receipt, expected) {
-  return receipt.registry === "gravit-cloud"
-    && receipt.plugin === expected.plugin
-    && receipt.target === expected.target;
-}
-
-function claimOwnedOutput(outputPath, expected) {
-  const outputStats = pathEntry(outputPath);
-  if (!outputStats) return undefined;
-  if (outputStats.isSymbolicLink()) {
-    throw new Error("symbolic output is not allowed: " + outputPath);
-  }
-  if (outputStats.isFile()) {
-    throw new Error("materialization output must be a real directory: " + outputPath);
-  }
-  if (!outputStats.isDirectory()) {
-    throw new Error("special output is not allowed: " + outputPath);
-  }
-  const receiptPath = resolve(outputPath, RECEIPT);
-  if (!pathEntry(receiptPath)) return false;
-  const receipt = readBoundReceipt(receiptPath);
-  validateReceipt(receipt);
-  if (!matchingReceipt(receipt, expected)) return false;
-  const actualDigest = treeHash(outputPath, {
-    exclude: [RECEIPT],
-    includeModes: true,
-  });
-  if (actualDigest !== receipt.materializedDigest) {
-    throw new Error("receipt payload digest mismatch: " + outputPath);
-  }
-  const claim = claimAtomicArtifact(outputPath, "receipt-owned materialization output");
-  const confirmedReceipt = readBoundReceipt(receiptPath);
-  validateReceipt(confirmedReceipt);
-  if (
-    !matchingReceipt(confirmedReceipt, expected)
-    || JSON.stringify(confirmedReceipt) !== JSON.stringify(receipt)
-    || treeHash(outputPath, { exclude: [RECEIPT], includeModes: true })
-      !== confirmedReceipt.materializedDigest
-  ) {
-    throw new Error("materialization receipt ownership changed: " + receiptPath);
-  }
-  assertAtomicArtifactClaim(outputPath, claim, "receipt-owned materialization output");
-  return claim;
-}
-
 export function materialize({
   reader,
   pluginName,
   target,
   outputPath: requestedOutputPath,
   registryRevision,
-  copyDirectory = cpSync,
-  atomicFileSystem = {},
+  publicationHooks = {},
 }) {
   if (!TARGETS.has(target)) {
     throw new Error("unsupported materialization target: " + String(target));
@@ -193,7 +350,7 @@ export function materialize({
   if (lexicalOutput === parse(lexicalOutput).root) {
     throw new Error("materialization output must not be a filesystem root");
   }
-  const verification = reader.verify(pluginName);
+
   const source = materializationSource(reader, pluginName, target);
   const prospectiveOutput = canonicalPath(lexicalOutput);
   if (
@@ -202,66 +359,140 @@ export function materialize({
   ) {
     throw new Error("materialization output overlaps registry target source: " + prospectiveOutput);
   }
-  const outputPath = safeOutputPath(lexicalOutput);
+  const {
+    outputPath,
+    parentPath,
+    parentIdentity,
+  } = safeOutputPath(requestedOutputPath);
+  if (
+    pathsOverlap(outputPath, source.targetRoot)
+    || pathsOverlap(outputPath, source.bundleRoot)
+  ) {
+    throw new Error("materialization output overlaps registry target source: " + outputPath);
+  }
+  if (pathEntry(outputPath)) {
+    throw new Error("materialization output already exists: " + outputPath);
+  }
+  if (pathEntry(resolve(source.targetRoot, RECEIPT))) {
+    throw new Error("source target contains reserved receipt: " + source.targetRoot);
+  }
+
   const sourceTargetDigest = treeHash(source.targetRoot);
   if (sourceTargetDigest !== source.targetDigest) {
     throw new Error(pluginName + ": target digest mismatch: " + target);
   }
-  if (!verification.ok) throw new Error(verification.errors.join("\n"));
+  if (treeHash(source.bundleRoot) !== source.bundleDigest) {
+    throw new Error(pluginName + ": bundle digest mismatch");
+  }
+  const bundleClaim = claimAtomicArtifact(
+    source.bundleRoot,
+    pluginName + " source bundle",
+  );
   const sourceClaim = claimAtomicArtifact(
     source.targetRoot,
     pluginName + " source target " + target,
   );
-  const existingClaim = claimOwnedOutput(outputPath, { plugin: pluginName, target });
-  if (existingClaim === false) {
-    throw new Error("refusing to replace unowned output: " + outputPath);
+
+  const beforeOutputCreate = publicationHooks.beforeOutputCreate ?? (() => {});
+  const beforeOutputMkdir = publicationHooks.beforeOutputMkdir ?? (() => {});
+  const beforeEntryCreate = publicationHooks.beforeEntryCreate ?? (() => {});
+  const afterCopy = publicationHooks.afterCopy ?? (() => {});
+  const beforeReceiptCreate = publicationHooks.beforeReceiptCreate ?? (() => {});
+  const beforeReceiptOpen = publicationHooks.beforeReceiptOpen ?? (() => {});
+
+  assertParentClaim(parentPath, parentIdentity);
+  assertAtomicArtifactClaim(source.bundleRoot, bundleClaim, pluginName + " source bundle");
+  assertAtomicArtifactClaim(
+    source.targetRoot,
+    sourceClaim,
+    pluginName + " source target " + target,
+  );
+  beforeOutputCreate({ outputPath });
+  assertParentClaim(parentPath, parentIdentity);
+  if (pathEntry(outputPath)) {
+    throw new Error("materialization output already exists: " + outputPath);
+  }
+  beforeOutputMkdir({ outputPath });
+
+  try {
+    mkdirSync(outputPath, { mode: writableDirectoryMode(sourceClaim.entries[0].mode) });
+  } catch (error) {
+    if (error.code === "EEXIST") {
+      throw new Error("materialization output already exists: " + outputPath, { cause: error });
+    }
+    throw error;
   }
 
-  let receipt;
-  withClaimedAtomicOutput({
-    finalRoot: outputPath,
-    existingClaim,
-    stageMode: sourceClaim.entries[0].mode,
-    build(stage) {
-      assertAtomicArtifactClaim(
-        source.targetRoot,
-        sourceClaim,
-        pluginName + " source target " + target,
-      );
-      copyDirectory(source.targetRoot, stage, {
-        recursive: true,
-        preserveTimestamps: false,
-      });
-      assertAtomicArtifactClaim(
-        source.targetRoot,
-        sourceClaim,
-        pluginName + " source target " + target,
-      );
-    },
-    finalize(stage) {
-      const copiedDigest = treeHash(stage);
-      if (copiedDigest !== sourceTargetDigest) {
-        throw new Error(pluginName + ": copied target digest mismatch: " + target);
-      }
-      const copiedClaim = claimAtomicArtifact(stage, "copied materialization target");
-      if (copiedClaim.deterministicSnapshot !== sourceClaim.deterministicSnapshot) {
-        throw new Error(pluginName + ": copied target metadata mismatch: " + target);
-      }
-      const materializedDigest = treeHash(stage, { includeModes: true });
-      receipt = {
-        schemaVersion: 1,
-        registry: "gravit-cloud",
-        registryRevision,
-        plugin: pluginName,
-        target,
-        distributionVersion: source.distributionVersion,
-        sourceBundleDigest: source.bundleDigest,
-        sourceTargetDigest,
-        materializedDigest,
-      };
-      validateReceipt(receipt);
-      writeJson(resolve(stage, RECEIPT), receipt);
-    },
-  }, atomicFileSystem);
-  return receipt;
+  try {
+    const outputIdentity = bindDirectoryMode(
+      outputPath,
+      writableDirectoryMode(sourceClaim.entries[0].mode),
+      "materialization output",
+    );
+    assertParentClaim(parentPath, parentIdentity);
+    copyClaimExclusively({
+      sourceRoot: source.targetRoot,
+      outputRoot: outputPath,
+      outputIdentity,
+      sourceClaim,
+      beforeEntryCreate,
+    });
+    afterCopy({ outputPath, source });
+    assertParentClaim(parentPath, parentIdentity);
+    assertRootIdentity(outputPath, outputIdentity, "materialization output");
+    assertAtomicArtifactClaim(source.bundleRoot, bundleClaim, pluginName + " source bundle");
+    assertAtomicArtifactClaim(
+      source.targetRoot,
+      sourceClaim,
+      pluginName + " source target " + target,
+    );
+    if (pathEntry(resolve(outputPath, RECEIPT))) {
+      throw new Error("materialization output contains reserved receipt: " + outputPath);
+    }
+    const copiedDigest = treeHash(outputPath);
+    if (copiedDigest !== sourceTargetDigest) {
+      throw new Error(pluginName + ": copied target digest mismatch: " + target);
+    }
+    const copiedClaim = claimAtomicArtifact(outputPath, "copied materialization target");
+    if (copiedClaim.deterministicSnapshot !== sourceClaim.deterministicSnapshot) {
+      throw new Error(pluginName + ": copied target metadata mismatch: " + target);
+    }
+    const materializedDigest = treeHash(outputPath, { includeModes: true });
+    const receipt = {
+      schemaVersion: 1,
+      registry: "gravit-cloud",
+      registryRevision,
+      plugin: pluginName,
+      target,
+      distributionVersion: source.distributionVersion,
+      sourceBundleDigest: source.bundleDigest,
+      sourceTargetDigest,
+      materializedDigest,
+    };
+    validateReceipt(receipt);
+
+    const receiptPath = resolve(outputPath, RECEIPT);
+    beforeReceiptCreate({ outputPath, receipt });
+    if (pathEntry(receiptPath)) {
+      throw new Error("materialization output contains reserved receipt: " + receiptPath);
+    }
+    assertParentClaim(parentPath, parentIdentity);
+    assertRootIdentity(outputPath, outputIdentity, "materialization output");
+    assertAtomicArtifactClaim(outputPath, copiedClaim, "copied materialization target");
+    assertAtomicArtifactClaim(source.bundleRoot, bundleClaim, pluginName + " source bundle");
+    assertAtomicArtifactClaim(
+      source.targetRoot,
+      sourceClaim,
+      pluginName + " source target " + target,
+    );
+    assertParentClaim(parentPath, parentIdentity);
+    assertRootIdentity(outputPath, outputIdentity, "materialization output");
+    if (pathEntry(receiptPath)) {
+      throw new Error("materialization output contains reserved receipt: " + receiptPath);
+    }
+    writeReceiptExclusive(receiptPath, receipt, beforeReceiptOpen);
+    return receipt;
+  } catch (error) {
+    throw incompleteMaterialization(error, outputPath);
+  }
 }
