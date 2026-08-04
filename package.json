@@ -26,6 +26,7 @@
   "scripts": {
     "build": "bash build.sh",
     "plugins:sync": "node scripts/sync-plugins.mjs",
+    "test": "node --test",
     "validate": "node scripts/validate.mjs",
     "version:set": "node scripts/set-version.mjs",
     "release:prepare": "npm run validate && npm run build"

@@ -2,7 +2,7 @@
 
 Vector-store-backed retrieval over uploaded files — a **connectionless built-in** (the vector store is referenced by the toolbox tool). Use the **flat** tool shape: `vector_store_ids` is a sibling of `type`, not nested under `file_search`. For the toolbox concept, versions, and endpoint, see [toolbox.md](../toolbox.md).
 
-> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
+> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
 
 ---
 

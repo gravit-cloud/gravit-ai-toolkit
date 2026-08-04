@@ -4,7 +4,7 @@ Attach a remote MCP server that authenticates with the **caller's own Entra iden
 
 Use this when the MCP server enforces per-user permissions off the caller's Entra identity (e.g. Microsoft 365 / Graph-backed services). [Work IQ](tool-work-iq.md) is a concrete, preview instance of this pattern.
 
-> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
+> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
 
 ---
 

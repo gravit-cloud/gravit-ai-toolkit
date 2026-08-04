@@ -5,7 +5,7 @@ Give the agent Microsoft 365 work context (mail, meetings, files, chats, and M36
 - **Server URL:** `https://workiq.svc.cloud.microsoft/mcp`
 - **Work IQ API app** (audience / scopes source): `fdcc1f02-fc51-4226-8753-f668596af7f7` ("Work IQ"), delegated scopes `WorkIQAgent.Ask`, `WorkIQAgent.Ask.Selected`, `WorkIQSettings.Read.All`, `WorkIQSettings.ReadWrite.All`.
 
-> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
+> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
 
 ## Two auth paths
 

@@ -2,7 +2,7 @@
 
 Opinionated happy-path for first-time users creating their first hosted Foundry agent. Safe defaults, minimal decisions.
 
-> **Scope:** Defaults below are applied automatically when the user is silent. The user may override the language or sample explicitly; new-vs-existing Foundry project is handled inline. For anything not covered here, stop and read [create-hosted.md](create-hosted.md).
+> **Scope:** Defaults below are applied automatically when the user is silent. The user may override the language or sample explicitly; new-vs-existing Foundry project is handled inline. For anything not covered here, stop and read create-hosted.md.
 
 ## When to Use This Skill
 
@@ -179,7 +179,7 @@ Verify all four before continuing. If any check fails, pick **one** recovery pat
 
 Never `azd env set AI_PROJECT_DEPLOYMENTS '[...]'` (single-escaped JSON breaks Bicep parse). Never `az cognitiveservices account deployment create` against this account (creates the deployment outside the azd lifecycle).
 
-If recovery still fails → escape to [create-hosted.md](create-hosted.md).
+If recovery still fails → escape to create-hosted.md.
 
 ### Step 8 — Provision Azure resources
 
@@ -346,4 +346,4 @@ azd down                                    # tear down all resources when done
 
 ## Escape Hatch
 
-If any step fails in a way not covered above, the output looks unexpected, or the user's request drifts outside what this quickstart covers → **stop improvising**. Read [create-hosted.md](create-hosted.md) and follow its full workflow.
+If any step fails in a way not covered above, the output looks unexpected, or the user's request drifts outside what this quickstart covers → **stop improvising**. Read create-hosted.md and follow its full workflow.

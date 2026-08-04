@@ -4,7 +4,7 @@ Attach a remote MCP server whose OAuth is **brokered by Foundry** — you do **n
 
 For the variant where you own the OAuth app (BYO `client_id` / `client_secret`), see [tool-mcp-custom-oauth.md](tool-mcp-custom-oauth.md). For the connector-namespace `gateway_connector` variant, see [foundry-tool-catalog.md → Gateway connector full flow](../../create/references/foundry-tool-catalog.md#gateway-connector-full-flow).
 
-> 🚦 Before creating a toolbox/connection, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
+> 🚦 Before creating a toolbox/connection, read create-hosted.md → Toolbox creation boundary.
 
 There is **no redirect-URI round-trip** and **no `client_secret`** to manage — the two things the managed flow removes versus [tool-mcp-custom-oauth.md](tool-mcp-custom-oauth.md).
 
