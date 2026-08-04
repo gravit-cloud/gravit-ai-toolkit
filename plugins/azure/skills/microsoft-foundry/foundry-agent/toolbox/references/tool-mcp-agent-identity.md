@@ -4,7 +4,7 @@ Attach a remote MCP server that accepts an **Entra ID token minted for a Foundry
 
 Use this when the MCP server accepts an **app-only** service-principal token (not a user's) — e.g. the Microsoft-hosted Azure Language MCP, or your own Azure Functions MCP behind Easy Auth. For per-user identity instead, see [tool-mcp-user-entra-token.md](tool-mcp-user-entra-token.md).
 
-> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
+> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
 
 ## Pick the sub-type
 

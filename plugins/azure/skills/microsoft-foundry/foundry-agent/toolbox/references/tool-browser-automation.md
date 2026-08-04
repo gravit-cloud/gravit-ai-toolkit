@@ -4,7 +4,7 @@ Browser automation backed by an **Azure Playwright workspace**. Auth is `Project
 
 The tool uses the **nested** shape: a `browser_automation_preview: { connection: { project_connection_id: ... } }` object under the tool entry (not a top-level `connections:` array).
 
-> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
+> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
 
 ---
 

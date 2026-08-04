@@ -15,7 +15,7 @@ For **prompt agents** (LLM + instructions, no custom code), use the Foundry MCP 
 | Prompt MCP | `agent_definition_schema_get`, `agent_update`, `agent_get`, `agent_delete` |
 | Versioning | Each successful `azd deploy` creates an immutable agent version |
 | Endpoint-only patch | `azd ai agent endpoint update` (no new version) |
-| Local dev | [create-hosted](../create/create-hosted.md), [local-run](../create/references/local-run.md) |
+| Local dev | create-hosted, [local-run](../create/references/local-run.md) |
 
 ## Hosted vs Prompt
 
@@ -47,7 +47,7 @@ Default to direct code for standard hosted-agent code. If `azd deploy` prints `P
 
 ## Workflow -- Hosted agent (azd)
 
-> Prerequisite: project scaffolded with `azd ai agent init`. If not, start at [create-hosted](../create/create-hosted.md).
+> Prerequisite: project scaffolded with `azd ai agent init`. If not, start at create-hosted.
 
 ### Step 1 -- Resolve azd environment
 
@@ -250,7 +250,7 @@ This step runs automatically after deploy. Ask the user which source to use and 
 | Schema fetch failed | Verify endpoint format: `https://<resource>.services.ai.azure.com/api/projects/<project>`. |
 | Agent creation failed | Use `agent_definition_schema_get` to verify the definition. |
 | Permission denied | User needs `Foundry User` role on the project. |
-| Model not found | Deploy the model first via [models/deploy-model](../../models/deploy-model/SKILL.md). |
+| Model not found | Deploy the model first via [models/deploy-model](../../../deploy-model/SKILL.md). |
 
 ## Display agent details (both flows)
 

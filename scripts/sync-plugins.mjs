@@ -31,6 +31,10 @@ const pluginsRoot = join(root, "plugins");
 const localPluginName = "gravit-custom";
 const gigetCli = join(root, "node_modules/giget/dist/cli.mjs");
 const temporaryRoot = mkdtempSync(join(tmpdir(), "gravit-codex-plugins-"));
+const internalSkillResourceName = "SKILL.resource.md";
+const codexDistributionVersionOverrides = new Map([
+  ["azure@v1.2.8@1.2.8", "1.2.9-gravit.1"],
+]);
 
 const claudeMarketplace = readJson(claudeMarketplacePath);
 const previousCodexMarketplace = existsSync(codexMarketplacePath)
@@ -136,10 +140,18 @@ function createCodexManifest(plugin, upstreamManifest = {}, packageManifest = {}
   const title = displayName(name);
   const category = codexCategory(plugin.category);
   const description = plugin.description || upstreamManifest.description || `${title} skills for Codex.`;
+  const upstreamVersion = semver(
+    upstreamManifest.version,
+    packageManifest.version,
+    source?.ref,
+  );
+  const distributionVersion = codexDistributionVersionOverrides.get(
+    `${name}@${source?.ref}@${upstreamVersion}`,
+  ) || upstreamVersion;
 
   return {
     name,
-    version: semver(upstreamManifest.version, packageManifest.version, source?.ref),
+    version: distributionVersion,
     description,
     author: { name: developer },
     skills: "./skills/",
@@ -198,6 +210,68 @@ function findMarkdownFiles(directory, result = []) {
   return result;
 }
 
+function nestedWithin(parent, candidate) {
+  const nested = relative(parent, candidate);
+  return nested !== "" && !nested.startsWith("..") && !isAbsolute(nested);
+}
+
+function findNestedSkillFiles(directory, rootDirectory = directory, result = []) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) findNestedSkillFiles(path, rootDirectory, result);
+    else if (
+      entry.isFile()
+      && entry.name === "SKILL.md"
+      && dirname(path) !== rootDirectory
+    ) {
+      result.push(path);
+    }
+  }
+  return result;
+}
+
+function owningSkill(mappings, sourcePath) {
+  return mappings
+    .filter((mapping) => (
+      sourcePath === mapping.source || nestedWithin(mapping.source, sourcePath)
+    ))
+    .sort((left, right) => right.source.length - left.source.length)[0];
+}
+
+function mappedSourcePath(sourcePath, mappings, internalResources) {
+  const resource = internalResources.find((entry) => entry.source === sourcePath);
+  if (resource) return resource.destination;
+  const owner = owningSkill(mappings, sourcePath);
+  if (!owner) return undefined;
+  return join(owner.destination, relative(owner.source, sourcePath));
+}
+
+function rewriteInternalSkillReferences(
+  markdown,
+  sourceMarkdownFile,
+  mappings,
+  internalResources,
+) {
+  const owner = owningSkill(mappings, sourceMarkdownFile);
+  const pathPattern = /(?<![A-Za-z0-9._~%+\/-])(?:(?:\.{1,2}|[A-Za-z0-9._~%+-]+)\/)+SKILL\.md/g;
+  return markdown.replace(pathPattern, (rawPath) => {
+    const directSource = resolve(dirname(sourceMarkdownFile), rawPath);
+    let matches = internalResources.filter((entry) => entry.source === directSource);
+    if (matches.length === 0 && owner) {
+      matches = internalResources.filter((entry) => {
+        if (!nestedWithin(owner.source, entry.source)) return false;
+        const ownerRelative = relative(owner.source, entry.source).replaceAll("\\", "/");
+        return rawPath === ownerRelative || rawPath.endsWith("/" + ownerRelative);
+      });
+    }
+    if (matches.length > 1) {
+      throw new Error(`Ambiguous internal SKILL.md reference: ${sourceMarkdownFile} -> ${rawPath}`);
+    }
+    if (matches.length === 0) return rawPath;
+    return rawPath.slice(0, -"SKILL.md".length) + internalSkillResourceName;
+  });
+}
+
 function skillName(directory) {
   const markdown = readFileSync(join(directory, "SKILL.md"), "utf8");
   const frontmatter = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -211,10 +285,9 @@ function prepareCodexSkills(skillsRoot, declaredSkills) {
     : findSkillDirectories(skillsRoot);
   const flattened = `${skillsRoot}.codex`;
   const names = new Set();
-  const mappings = [];
   mkdirSync(flattened, { recursive: true });
 
-  for (const source of selected) {
+  const mappings = selected.map((source) => {
     if (!existsSync(join(source, "SKILL.md"))) {
       throw new Error(`Declared skill is missing SKILL.md: ${source}`);
     }
@@ -222,54 +295,99 @@ function prepareCodexSkills(skillsRoot, declaredSkills) {
     if (names.has(name)) throw new Error(`Duplicate Codex skill name: ${name}`);
     names.add(name);
     const destination = join(flattened, name);
-    mappings.push({ source, destination });
-    cpSync(source, destination, { recursive: true });
+    return { source, destination };
+  });
+
+  const internalResources = [];
+  for (const mapping of mappings) {
+    const descendantSkills = mappings
+      .filter((candidate) => nestedWithin(mapping.source, candidate.source))
+      .map((candidate) => candidate.source);
+    cpSync(mapping.source, mapping.destination, {
+      recursive: true,
+      filter(sourcePath) {
+        return !descendantSkills.some((descendant) => (
+          sourcePath === descendant || nestedWithin(descendant, sourcePath)
+        ));
+      },
+    });
+
+    for (const destinationFile of findNestedSkillFiles(mapping.destination)) {
+      const resourceDestination = join(dirname(destinationFile), internalSkillResourceName);
+      if (existsSync(resourceDestination)) {
+        throw new Error(`Internal skill resource destination already exists: ${resourceDestination}`);
+      }
+      const sourceFile = join(
+        mapping.source,
+        relative(mapping.destination, destinationFile),
+      );
+      renameSync(destinationFile, resourceDestination);
+      internalResources.push({ source: sourceFile, destination: resourceDestination });
+    }
 
     // Claude supports user-only skills. Codex plugins currently require this
     // flag to be absent or false, so generated copies use Codex's implicit
     // invocation behavior while the upstream Claude plugin remains unchanged.
-    const markdownPath = join(destination, "SKILL.md");
+    const markdownPath = join(mapping.destination, "SKILL.md");
     const markdown = readFileSync(markdownPath, "utf8")
       .replace(/^disable-model-invocation:\s*true\s*\r?\n/m, "");
     writeFileSync(markdownPath, markdown);
   }
 
   // Flattening nested Claude skills changes their relative position. Rewrite
-  // links to other selected skills so they continue to resolve in Codex.
+  // links throughout copied Markdown so they continue to resolve in Codex.
   for (const mapping of mappings) {
-    const sourceSkill = join(mapping.source, "SKILL.md");
-    const destinationSkill = join(mapping.destination, "SKILL.md");
-    const markdown = readFileSync(destinationSkill, "utf8").replace(
-      /\[([^\]]+)]\(([^)]+)\)/g,
-      (whole, label, rawTarget) => {
-        const target = rawTarget.trim().replace(/^<|>$/g, "");
-        if (!target || /^(https?:|mailto:|#)/.test(target)) return whole;
-        const [targetPath, anchor = ""] = target.split("#", 2);
-        if (!targetPath || targetPath.includes(" ")) return whole;
-        const absoluteTarget = resolve(dirname(sourceSkill), targetPath);
-        const owner = existsSync(absoluteTarget) ? mappings
-          .filter((candidate) => {
-            const nested = relative(candidate.source, absoluteTarget);
-            return nested === "" || (!nested.startsWith("..") && !isAbsolute(nested));
-          })
-          .sort((left, right) => right.source.length - left.source.length)[0] : undefined;
+    for (const destinationMarkdown of findMarkdownFiles(mapping.destination)) {
+      const internalResource = internalResources.find(
+        (entry) => entry.destination === destinationMarkdown,
+      );
+      const sourceMarkdown = internalResource?.source || join(
+        mapping.source,
+        relative(mapping.destination, destinationMarkdown),
+      );
+      const sourceOwner = owningSkill(mappings, sourceMarkdown);
+      const isCanonicalSkill = destinationMarkdown === join(mapping.destination, "SKILL.md");
+      let markdown = readFileSync(destinationMarkdown, "utf8").replace(
+        /\[([^\]]+)]\(([^)]+)\)/g,
+        (whole, label, rawTarget) => {
+          const target = rawTarget.trim().replace(/^<|>$/g, "");
+          if (!target || /^(https?:|mailto:|#)/.test(target)) return whole;
+          const [targetPath, anchor = ""] = target.split("#", 2);
+          if (!targetPath || targetPath.includes(" ")) return whole;
+          const absoluteTarget = resolve(dirname(sourceMarkdown), targetPath);
+          const mappedTarget = existsSync(absoluteTarget)
+            ? mappedSourcePath(absoluteTarget, mappings, internalResources)
+            : undefined;
+          const unchangedTarget = sourceOwner
+            ? join(
+              sourceOwner.destination,
+              relative(sourceOwner.source, absoluteTarget),
+            )
+            : undefined;
 
-        if (owner) {
-          const mappedTarget = join(owner.destination, relative(owner.source, absoluteTarget));
-          let rewritten = relative(dirname(destinationSkill), mappedTarget).replaceAll("\\", "/");
-          if (!rewritten.startsWith(".")) rewritten = `./${rewritten}`;
-          return `[${label}](${rewritten}${anchor ? `#${anchor}` : ""})`;
-        }
+          if (mappedTarget && (isCanonicalSkill || mappedTarget !== unchangedTarget)) {
+            let rewritten = relative(dirname(destinationMarkdown), mappedTarget)
+              .replaceAll("\\", "/");
+            if (!rewritten.startsWith(".")) rewritten = `./${rewritten}`;
+            return `[${label}](${rewritten}${anchor ? `#${anchor}` : ""})`;
+          }
 
-        // These links are already dangling at the pinned Azure revision. Keep
-        // the guidance text but do not ship a broken local Markdown target.
-        if (/\/(?:quota\/quota|foundry-agent\/create\/create-hosted)\.md$/.test(absoluteTarget)) {
-          return label;
-        }
-        return whole;
-      },
-    );
-    writeFileSync(destinationSkill, markdown);
+          // These links are already dangling at the pinned Azure revision. Keep
+          // the guidance text but do not ship a broken local Markdown target.
+          if (/\/(?:quota\/quota|foundry-agent\/create\/create-hosted)\.md$/.test(absoluteTarget)) {
+            return label;
+          }
+          return whole;
+        },
+      );
+      markdown = rewriteInternalSkillReferences(
+        markdown,
+        sourceMarkdown,
+        mappings,
+        internalResources,
+      );
+      writeFileSync(destinationMarkdown, markdown);
+    }
   }
 
   // Remove the link syntax (not the guidance text) for dangling links already

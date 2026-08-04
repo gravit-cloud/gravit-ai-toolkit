@@ -67,6 +67,15 @@ function checkSkillLinks(skillFile) {
   }
 }
 
+function findFiles(directory, result = []) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) findFiles(path, result);
+    else if (entry.isFile()) result.push(path);
+  }
+  return result;
+}
+
 for (const file of [
   ".claude-plugin/marketplace.json",
   ".agents/plugins/marketplace.json",
@@ -150,6 +159,16 @@ for (const entry of codexPlugins) {
   if (!existsSync(skillsRoot)) {
     errors.push(`plugins/${entry.name}: missing skills directory`);
     continue;
+  }
+  for (const skillFile of findFiles(skillsRoot).filter(
+    (file) => basename(file) === "SKILL.md",
+  )) {
+    const skillPath = relative(skillsRoot, skillFile).replaceAll("\\", "/");
+    if (skillPath.split("/").length !== 2) {
+      errors.push(
+        `${relative(root, skillFile)}: nested SKILL.md would be recursively loaded by Codex`,
+      );
+    }
   }
   for (const skillDirectory of readdirSync(skillsRoot, { withFileTypes: true })) {
     if (!skillDirectory.isDirectory()) continue;

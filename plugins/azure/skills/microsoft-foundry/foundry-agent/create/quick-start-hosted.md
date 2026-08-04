@@ -2,11 +2,11 @@
 
 Opinionated happy-path for first-time users creating their first hosted Foundry agent. Safe defaults, minimal decisions.
 
-> **Scope:** Defaults below are applied automatically when the user is silent. The user may override the language or sample explicitly; new-vs-existing Foundry project is handled inline. For anything not covered here, stop and read [create-hosted.md](create-hosted.md).
+> **Scope:** Defaults below are applied automatically when the user is silent. The user may override the language or sample explicitly; new-vs-existing Foundry project is handled inline. For anything not covered here, stop and read create-hosted.md.
 
 ## When to Use This Skill
 
-Use this when the request is to create a new hosted Foundry agent end-to-end — scaffold, provision, deploy, and smoke-test. Common overrides (language, region, sample, topic, existing project, existing model) are fine; bounce to [create-hosted.md](create-hosted.md) for anything else.
+Use this when the request is to create a new hosted Foundry agent end-to-end — scaffold, provision, deploy, and smoke-test. Common overrides (language, region, sample, topic, existing project, existing model) are fine; bounce to create-hosted.md for anything else.
 
 ## Quick Reference
 
@@ -169,7 +169,7 @@ Verify all four before continuing. If any check fails, pick **one** recovery pat
 
 Never `azd env set AI_PROJECT_DEPLOYMENTS '[...]'` (single-escaped JSON breaks Bicep parse). Never `az cognitiveservices account deployment create` against this account (creates the deployment outside the azd lifecycle).
 
-If recovery still fails → escape to [create-hosted.md](create-hosted.md).
+If recovery still fails → escape to create-hosted.md.
 
 ### Step 9 — Provision Azure resources
 
@@ -324,10 +324,10 @@ azd down                                    # tear down all resources when done
 | `azd ai agent init` fails with `--entry-point is required when using --deploy-mode code with --no-prompt` | Pass `--entry-point <filename>` matching the entry-point file the sample declares (from Step 3). |
 | `codeConfiguration.entryPoint` doesn't match any file in `src/<project>/` | You guessed the entry-point in Step 5. Edit the agent service in `azure.yaml` to the real filename (verify with `ls src/<project>/`). No re-init needed. |
 | `azd deploy` postdeploy hook fails with missing `AZURE_TENANT_ID` | Run `az account show --query tenantId -o tsv` and `azd env set AZURE_TENANT_ID <tenant-id>`, then re-run `azd deploy --no-prompt`. The deployed agent version from the first deploy is still valid; the postdeploy hook just registers env vars. |
-| Scaffold sanity check fails (Step 8) | Pick a recovery path from Step 8. If still failing → [create-hosted.md](create-hosted.md). |
+| Scaffold sanity check fails (Step 8) | Pick a recovery path from Step 8. If still failing → create-hosted.md. |
 | Local invoke returns model `404` / wrong deployment | Stale `AZURE_AI_MODEL_DEPLOYMENT_NAME` in azd env overrides `.env`. Re-run Step 10 to sync both. |
-| Anything else | Escape to [create-hosted.md](create-hosted.md). |
+| Anything else | Escape to create-hosted.md. |
 
 ## Escape Hatch
 
-If any step fails in a way not covered above, the output looks unexpected, or the user's request drifts outside what this quickstart covers → **stop improvising**. Read [create-hosted.md](create-hosted.md) and follow its full workflow.
+If any step fails in a way not covered above, the output looks unexpected, or the user's request drifts outside what this quickstart covers → **stop improvising**. Read create-hosted.md and follow its full workflow.

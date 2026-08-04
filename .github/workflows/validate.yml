@@ -15,6 +15,8 @@ jobs:
           node-version: 24
       - name: Install pinned tooling
         run: npm ci
+      - name: Run regression tests
+        run: npm test
       - name: Validate repository metadata and native plugin manifests
         run: npm run validate
       - name: Validate Claude marketplace schema

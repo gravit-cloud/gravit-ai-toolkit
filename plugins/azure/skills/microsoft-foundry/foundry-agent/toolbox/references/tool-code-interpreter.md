@@ -2,7 +2,7 @@
 
 Sandboxed Python execution — a **connectionless built-in** declared under a `tools:` block; **no project connection required**. Fully toolbox-compatible: the toolbox MCP endpoint (and a hosted agent) can invoke it directly. For the toolbox concept, versions, and endpoint, see [toolbox.md](../toolbox.md).
 
-> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
+> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
 
 ---
 
