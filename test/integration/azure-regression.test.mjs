@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseFrontmatter } from "../../scripts/lib/frontmatter.mjs";
+import { walkFiles } from "../../scripts/lib/path-safety.mjs";
 import { validateRecursiveSkills } from "../../scripts/lib/validator.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
@@ -68,6 +69,25 @@ test("Azure Codex bundle contains pinned MCP and unique skills", () => {
     }),
     [],
   );
+
+  const skillsRoot = resolve(root, "targets/codex/skills");
+  for (const phase of ["deploy", "prepare", "scaffold"]) {
+    assert.match(
+      readFileSync(
+        resolve(skillsRoot, `azure-app-onboard/${phase}/SKILL.resource.md`),
+        "utf8",
+      ),
+      new RegExp(`^# .*${phase}`, "im"),
+    );
+  }
+  const appOnboardRoot = resolve(skillsRoot, "azure-app-onboard");
+  for (const markdownPath of walkFiles(appOnboardRoot).filter((path) => path.endsWith(".md"))) {
+    assert.doesNotMatch(
+      readFileSync(markdownPath, "utf8"),
+      /(?:deploy|prepare|scaffold)\/SKILL\.md/,
+      markdownPath,
+    );
+  }
 });
 
 test("Azure OpenClaw bundle retains the pinned MCP and exact 34-skill projection", () => {

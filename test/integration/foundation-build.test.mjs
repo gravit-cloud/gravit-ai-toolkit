@@ -140,9 +140,15 @@ test("builds byte-identical universal bundles twice", (context) => {
     .sort();
   assert.deepEqual(neutralNames, ["child", "parent"]);
   assert.equal(existsSync(resolve(neutralSkillsRoot, "parent/child/SKILL.md")), false);
+  assert.equal(existsSync(resolve(neutralSkillsRoot, "parent/phases/SKILL.md")), false);
+  assert.equal(existsSync(resolve(neutralSkillsRoot, "parent/phases/SKILL.resource.md")), true);
   assert.match(
     readFileSync(resolve(neutralSkillsRoot, "parent/SKILL.md"), "utf8"),
     /\[the child\]\(\.\.\/child\/SKILL\.md\)/,
+  );
+  assert.match(
+    readFileSync(resolve(neutralSkillsRoot, "parent/SKILL.md"), "utf8"),
+    /\[the internal phase\]\(\.\/phases\/SKILL\.resource\.md\)/,
   );
   assert.equal(
     JSON.parse(readFileSync(

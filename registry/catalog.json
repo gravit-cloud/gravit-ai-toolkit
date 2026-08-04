@@ -169,7 +169,7 @@
       "name": "azure",
       "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
       "category": "cloud",
-      "distributionVersion": "1.2.5-gravit.4",
+      "distributionVersion": "1.2.5-gravit.5",
       "runtimeDependencies": {
         "@azure/mcp": "2.0.5"
       },

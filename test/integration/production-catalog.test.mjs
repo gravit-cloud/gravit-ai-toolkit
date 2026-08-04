@@ -73,7 +73,7 @@ test("production catalog is neutral and fully pinned", () => {
       "2.2.4-gravit.4",
       "1.0.1-gravit.2",
       "1.1.0-gravit.2",
-      "1.2.5-gravit.4",
+      "1.2.5-gravit.5",
       "6.2.0-gravit.2",
       "1.0.0-gravit.3",
     ],

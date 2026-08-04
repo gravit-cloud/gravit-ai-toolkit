@@ -429,6 +429,9 @@ export function validateRecursiveSkills(
     );
     const relativeDirectory = normalizedRelative(root, dirname(file));
     const isCanonicalEntrypoint = !relativeDirectory.includes("/");
+    if (!isCanonicalEntrypoint) {
+      errors.push(`${relativeFile}: reserved nested skill entrypoint`);
+    }
     if (!hasFrontmatter) {
       if (isCanonicalEntrypoint) {
         errors.push(

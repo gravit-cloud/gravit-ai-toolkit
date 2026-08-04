@@ -46,7 +46,7 @@ Update `context.json` at phase boundaries — combine `completedPhases` update w
 
 ## Phase transition rule
 
-> ⛔ **Before executing the FIRST command of any new phase, re-read that phase's sub-SKILL.md.** After prereq → read `prepare/SKILL.md`. After prepare → `scaffold/SKILL.md`. After scaffold gate → `deploy/SKILL.md`. This applies at EVERY transition.
+> ⛔ **Before executing the FIRST command of any new phase, re-read that phase's sub-SKILL.md.** After prereq → read `prepare/SKILL.resource.md`. After prepare → `scaffold/SKILL.resource.md`. After scaffold gate → `deploy/SKILL.resource.md`. This applies at EVERY transition.
 
 ## Post-compaction recovery
 

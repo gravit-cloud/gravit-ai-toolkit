@@ -59,7 +59,7 @@ Materialisierung ist unveränderlich und write-once. Der unmittelbare Parent mus
 
 ```bash
 PLUGIN=azure
-DISTRIBUTION_VERSION=1.2.5-gravit.4
+DISTRIBUTION_VERSION=1.2.5-gravit.5
 REGISTRY_REVISION="$(git rev-parse HEAD)"
 TARGET_PARENT="/opt/gravit/plugins/$PLUGIN/$DISTRIBUTION_VERSION/$REGISTRY_REVISION"
 
