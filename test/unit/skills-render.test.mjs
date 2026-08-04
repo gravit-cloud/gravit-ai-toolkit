@@ -30,12 +30,20 @@ test("parent and child render exactly once per target", (context) => {
   renderSkills({ skills, destinationRoot: codexRoot, target: "codex" });
 
   for (const targetRoot of [claudeRoot, codexRoot]) {
-    const names = walkFiles(targetRoot)
-      .filter((path) => path.endsWith("/SKILL.md"))
+    const skillFiles = walkFiles(targetRoot)
+      .filter((path) => path.endsWith("/SKILL.md"));
+    const names = skillFiles
       .map((path) => readFileSync(path, "utf8"))
-      .filter((markdown) => markdown.startsWith("---\n") || markdown.startsWith("---\r\n"))
       .map((markdown) => parseFrontmatter(markdown).attributes.name);
+    assert.equal(skillFiles.length, 2);
     assert.deepEqual(names.sort(), ["child", "parent"]);
+    assert.equal(
+      readFileSync(resolve(targetRoot, "parent/phases/SKILL.resource.md"), "utf8"),
+      "# Internal phase\n\nThis file has no frontmatter and remains a parent resource.\n",
+    );
+    const renderedParent = readFileSync(resolve(targetRoot, "parent/SKILL.md"), "utf8");
+    assert.match(renderedParent, /\[the internal phase\]\(\.\/phases\/SKILL\.resource\.md\)/);
+    assert.match(renderedParent, /re-read phases\/SKILL\.resource\.md/);
   }
 
   assert.match(
@@ -46,11 +54,6 @@ test("parent and child render exactly once per target", (context) => {
     readFileSync(resolve(codexRoot, "parent/SKILL.md"), "utf8"),
     /disable-model-invocation/,
   );
-  assert.equal(
-    readFileSync(resolve(claudeRoot, "parent/phases/SKILL.md"), "utf8"),
-    "# Internal phase\n\nThis file has no frontmatter and remains a parent resource.\n",
-  );
-
   const renderedParent = readFileSync(resolve(codexRoot, "parent/SKILL.md"), "utf8");
   assert.match(renderedParent, /\[the child\]\(\.\.\/child\/SKILL\.md\)/);
   assert.match(renderedParent, /\[the guide\]\(\.\/guide\.md\)/);
@@ -85,6 +88,28 @@ test("nested child exclusion does not leave uncommittable empty ancestors", (con
 
   assert.equal(existsSync(resolve(destinationRoot, "parent/nested")), false);
   assert.equal(existsSync(resolve(destinationRoot, "child/SKILL.md")), true);
+});
+
+test("rejects an internal skill resource rename collision", (context) => {
+  const temporaryRoot = mkdtempSync(resolve(tmpdir(), "registry-skill-resource-collision-"));
+  context.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  const sourceDirectory = resolve(temporaryRoot, "source", "skills", "parent");
+  mkdirSync(resolve(sourceDirectory, "phase"), { recursive: true });
+  writeFileSync(
+    resolve(sourceDirectory, "SKILL.md"),
+    "---\nname: parent\ndescription: Parent\n---\n",
+  );
+  writeFileSync(resolve(sourceDirectory, "phase/SKILL.md"), "# Internal phase\n");
+  writeFileSync(resolve(sourceDirectory, "phase/SKILL.resource.md"), "# Existing resource\n");
+
+  assert.throws(
+    () => renderSkills({
+      skills: discoverSkills({ sourceRoot: resolve(temporaryRoot, "source") }),
+      destinationRoot: resolve(temporaryRoot, "codex"),
+      target: "codex",
+    }),
+    /internal skill resource destination already exists/,
+  );
 });
 
 test("rejects recursive frontmatter name duplicates after projection", (context) => {

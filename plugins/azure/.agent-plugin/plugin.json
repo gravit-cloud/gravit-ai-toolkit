@@ -116,7 +116,7 @@
       "type": "skill"
     },
     {
-      "digest": "925a7ac6ea7c2837c7eaba460dc452b9b200878500ed5475c630892b28124207",
+      "digest": "b2a746185ee8f8e0a0eee9df02fe83bbdc67dcc5941b8d0fbfc3bca6d66744a3",
       "id": "azure-app-onboard",
       "path": "components/skills/azure-app-onboard",
       "targets": {
@@ -874,7 +874,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.2.5-gravit.4",
+  "distributionVersion": "1.2.5-gravit.5",
   "name": "azure",
   "schemaVersion": 1,
   "targets": {
@@ -1071,7 +1071,7 @@
           "status": "preserved"
         }
       },
-      "digest": "c3f1b9fdf5d20184aafcfeaf44a8fddeba21cbeb8331ff8df289486549d6274b",
+      "digest": "6c4dd6bd7a6bf6bf7f0c77a97fa51cb339e34f5252c99640e810f6c6c984167d",
       "path": "targets/claude"
     },
     "codex": {
@@ -1267,7 +1267,7 @@
           "status": "transformed"
         }
       },
-      "digest": "bbe5f4f990b017fa20549a3cc854e1f6faadf9865b1671a79fb0eecf09002f35",
+      "digest": "f8bd78c17e17dc5b074e928174b27bdc536f64c423fe53450a57f47230e4c7c5",
       "path": "targets/codex"
     },
     "openclaw": {
@@ -1462,7 +1462,7 @@
           "status": "transformed"
         }
       },
-      "digest": "38ccebdf2d73db02b46511ff0b21e7f9310f86d7d435ca997a18d8288471cf41",
+      "digest": "50d7b9fabd1b0a63abb2b6c2cda8fcc3f4050c526019e3066954854f5a319fe6",
       "path": "targets/openclaw"
     }
   }

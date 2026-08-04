@@ -6,6 +6,7 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   rmdirSync,
   writeFileSync,
 } from "node:fs";
@@ -23,6 +24,8 @@ import {
 } from "./path-safety.mjs";
 import { compareCodePoints } from "./ordering.mjs";
 import { assertHostSkillName, skillComponentId } from "./skill-identity.mjs";
+
+const INTERNAL_SKILL_RESOURCE_NAME = "SKILL.resource.md";
 
 function rejectSymbolicLink(path) {
   if (lstatSync(path).isSymbolicLink()) {
@@ -393,6 +396,7 @@ function rewriteLinks({
   destinationMarkdownFile,
   skills,
   destinationRoot,
+  internalResources,
   resourceMappings,
 }) {
   const skillRoots = skills.map((skill) => ({
@@ -408,6 +412,20 @@ function rewriteLinks({
     const absoluteTarget = resolve(dirname(sourceMarkdownFile), targetPath);
     const exists = existsSync(absoluteTarget);
     const ownershipTarget = exists ? realpathSync(absoluteTarget) : absoluteTarget;
+    const internalResource = internalResources.find(
+      ({ sourcePath }) => sourcePath === ownershipTarget,
+    );
+    if (internalResource) {
+      let rewritten = relative(
+        dirname(destinationMarkdownFile),
+        internalResource.destinationPath,
+      ).replaceAll("\\", "/");
+      rewritten = encodedPath(rewritten);
+      if (!rewritten.startsWith(".")) rewritten = "./" + rewritten;
+      rewritten += suffix;
+      if (!destination.wrapped && /[ \t]/.test(rewritten)) return "<" + rewritten + ">";
+      return rewritten;
+    }
     const owner = renderedOwner(skillRoots, ownershipTarget);
     if (!owner) {
       const mapped = exists
@@ -462,6 +480,33 @@ function rewriteLinks({
   });
 }
 
+function rewriteInternalSkillReferences({ markdown, sourceMarkdownFile, skills, internalResources }) {
+  const skillRoots = skills.map((skill) => ({
+    skill,
+    sourceDirectory: realpathSync(skill.sourceDirectory),
+  }));
+  const owner = renderedOwner(skillRoots, realpathSync(sourceMarkdownFile));
+  const pathPattern = /(?<![A-Za-z0-9._~%+\/-])(?:(?:\.{1,2}|[A-Za-z0-9._~%+-]+)\/)+SKILL\.md/g;
+  return markdown.replace(pathPattern, (rawPath) => {
+    const directSource = resolve(dirname(sourceMarkdownFile), rawPath);
+    let matches = internalResources.filter(({ sourcePath }) => sourcePath === directSource);
+    if (matches.length === 0 && owner) {
+      matches = internalResources.filter(({ sourcePath }) => {
+        if (!nestedWithin(owner.sourceDirectory, sourcePath)) return false;
+        const ownerRelative = relative(owner.sourceDirectory, sourcePath).replaceAll("\\", "/");
+        return rawPath === ownerRelative || rawPath.endsWith("/" + ownerRelative);
+      });
+    }
+    if (matches.length > 1) {
+      throw new Error(
+        "ambiguous internal SKILL.md reference: " + sourceMarkdownFile + " -> " + rawPath,
+      );
+    }
+    if (matches.length === 0) return rawPath;
+    return rawPath.slice(0, -"SKILL.md".length) + INTERNAL_SKILL_RESOURCE_NAME;
+  });
+}
+
 function validateLocalMarkdownLinks(destinationRoot, resourceMappings) {
   for (const filePath of walkFiles(destinationRoot)) {
     if (![".md", ".markdown"].includes(extname(filePath).toLowerCase())) continue;
@@ -502,13 +547,22 @@ function validateLocalMarkdownLinks(destinationRoot, resourceMappings) {
 
 function validateRenderedSkills(destinationRoot) {
   const names = new Set();
+  const reservedNestedEntrypoints = [];
   for (const filePath of walkFiles(destinationRoot)) {
     if (basename(filePath) !== "SKILL.md") continue;
+    const relativeDirectory = relative(destinationRoot, dirname(filePath)).replaceAll("\\", "/");
+    if (relativeDirectory.includes("/")) reservedNestedEntrypoints.push(filePath);
     const markdown = readFileSync(filePath, "utf8");
     if (!markdown.startsWith("---\n") && !markdown.startsWith("---\r\n")) continue;
     const name = parseFrontmatter(markdown).attributes.name;
     if (names.has(name)) throw new Error("duplicate rendered skill name: " + name);
     names.add(name);
+  }
+  if (reservedNestedEntrypoints.length > 0) {
+    throw new Error(
+      "reserved nested rendered SKILL.md: "
+        + reservedNestedEntrypoints.sort(compareCodePoints).join(", "),
+    );
   }
 }
 
@@ -531,6 +585,7 @@ export function renderSkills({ skills, destinationRoot, target, resourceMappings
   mkdirSync(destinationRoot, { recursive: true });
   const rendered = [];
   const copiedFiles = [];
+  const internalResources = [];
 
   for (const skill of skills) {
     const destination = assertInside(
@@ -542,6 +597,30 @@ export function renderSkills({ skills, destinationRoot, target, resourceMappings
       .filter((candidate) => nestedWithin(skill.sourceDirectory, candidate.sourceDirectory))
       .map((candidate) => candidate.sourceDirectory);
 
+    const sourceFiles = projectedSourceFiles(skill.sourceDirectory, descendantRoots);
+    const skillInternalResources = sourceFiles
+      .filter((sourceFile) => {
+        if (basename(sourceFile) !== "SKILL.md") return false;
+        if (sourceFile === resolve(skill.sourceDirectory, "SKILL.md")) return false;
+        const markdown = readFileSync(sourceFile, "utf8");
+        return !markdown.startsWith("---\n") && !markdown.startsWith("---\r\n");
+      })
+      .map((sourcePath) => {
+        const existingResource = resolve(dirname(sourcePath), INTERNAL_SKILL_RESOURCE_NAME);
+        if (existsSync(existingResource)) {
+          throw new Error("internal skill resource destination already exists: " + existingResource);
+        }
+        return {
+          sourcePath: realpathSync(sourcePath),
+          destinationPath: resolve(
+            destination,
+            dirname(relative(skill.sourceDirectory, sourcePath)),
+            INTERNAL_SKILL_RESOURCE_NAME,
+          ),
+        };
+      });
+    internalResources.push(...skillInternalResources);
+
     cpSync(skill.sourceDirectory, destination, {
       recursive: true,
       filter(source) {
@@ -551,11 +630,20 @@ export function renderSkills({ skills, destinationRoot, target, resourceMappings
       },
     });
     pruneEmptyRenderedDirectories(destination);
-    for (const sourceFile of projectedSourceFiles(skill.sourceDirectory, descendantRoots)) {
+    for (const resource of skillInternalResources) {
+      const copiedSkillPath = resolve(
+        destination,
+        relative(skill.sourceDirectory, resource.sourcePath),
+      );
+      renameSync(copiedSkillPath, resource.destinationPath);
+    }
+    for (const sourceFile of sourceFiles) {
+      const internalResource = skillInternalResources.find(
+        ({ sourcePath }) => sourcePath === sourceFile,
+      );
       copiedFiles.push({
-        destinationFile: resolve(
-          destination,
-          relative(skill.sourceDirectory, sourceFile),
+        destinationFile: internalResource?.destinationPath ?? resolve(
+          destination, relative(skill.sourceDirectory, sourceFile),
         ),
         sourceFile,
       });
@@ -575,7 +663,14 @@ export function renderSkills({ skills, destinationRoot, target, resourceMappings
       destinationMarkdownFile: destinationFile,
       skills,
       destinationRoot,
+      internalResources,
       resourceMappings: mappings,
+    });
+    markdown = rewriteInternalSkillReferences({
+      markdown,
+      sourceMarkdownFile: sourceFile,
+      skills,
+      internalResources,
     });
     if (target === "codex" && renderedSkillFiles.has(destinationFile)) {
       markdown = codexMarkdown(markdown);

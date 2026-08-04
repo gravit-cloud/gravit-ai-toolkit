@@ -19,7 +19,7 @@ Invoked by the `azure-app-onboard` orchestrator at Phase 4 when `scaffold-manife
 
 | Scenario | Use Instead |
 |----------|-------------|
-| Plan architecture, map services, estimate costs | [prepare](../prepare/SKILL.md) |
+| Plan architecture, map services, estimate costs | [prepare](../prepare/SKILL.resource.md) |
 | Generate IaC files from a plan | `azure-app-onboard` Step 7 (scaffold) |
 | Run `azd up` or execute existing deployment templates | `azure-deploy` |
 | Debug a running app after deployment | `azure-diagnostics` |

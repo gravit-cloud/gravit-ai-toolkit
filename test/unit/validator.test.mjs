@@ -244,6 +244,7 @@ test("recursive skill validation reports duplicate names with sorted relative pa
 
   assert.deepEqual(validateRecursiveSkills(skillsRoot), [
     "duplicate skill name child: child/SKILL.md, parent/copied-child/SKILL.md",
+    "parent/copied-child/SKILL.md: reserved nested skill entrypoint",
   ]);
 });
 
@@ -468,7 +469,7 @@ test("recursive skills report invalid frontmatter, true-like Codex flags, and ne
   assertHasError(errors, "broken/malformed/SKILL.md: invalid frontmatter");
   assertHasError(errors, "routable/SKILL.md: invalid frontmatter");
   assertHasError(errors, "missing-root/SKILL.md: missing canonical skill entrypoint");
-  assertNoError(errors, "broken/internal/SKILL.md: invalid frontmatter");
+  assertHasError(errors, "broken/internal/SKILL.md: reserved nested skill entrypoint");
   assert.deepEqual(errors, [...errors].sort());
 });
 
