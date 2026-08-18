@@ -17,7 +17,7 @@ For consuming from hosted-agent code, see [use-toolbox-in-hosted-agent.md](../cr
 
 ## Create & use a toolbox (happy path)
 
-> 🚦 Before creating a toolbox/connection, read the boundary rules in create-hosted.md → Toolbox creation boundary.
+> 🚦 Before creating a toolbox/connection, read the boundary rules in [create-hosted.md → Toolbox creation boundary](../create/create-hosted.md#toolbox-creation-boundary).
 
 ### Prerequisites
 

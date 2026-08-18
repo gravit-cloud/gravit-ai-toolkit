@@ -4,7 +4,7 @@ Expose a REST API to the agent from its **OpenAPI 3.x spec**. The spec is embedd
 
 Each operation becomes one tool named `{name}___{operationId}`, so every operation in the spec needs an `operationId` (letters, `-`, `_` only).
 
-> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
+> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
 
 ## Tool entry shape
 

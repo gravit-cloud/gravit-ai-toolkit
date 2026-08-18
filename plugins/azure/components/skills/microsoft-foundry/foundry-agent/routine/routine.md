@@ -24,7 +24,7 @@ Create, read, update, and delete Microsoft Foundry **routines** with the Azure D
 - List, inspect, update, enable, disable, dispatch, or delete existing routines.
 - Manage routines declaratively in `azure.yaml` so `azd up` / `azd deploy` keeps them in sync.
 
-> A routine **references an agent**; it does not create one. Deploy or identify the target agent first (see [deploy](../deploy/deploy.md) / create), then attach a routine to it.
+> A routine **references an agent**; it does not create one. Deploy or identify the target agent first (see [deploy](../deploy/deploy.md) / [create](../create/create-hosted.md)), then attach a routine to it.
 
 ## Workflow
 

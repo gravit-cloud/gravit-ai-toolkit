@@ -4,7 +4,7 @@ For toolboxes containing many tools, replace the full tool list passed to the mo
 
 Tool Search is a **connectionless directive** — it's declared under a `tools:` block (like `web_search`); **no project connection required**. It is **not** a standalone toolbox: pair it with the tools it should index (see [Behavior](#behavior) and the [Multi-tool rule](toolbox-azd.md#multi-tool-rule)).
 
-> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
+> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
 
 ## Toolbox shape
 

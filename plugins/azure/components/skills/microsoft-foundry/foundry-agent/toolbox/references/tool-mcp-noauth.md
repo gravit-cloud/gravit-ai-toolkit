@@ -2,7 +2,7 @@
 
 Attach a **public** remote MCP server (no credentials) to a toolbox. A no-auth server still needs a **connection** (`--kind remote-tool --auth-type none`) — the toolbox references it by name and the created toolbox tool carries a populated `project_connection_id`.
 
-> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
+> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
 
 ---
 

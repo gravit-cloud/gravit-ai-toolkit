@@ -2,10 +2,10 @@
   "generatorDigest": "0aa1f6e0b91d09e3c23a64f70b0403f95cf728abda4883cf47f06fce593ca308",
   "plugins": {
     "azure": {
-      "bundleDigest": "dd80db1b52b4be6a2c569f232c78767293461d77ed4b3da6ef07a4007ccfb488",
+      "bundleDigest": "7213d4afbe05667f56fd1dae8a3041c5a3b63b0b1aa8d163314aec80aae71248",
       "components": [
         {
-          "digest": "5a99f66ab8bef8f9799858205936e6dc9bda1aee589c7097f7301eaabbf169af",
+          "digest": "4b903e0fa22960ebb1bf4ecd3219987eae65f6f6fa2553bc96eb1d737ad0243b",
           "id": "airunway-aks-setup",
           "targets": {
             "claude": {
@@ -27,7 +27,7 @@
           "type": "skill"
         },
         {
-          "digest": "7145f6fdf212d7d3a2496091212f744e7ec6262d5e0b61a906e701732bba9e2f",
+          "digest": "4f9d2cbc640a0f46223681e6b02a290629af012ffcfd09b789428a6809f3168e",
           "id": "appinsights-instrumentation",
           "targets": {
             "claude": {
@@ -71,7 +71,7 @@
           "type": "asset"
         },
         {
-          "digest": "1ba44ae9d2777ba10c28e91506f1fe2819778862d782a68378db13ccb1e1c1e8",
+          "digest": "2214ad852380aab8e94c6281581ade280c410595b774949ebbd0120d8a288f31",
           "id": "azure-ai",
           "targets": {
             "claude": {
@@ -93,7 +93,7 @@
           "type": "skill"
         },
         {
-          "digest": "d366412b3c5f26aaf410ef35f849c8e7b6347f09dd08ab3863f5c46fa4e8489e",
+          "digest": "db8f936f4ee6948c28a0c7b59a71397e6e7c5bd7c1a6da9c0970885ebccb7515",
           "id": "azure-aigateway",
           "targets": {
             "claude": {
@@ -115,7 +115,7 @@
           "type": "skill"
         },
         {
-          "digest": "b2a746185ee8f8e0a0eee9df02fe83bbdc67dcc5941b8d0fbfc3bca6d66744a3",
+          "digest": "509372233fa1c153025171cc1a4b2943a7e1b159eaeef8c4d1e71e731cde8a11",
           "id": "azure-app-onboard",
           "targets": {
             "claude": {
@@ -137,7 +137,7 @@
           "type": "skill"
         },
         {
-          "digest": "663b0920d700c09b215012f7f89f64c81e2ba3848000ea5dd3e82ab98908bd95",
+          "digest": "55d651c31673eabb1a00ad9fa57429c8d159dd90276e05229dbd2ca0502b0d81",
           "id": "azure-app-onboard-prereq",
           "targets": {
             "claude": {
@@ -159,7 +159,7 @@
           "type": "skill"
         },
         {
-          "digest": "a43bdbc148d3d4fc5a4a85f6dbd184623ad327b3e11b88e5bc3a717c865db1ce",
+          "digest": "21c56e2fed153c606e2b6e96db463b7dfa38e54e0efade1c031eb738b959f585",
           "id": "azure-cloud-migrate",
           "targets": {
             "claude": {
@@ -181,7 +181,7 @@
           "type": "skill"
         },
         {
-          "digest": "803addee195fe77552244e1dd38c692166f0f1d3aa5accce98529b0cf2afa88c",
+          "digest": "2e364610dde50f8c43e6f1e6080c7d422f8e14d0525657d83031ccd0331394d8",
           "id": "azure-compliance",
           "targets": {
             "claude": {
@@ -203,7 +203,7 @@
           "type": "skill"
         },
         {
-          "digest": "5a67b9d252d025b4e4fb928767d5114ab9a30270144f52f0a2781cdeef1efd84",
+          "digest": "94b67e662adf2bfc796f2ada79a5d03d5b31af62e84a5f1096bbd662cad5031b",
           "id": "azure-compute",
           "targets": {
             "claude": {
@@ -225,7 +225,7 @@
           "type": "skill"
         },
         {
-          "digest": "70b10f61b27dda01c58658517b7f8a29883b873a034457554abfa575cd2a542b",
+          "digest": "34f41ab9c4fafc8a45f38083234c8a6f856fddda3d549dda00713260ab254625",
           "id": "azure-cost",
           "targets": {
             "claude": {
@@ -247,7 +247,7 @@
           "type": "skill"
         },
         {
-          "digest": "f2ae3193bd00b9ce66841c526d13e26f59a35c4bd7a3a9de4751ea0552f12ec9",
+          "digest": "50e5a10560f05b9d19445203fd0849a92b9f4c3dfde884836b44ece513019398",
           "id": "azure-deploy",
           "targets": {
             "claude": {
@@ -269,7 +269,7 @@
           "type": "skill"
         },
         {
-          "digest": "676011b3c4d2d1726bf5f3954eb79797a33e73f03993e37118e280338a2b2fe2",
+          "digest": "a890eec07036d2e1e4d83739ec8e16dd7e69b9ca155db8b456f421ca26970e51",
           "id": "azure-diagnostics",
           "targets": {
             "claude": {
@@ -291,7 +291,7 @@
           "type": "skill"
         },
         {
-          "digest": "71c081130b7fb5e74fc1ab418e60542c11f4d091846f25a4bebde9a3a51b4936",
+          "digest": "4710b6cf179c0ff33325d1e358e13cdd95e67748fa085ee7d5ff0b2f3b412de5",
           "id": "azure-enterprise-infra-planner",
           "targets": {
             "claude": {
@@ -313,7 +313,7 @@
           "type": "skill"
         },
         {
-          "digest": "5bf9a3a1aa568f7c12ab6f5ff2a1fbe49a1d1af6d091b49b219c9c8fcc0b95ff",
+          "digest": "409b16d1b54ca401005f1f6bcb13386ef3ac4f05f8d4269423db5caffbfbd787",
           "id": "azure-kubernetes",
           "targets": {
             "claude": {
@@ -357,7 +357,7 @@
           "type": "skill"
         },
         {
-          "digest": "944de5b32a6e50d337af9493e229d680bfe621d7fda6f9c865b5f84d63c64e01",
+          "digest": "1cc3b392edb9249637d61a60b5b869566c52369e4d150798ef9d389a3080fb36",
           "id": "azure-kusto",
           "targets": {
             "claude": {
@@ -379,7 +379,7 @@
           "type": "skill"
         },
         {
-          "digest": "c575d5667d36b0cabad6a276d811dd40c4bf214f1b1013ca5ec10b1543113a88",
+          "digest": "5237c31864b0e84fa689be2981d567183690c22edc4e09f49d33af48892c55e6",
           "id": "azure-messaging",
           "targets": {
             "claude": {
@@ -401,7 +401,7 @@
           "type": "skill"
         },
         {
-          "digest": "cb15bfe2ab09f1af13510514231efc26b3c74534a10f39a81cde6ad99143cfcc",
+          "digest": "f95584439f40fd08075389b8807fcacc34ffda899a67fc643f8038174c4f711d",
           "id": "azure-prepare",
           "targets": {
             "claude": {
@@ -423,7 +423,7 @@
           "type": "skill"
         },
         {
-          "digest": "d94449f58df4d493454e94f44b61d6195b6c6c3c78475e9c5af3f33d49a85316",
+          "digest": "3bb16d9736fba6844016c4803283ae8eddc433adaea0bfb3b2e8886a9dfc43e5",
           "id": "azure-quotas",
           "targets": {
             "claude": {
@@ -445,7 +445,7 @@
           "type": "skill"
         },
         {
-          "digest": "f08c41df1f03b2f51528e547afb56cdfd33fd8f84281cdba63b65e140df3316b",
+          "digest": "947cbea49cfc360b4ca5a2a5f9ed9ab4995562f327de1e1165016cad10de273a",
           "id": "azure-reliability",
           "targets": {
             "claude": {
@@ -467,7 +467,7 @@
           "type": "skill"
         },
         {
-          "digest": "1809726bf992acc86ab826e26e59acd396b50de9024a84efce29c5cf054f5494",
+          "digest": "0f8208eb9b885993a4497443cfe54ace79fdf3e226c98e215588d31be9f366f0",
           "id": "azure-resource-lookup",
           "targets": {
             "claude": {
@@ -489,7 +489,7 @@
           "type": "skill"
         },
         {
-          "digest": "d1ae0dbc866699069ef1092f43b5a9a9bad19fb2634a0695fccd0b780e75da41",
+          "digest": "7445828fdef593094cb6508c4c7b2d75bc9705862465f400fb7db8d4920e7e98",
           "id": "azure-resource-visualizer",
           "targets": {
             "claude": {
@@ -511,7 +511,7 @@
           "type": "skill"
         },
         {
-          "digest": "e016e0b897d65fbe5e4506713d9ec2e5e87a4ea43a051039517e5c75bf86915f",
+          "digest": "971f2ad40f1f6b957d9f850dda1a0eb207f6c2b81139ece25c51cf4643ba72cb",
           "id": "azure-storage",
           "targets": {
             "claude": {
@@ -533,7 +533,7 @@
           "type": "skill"
         },
         {
-          "digest": "6bca721b277f98eec53b6b7eb88255d25b58c9f37b4dc964c6a0370a9cbad586",
+          "digest": "acf45e9d904179e0ce670f9c6229cee3496d200eedbfc30917afc8577754f97d",
           "id": "azure-upgrade",
           "targets": {
             "claude": {
@@ -555,7 +555,7 @@
           "type": "skill"
         },
         {
-          "digest": "184d895c7e9a3fc7a93bda18067f1ca4302cef2c543452d5839543c842a2ebd5",
+          "digest": "f95b7d51c04c454f00d6eaf5bb70b075261c7d6cfbef352cfc5941c95dfd63a0",
           "id": "azure-validate",
           "targets": {
             "claude": {
@@ -643,7 +643,7 @@
           "type": "skill"
         },
         {
-          "digest": "db2018a790ba560d849c04e0cb81dc18203048f0f5058b38a06a11e6a85cc1fd",
+          "digest": "661bfe7198bec33a00ceda613dbf98c0cc460d26b1dfd4634540f56a2f56b5db",
           "id": "entra-agent-id",
           "targets": {
             "claude": {
@@ -665,7 +665,7 @@
           "type": "skill"
         },
         {
-          "digest": "9e0ba37f72adc960e176ae67666dbd8964a791778295891176cb0a8797369590",
+          "digest": "11fbf7b1ff30f73ee361cacd0418c2bbb022fbb50b4642ac9678f93cc1783da6",
           "id": "entra-app-registration",
           "targets": {
             "claude": {
@@ -774,7 +774,7 @@
           "type": "mcp"
         },
         {
-          "digest": "6fa3789be8eadfdf0ddcdab2134b4ab2463660e96d47149fc0545e68b206aa5f",
+          "digest": "72b602fd70ae132e10052aad87d0e142485b0ebfce0b87b3c5596dcdb2076ace",
           "id": "microsoft-foundry",
           "targets": {
             "claude": {
@@ -818,7 +818,7 @@
           "type": "skill"
         },
         {
-          "digest": "702d4bc94a7eae1e53e9afce4699c45b7cd2ac10945245005688addd6dac9d0a",
+          "digest": "3fb546459ac8e70c3c96d10f87b557a7c748df438ecf3a930c2ca48da005b79b",
           "id": "python-appservice-deploy",
           "targets": {
             "claude": {
@@ -840,20 +840,20 @@
           "type": "skill"
         }
       ],
-      "distributionVersion": "1.2.5-gravit.5",
+      "distributionVersion": "1.2.9-gravit.1",
       "generatorDigest": "0aa1f6e0b91d09e3c23a64f70b0403f95cf728abda4883cf47f06fce593ca308",
       "name": "azure",
       "source": {
-        "ref": "v1.2.5",
+        "ref": "v1.2.8",
         "repo": "microsoft/azure-skills",
         "root": ".",
-        "sha": "013b97d8aab03ce8cd88944976e9988f8c829746",
+        "sha": "1d88f75412afd408bc1d063a3acbe214d0d9fa0c",
         "type": "github"
       },
       "targets": {
-        "claude": "6c4dd6bd7a6bf6bf7f0c77a97fa51cb339e34f5252c99640e810f6c6c984167d",
-        "codex": "f8bd78c17e17dc5b074e928174b27bdc536f64c423fe53450a57f47230e4c7c5",
-        "openclaw": "50d7b9fabd1b0a63abb2b6c2cda8fcc3f4050c526019e3066954854f5a319fe6"
+        "claude": "349fc6c0973133343b1199cbb6b0c6ad3c2d43459ddd84cd9481f4b27d4e8ee0",
+        "codex": "93f79620cdd15032c7d8ab410eebc09996a57c897cd5897cc28700d96df58082",
+        "openclaw": "e43213cbd781d6ed9228609de7d0d472a8d8f9f4dd38fd53b897cb0ba4a14790"
       }
     },
     "claude-seo": {

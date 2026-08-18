@@ -2,7 +2,7 @@
 
 Attach a remote MCP server that authenticates with **your own OAuth2 app** (bring-your-own `client_id` / `client_secret`) — when you own the OAuth app and control the client, scopes, and secret. Either a **third-party / non-Azure MCP** whose OAuth app you register, or a **private MCP on Azure** ([custom MCP on Azure Functions](https://learn.microsoft.com/en-us/azure/foundry/mcp/build-your-own-mcp-server?view=foundry)).
 
-> 🚦 Before creating a toolbox/connection, read create-hosted.md → Toolbox creation boundary.
+> 🚦 Before creating a toolbox/connection, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
 
 **Flow at a glance** (the redirect URI is chicken-and-egg — OAuth app and connection each need something from the other):
 1. **Create the OAuth app** and collect the five inputs — [Getting the OAuth2 inputs](#getting-the-oauth2-inputs). Leave the callback URL as a placeholder.
