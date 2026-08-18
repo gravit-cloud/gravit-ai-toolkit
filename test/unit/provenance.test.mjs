@@ -440,6 +440,16 @@ test("lock creation requires configured targets to exactly match target results"
   );
 });
 
+test("lock creation rejects removed adapter options", (context) => {
+  const input = lockFixture(context);
+  input.plugin.adapterOptions = { openclaw: { bundleFormat: "codex" } };
+
+  assert.throws(
+    () => createLockEntry(input),
+    /unknown plugin field: adapterOptions/,
+  );
+});
+
 test("lock provenance accepts catalog resources without weakening unknown fields", (context) => {
   const withResources = lockFixture(context);
   withResources.plugin.resources = [
