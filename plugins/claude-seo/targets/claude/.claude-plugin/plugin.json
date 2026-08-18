@@ -23,8 +23,7 @@
     "name": "Gravit Cloud"
   },
   "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
-  "hooks": "./hooks/hooks.json",
   "name": "claude-seo",
   "skills": "./skills/",
-  "version": "2.2.4-gravit.5"
+  "version": "2.2.4-gravit.6"
 }

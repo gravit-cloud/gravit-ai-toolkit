@@ -124,7 +124,6 @@ test("renders complete standalone Claude and Codex component bundles", (context)
     skills: "./skills/",
     commands: ["./commands/release.md"],
     agents: ["./agents/reviewer.md"],
-    hooks: "./hooks/hooks.json",
     mcpServers: "./.mcp.json",
     lspServers: "./.lsp.json",
     outputStyles: ["./output-styles/terse.md"],
@@ -164,7 +163,7 @@ test("renders complete standalone Claude and Codex component bundles", (context)
     },
   });
   assert.deepEqual(readJson(resolve(codexRoot, ".mcp.json")), {
-    mcp_servers: {
+    mcpServers: {
       fixture: {
         command: "npx",
         args: ["-y", "@fixture/mcp@1.2.3", "server", "start"],

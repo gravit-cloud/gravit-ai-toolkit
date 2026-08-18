@@ -307,7 +307,6 @@ export function renderClaudeTarget({ plugin, inventory, neutralComponents, bundl
     skills: renderedSkills.length ? "./skills/" : undefined,
     commands: commandPaths.length ? commandPaths.sort(compareCodePoints) : undefined,
     agents: pathsFor("agent").length ? pathsFor("agent") : undefined,
-    hooks: hooks.length ? "./hooks/hooks.json" : undefined,
     mcpServers: mcps.length ? "./.mcp.json" : undefined,
     lspServers: nativePlans.some(({ component }) => component.type === "lsp")
       ? "./.lsp.json"

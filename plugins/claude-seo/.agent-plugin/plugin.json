@@ -684,7 +684,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "2.2.4-gravit.5",
+  "distributionVersion": "2.2.4-gravit.6",
   "name": "claude-seo",
   "schemaVersion": 1,
   "targets": {
@@ -881,7 +881,7 @@
           "status": "preserved"
         }
       },
-      "digest": "4ebac6a23201ae255e13b92e54473edd92a7ff2a2efbdec6a33eb63059a5ccfe",
+      "digest": "f9e48d67dd97f11d391d1eeb9c67f313e2981b861aceed8b5f4d2ebe88989f85",
       "path": "targets/claude"
     },
     "codex": {
@@ -1076,7 +1076,7 @@
           "status": "transformed"
         }
       },
-      "digest": "d8e56dbf77be8d781db9dfe12a8d90c8bfbc5edd37dc932a4f75f83af9971101",
+      "digest": "20c5737947a46979f68dc3153f5d207cdb1e2dbc5709dd49c6ed4adf6570ae06",
       "path": "targets/codex"
     }
   }

@@ -815,7 +815,7 @@ test("allows a hyphen-leading static executable in every nested container positi
     const filePath = resolve(root, String(index), ".mcp.json");
     writeMcpConfig({ servers: [server], target: "codex", filePath });
     assert.deepEqual(
-      JSON.parse(readFileSync(filePath, "utf8")).mcp_servers.fixture.args,
+      JSON.parse(readFileSync(filePath, "utf8")).mcpServers.fixture.args,
       args,
     );
   }
@@ -875,7 +875,7 @@ test("writes deterministic Claude and Codex configs without empty host fields", 
 }
 `);
   assert.deepEqual(JSON.parse(readFileSync(codexPath, "utf8")), {
-    mcp_servers: {
+    mcpServers: {
       empty: { command: "node" },
       local: { command: "node", args: ["server.mjs"], env: { TOKEN: "${TOKEN}" } },
       remote: { type: "sse", url: "https://example.invalid/events" },

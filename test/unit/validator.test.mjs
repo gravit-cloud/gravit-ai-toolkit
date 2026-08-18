@@ -474,7 +474,7 @@ test("unaccounted target components and neutral paths outside components are rej
 test("floating runtimes, absolute runtime paths, and concrete secrets are rejected", (context) => {
   const repositoryRoot = validRepository(context);
   mutateJson(repositoryRoot, "plugins/fixture/targets/codex/.mcp.json", (mcp) => {
-    const server = Object.values(mcp.mcp_servers)[0];
+    const server = Object.values(mcp.mcpServers)[0];
     server.command = "/usr/bin/npx";
     server.args[1] = "@fixture/mcp@latest";
     server.env.FIXTURE_TOKEN = "concrete-secret";
@@ -489,7 +489,7 @@ test("floating runtimes, absolute runtime paths, and concrete secrets are reject
 test("runtime package pins and OCI images must be immutable", (context) => {
   const repositoryRoot = validRepository(context);
   mutateJson(repositoryRoot, "plugins/fixture/targets/codex/.mcp.json", (mcp) => {
-    Object.values(mcp.mcp_servers)[0].args[1] = "@fixture/mcp@9.9.9";
+    Object.values(mcp.mcpServers)[0].args[1] = "@fixture/mcp@9.9.9";
   });
   mutateJson(repositoryRoot, "plugins/fixture/targets/claude/.mcp.json", (mcp) => {
     const server = Object.values(mcp.mcpServers)[0];
@@ -524,7 +524,7 @@ test("container option values are not mistaken for an immutable image", (context
 test("unknown container options fail closed after target hashes are refreshed", (context) => {
   const repositoryRoot = validRepository(context);
   mutateJson(repositoryRoot, "plugins/fixture/targets/codex/.mcp.json", (mcp) => {
-    const server = Object.values(mcp.mcp_servers)[0];
+    const server = Object.values(mcp.mcpServers)[0];
     server.command = "docker";
     server.args = [
       "run",
@@ -560,7 +560,7 @@ test("container aliases reject tagged images even when a digest is appended", (c
 test("npx package arguments must be exact catalog-declared runtime pins", (context) => {
   const repositoryRoot = validRepository(context);
   mutateJson(repositoryRoot, "plugins/fixture/targets/codex/.mcp.json", (mcp) => {
-    Object.values(mcp.mcp_servers)[0].args[1] = "@undeclared/mcp@9.9.9";
+    Object.values(mcp.mcpServers)[0].args[1] = "@undeclared/mcp@9.9.9";
   });
   refreshGeneratedDigests(repositoryRoot);
 
@@ -572,7 +572,7 @@ test("npx package arguments must be exact catalog-declared runtime pins", (conte
 test("host checkout paths in runtime arguments fail closed", (context) => {
   const repositoryRoot = validRepository(context);
   mutateJson(repositoryRoot, "plugins/fixture/targets/codex/.mcp.json", (mcp) => {
-    const server = Object.values(mcp.mcp_servers)[0];
+    const server = Object.values(mcp.mcpServers)[0];
     server.command = "node";
     server.args = ["--config=/checkout/config.json", "file:///checkout/tool.mjs"];
   });

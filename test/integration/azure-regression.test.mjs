@@ -99,7 +99,8 @@ test("Azure target projections preserve exact runtime links and 34 unique public
     ));
     assert.equal(hostManifest.skills, "./skills/");
     assert.equal(hostManifest.mcpServers, "./.mcp.json");
-    assert.equal(hostManifest.hooks, "./hooks/hooks.json");
+    if (target === "claude") assert.equal(Object.hasOwn(hostManifest, "hooks"), false);
+    else assert.equal(hostManifest.hooks, "./hooks/hooks.json");
 
     const mcp = readFileSync(resolve(targetRoot, ".mcp.json"), "utf8");
     assert.match(mcp, /@azure\/mcp@2\.0\.5/);

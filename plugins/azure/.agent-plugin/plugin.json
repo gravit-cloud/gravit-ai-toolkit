@@ -685,7 +685,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.2.9-gravit.2",
+  "distributionVersion": "1.2.9-gravit.3",
   "name": "azure",
   "schemaVersion": 1,
   "targets": {
@@ -882,7 +882,7 @@
           "status": "preserved"
         }
       },
-      "digest": "a9b48c06071d4bbfde0000b6c5e9c37b9d8d20fef827da4daa3e10022248b91f",
+      "digest": "28c0705c4b9c754cb375c7c17fab6efb0570456c6ae4c51dcfdbc0a1539344d5",
       "path": "targets/claude"
     },
     "codex": {
@@ -1078,7 +1078,7 @@
           "status": "transformed"
         }
       },
-      "digest": "fe32e8b7aa041ec068d590b9f30d6fd46b39a7b8058bbd159467e6eab8db615f",
+      "digest": "37c83f9f963a8a06ad2ab12b1315e487f5005096e0ccdf2e6b2ebd27532c7d74",
       "path": "targets/codex"
     }
   }

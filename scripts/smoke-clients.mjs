@@ -5,6 +5,7 @@ import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   realpathSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,6 +19,42 @@ const TERMINATION_GRACE_MS = 250;
 const FINALIZATION_GRACE_MS = 250;
 const ERROR_OUTPUT_LIMIT = 8 * 1024;
 const ALLOWED_PARENT_ENV = Object.freeze(["LANG", "LC_ALL", "LC_CTYPE", "TZ"]);
+const EXPECTED_AZURE_SKILLS = Object.freeze([
+  "airunway-aks-setup",
+  "appinsights-instrumentation",
+  "azure-ai",
+  "azure-aigateway",
+  "azure-app-onboard",
+  "azure-app-onboard-prereq",
+  "azure-cloud-migrate",
+  "azure-compliance",
+  "azure-compute",
+  "azure-cost",
+  "azure-deploy",
+  "azure-diagnostics",
+  "azure-enterprise-infra-planner",
+  "azure-kubernetes",
+  "azure-kubernetes-automatic-readiness",
+  "azure-kusto",
+  "azure-messaging",
+  "azure-prepare",
+  "azure-quotas",
+  "azure-reliability",
+  "azure-resource-lookup",
+  "azure-resource-visualizer",
+  "azure-storage",
+  "azure-upgrade",
+  "azure-validate",
+  "capacity",
+  "customize",
+  "deploy-model",
+  "entra-agent-id",
+  "entra-app-registration",
+  "finetuning",
+  "microsoft-foundry",
+  "preset",
+  "python-appservice-deploy",
+]);
 
 function assertRealDirectory(path, label) {
   const absolute = resolve(path);
@@ -117,6 +154,10 @@ function isolatedEnvironment(parentEnv, clientRoot) {
 function freezeSpec(spec) {
   Object.freeze(spec.args);
   Object.freeze(spec.env);
+  if (spec.jsonLineProtocol) {
+    Object.freeze(spec.jsonLineProtocol.afterInitialize);
+    Object.freeze(spec.jsonLineProtocol);
+  }
   return Object.freeze(spec);
 }
 
@@ -124,15 +165,73 @@ function plainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function parseJsonStdout(name, stdout) {
+function parseJsonValue(name, stdout) {
   let value;
   try {
     value = JSON.parse(stdout);
   } catch (error) {
     throw new Error(name + " returned malformed JSON", { cause: error });
   }
+  return value;
+}
+
+function parseJsonStdout(name, stdout) {
+  const value = parseJsonValue(name, stdout);
   if (!plainObject(value)) throw new Error(name + " JSON root must be an object");
   return value;
+}
+
+function pluginVersion(repository, target) {
+  const manifestPath = assertRepositoryFile(
+    repository,
+    resolve(repository, `plugins/azure/targets/${target}/.${target}-plugin/plugin.json`),
+    `Azure ${target} plugin manifest`,
+  );
+  const manifest = parseJsonStdout(`Azure ${target} plugin manifest`, readFileSync(manifestPath, "utf8"));
+  if (manifest.name !== "azure" || typeof manifest.version !== "string") {
+    throw new Error(`Azure ${target} plugin manifest has the wrong identity`);
+  }
+  return manifest.version;
+}
+
+function validateClaudeInstalled(stdout, expectedVersion, expectedInstallPath) {
+  const value = parseJsonValue("claude-plugin-list-installed", stdout);
+  if (!Array.isArray(value)) {
+    throw new Error("claude-plugin-list-installed JSON root must be an array");
+  }
+  const matches = value.filter((entry) => plainObject(entry) && entry.id === "azure@gravit-cloud");
+  if (matches.length !== 1) {
+    throw new Error("claude-plugin-list-installed must contain one installed Azure record");
+  }
+  const azure = matches[0];
+  const server = azure.mcpServers?.azure;
+  if (
+    azure.version !== expectedVersion
+    || azure.scope !== "user"
+    || azure.enabled !== true
+    || azure.installPath !== expectedInstallPath
+    || !plainObject(server)
+    || server.command !== "npx"
+    || JSON.stringify(server.args) !== JSON.stringify([
+      "-y", "@azure/mcp@2.0.5", "server", "start",
+    ])
+    || (Array.isArray(azure.errors) && azure.errors.length !== 0)
+  ) {
+    throw new Error("claude-plugin-list-installed returned an unhealthy Azure installation");
+  }
+}
+
+function validateClaudeComponents(stdout, expectedVersion) {
+  if (!new RegExp(`^azure ${expectedVersion.replaceAll(".", "\\.")}$`, "mu").test(stdout)) {
+    throw new Error("claude-plugin-components returned the wrong Azure version");
+  }
+  const skills = /^\s*Skills \(34\)\s{2}(.+)$/mu.exec(stdout)?.[1]?.split(", ");
+  if (JSON.stringify(skills) !== JSON.stringify(EXPECTED_AZURE_SKILLS)) {
+    throw new Error("claude-plugin-components did not recognize all Azure skills");
+  }
+  if (!/^\s*MCP servers \(1\)\s{2}azure(?:\s|$)/mu.test(stdout)) {
+    throw new Error("claude-plugin-components did not recognize the Azure MCP server");
+  }
 }
 
 function validateCodexMarketplace(stdout, expectedRoot) {
@@ -146,27 +245,73 @@ function validateCodexMarketplace(stdout, expectedRoot) {
   }
 }
 
-function validateCodexAvailable(stdout) {
-  const value = parseJsonStdout("codex-plugin-list-available", stdout);
+function validateCodexInstall(stdout, expectedVersion, expectedInstallPath) {
+  const value = parseJsonStdout("codex-plugin-install", stdout);
+  if (
+    value.pluginId !== "azure@gravit-cloud"
+    || value.name !== "azure"
+    || value.marketplaceName !== "gravit-cloud"
+    || value.version !== expectedVersion
+    || value.installedPath !== expectedInstallPath
+    || value.authPolicy !== "ON_INSTALL"
+  ) {
+    throw new Error("codex-plugin-install returned the wrong Azure installation");
+  }
+}
+
+function validateCodexInstalled(stdout, expectedVersion, repository) {
+  const value = parseJsonStdout("codex-plugin-list-installed", stdout);
   if (!Array.isArray(value.installed) || !Array.isArray(value.available)) {
-    throw new Error("codex-plugin-list-available returned malformed plugin arrays");
+    throw new Error("codex-plugin-list-installed returned malformed plugin arrays");
   }
   const installedAzure = value.installed.filter(
     (entry) => plainObject(entry) && entry.pluginId === "azure@gravit-cloud",
   );
-  const availableAzure = value.available.filter(
-    (entry) => plainObject(entry) && entry.pluginId === "azure@gravit-cloud",
-  );
-  if (installedAzure.length !== 0 || availableAzure.length !== 1) {
-    throw new Error("codex-plugin-list-available must contain one uninstalled Azure record");
+  if (installedAzure.length !== 1 || value.available.length !== 0) {
+    throw new Error("codex-plugin-list-installed must contain one installed Azure record");
   }
-  const azure = availableAzure[0];
+  const azure = installedAzure[0];
   if (
     azure.name !== "azure"
     || azure.marketplaceName !== "gravit-cloud"
-    || azure.installed !== false
+    || azure.version !== expectedVersion
+    || azure.installed !== true
+    || azure.enabled !== true
+    || azure.source?.source !== "local"
+    || azure.source?.path !== resolve(repository, "plugins/azure/targets/codex")
+    || azure.marketplaceSource?.sourceType !== "local"
+    || azure.marketplaceSource?.source !== repository
   ) {
-    throw new Error("codex-plugin-list-available returned the wrong Azure disposition");
+    throw new Error("codex-plugin-list-installed returned the wrong Azure disposition");
+  }
+}
+
+function validateCodexComponents(stdout, expectedVersion, expectedMarketplacePath) {
+  const messages = stdout.trim().split("\n").map((line) => parseJsonStdout(
+    "codex-plugin-components protocol line",
+    line,
+  ));
+  const responses = messages.filter((message) => message.id === 2);
+  if (responses.length !== 1 || responses[0].error) {
+    throw new Error("codex-plugin-components did not return one successful plugin/read response");
+  }
+  const plugin = responses[0].result?.plugin;
+  const skillNames = plugin?.skills?.map((skill) => skill?.name);
+  if (
+    !plainObject(plugin)
+    || plugin.marketplaceName !== "gravit-cloud"
+    || plugin.marketplacePath !== expectedMarketplacePath
+    || plugin.summary?.id !== "azure@gravit-cloud"
+    || plugin.summary?.localVersion !== expectedVersion
+    || plugin.summary?.installed !== true
+    || plugin.summary?.enabled !== true
+    || JSON.stringify(skillNames) !== JSON.stringify(
+      EXPECTED_AZURE_SKILLS.map((name) => "azure:" + name),
+    )
+    || plugin.skills.some((skill) => skill.enabled !== true)
+    || JSON.stringify(plugin.mcpServers) !== JSON.stringify(["azure"])
+  ) {
+    throw new Error("codex-plugin-components did not recognize the installed Azure components");
   }
 }
 
@@ -177,16 +322,21 @@ export function smokeCommands({
 }) {
   const repository = assertRealDirectory(repositoryRoot, "repository root");
   const temporary = assertRealDirectory(temporaryRoot, "client smoke temporary root");
-  assertRepositoryFile(
+  const claudeMarketplace = assertRepositoryFile(
     repository,
     resolve(repository, ".claude-plugin/marketplace.json"),
     "Claude marketplace",
   );
-  assertRepositoryFile(
+  const codexMarketplace = assertRepositoryFile(
     repository,
     resolve(repository, ".agents/plugins/marketplace.json"),
     "Codex marketplace",
   );
+  const claudeVersion = pluginVersion(repository, "claude");
+  const codexVersion = pluginVersion(repository, "codex");
+  if (claudeVersion !== codexVersion) {
+    throw new Error("Azure client projections disagree on their version");
+  }
   const claudePackage = resolve(repository, "node_modules/@anthropic-ai/claude-code");
   const codexPackage = resolve(repository, "node_modules/@openai/codex");
   const claudeNative = assertRepositoryFile(
@@ -214,6 +364,16 @@ export function smokeCommands({
   );
   codexEnv.CODEX_HOME = resolve(codexEnv.HOME, "codex-state");
   mkdirSync(codexEnv.CODEX_HOME, { recursive: true, mode: 0o700 });
+  const claudeInstallPath = resolve(
+    claudeEnv.CLAUDE_CONFIG_DIR,
+    "plugins/cache/gravit-cloud/azure",
+    claudeVersion,
+  );
+  const codexInstallPath = resolve(
+    codexEnv.CODEX_HOME,
+    "plugins/cache/gravit-cloud/azure",
+    codexVersion,
+  );
   return [
     {
       name: "claude-validate",
@@ -221,6 +381,38 @@ export function smokeCommands({
       args: ["plugin", "validate", "--strict", repository],
       env: claudeEnv,
       expectedPattern: /(?:^|\n).*Validation passed(?:\n|$)/u,
+    },
+    {
+      name: "claude-marketplace-add",
+      command: claudeNative,
+      args: ["plugin", "marketplace", "add", repository, "--scope", "user"],
+      env: claudeEnv,
+      expectedPattern: /Successfully added marketplace: gravit-cloud/u,
+    },
+    {
+      name: "claude-plugin-install",
+      command: claudeNative,
+      args: ["plugin", "install", "azure@gravit-cloud", "--scope", "user"],
+      env: claudeEnv,
+      expectedPattern: /Successfully installed plugin: azure@gravit-cloud/u,
+    },
+    {
+      name: "claude-plugin-list-installed",
+      command: claudeNative,
+      args: ["plugin", "list", "--json"],
+      env: claudeEnv,
+      validateStdout(stdout) {
+        validateClaudeInstalled(stdout, claudeVersion, claudeInstallPath);
+      },
+    },
+    {
+      name: "claude-plugin-components",
+      command: claudeNative,
+      args: ["plugin", "details", "azure@gravit-cloud"],
+      env: claudeEnv,
+      validateStdout(stdout) {
+        validateClaudeComponents(stdout, claudeVersion);
+      },
     },
     {
       name: "codex-marketplace-add",
@@ -232,7 +424,16 @@ export function smokeCommands({
       },
     },
     {
-      name: "codex-plugin-list-available",
+      name: "codex-plugin-install",
+      command: process.execPath,
+      args: [codexEntry, "plugin", "add", "azure@gravit-cloud", "--json"],
+      env: codexEnv,
+      validateStdout(stdout) {
+        validateCodexInstall(stdout, codexVersion, codexInstallPath);
+      },
+    },
+    {
+      name: "codex-plugin-list-installed",
       command: process.execPath,
       args: [
         codexEntry,
@@ -240,11 +441,39 @@ export function smokeCommands({
         "list",
         "--marketplace",
         "gravit-cloud",
-        "--available",
         "--json",
       ],
       env: codexEnv,
-      validateStdout: validateCodexAvailable,
+      validateStdout(stdout) {
+        validateCodexInstalled(stdout, codexVersion, repository);
+      },
+    },
+    {
+      name: "codex-plugin-components",
+      command: process.execPath,
+      args: [codexEntry, "app-server", "--stdio"],
+      env: codexEnv,
+      jsonLineProtocol: {
+        initial: {
+          id: 1,
+          method: "initialize",
+          params: {
+            clientInfo: { name: "gravit-client-smoke", version: "1.0.0" },
+            capabilities: { experimentalApi: true },
+          },
+        },
+        afterInitialize: [
+          { method: "initialized" },
+          {
+            id: 2,
+            method: "plugin/read",
+            params: { pluginName: "azure", marketplacePath: codexMarketplace },
+          },
+        ],
+      },
+      validateStdout(stdout) {
+        validateCodexComponents(stdout, codexVersion, codexMarketplace);
+      },
     },
   ].map(freezeSpec);
 }
@@ -294,7 +523,7 @@ export function runBoundedCommand(spec, {
         env: spec.env,
         detached: process.platform !== "win32",
         shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: [spec.jsonLineProtocol ? "pipe" : "ignore", "pipe", "pipe"],
         windowsHide: true,
       });
     } catch (error) {
@@ -310,6 +539,14 @@ export function runBoundedCommand(spec, {
     let timeoutTimer;
     let terminationTimer;
     let finalizationTimer;
+    let protocolBuffer = "";
+    let protocolInitialized = false;
+    let protocolComplete = false;
+    const protocolPendingResponseIds = new Set(
+      spec.jsonLineProtocol?.afterInitialize
+        .filter((message) => Object.prototype.hasOwnProperty.call(message, "id"))
+        .map((message) => message.id) || [],
+    );
 
     function clearTimers() {
       clearTimeout(timeoutTimer);
@@ -361,8 +598,56 @@ export function runBoundedCommand(spec, {
       }
     }
 
-    child.stdout?.on("data", (chunk) => collect(stdout, chunk));
+    function inspectProtocol(chunk) {
+      if (!spec.jsonLineProtocol || protocolComplete || terminationReason || settled) return;
+      protocolBuffer += Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk);
+      while (protocolBuffer.includes("\n")) {
+        const newline = protocolBuffer.indexOf("\n");
+        const line = protocolBuffer.slice(0, newline);
+        protocolBuffer = protocolBuffer.slice(newline + 1);
+        if (line.length === 0) continue;
+        let message;
+        try {
+          message = JSON.parse(line);
+        } catch {
+          beginTermination("returned malformed JSON-line protocol output");
+          return;
+        }
+        if (!protocolInitialized) {
+          if (message.id !== spec.jsonLineProtocol.initial.id) continue;
+          protocolInitialized = true;
+          if (message.error) {
+            protocolComplete = true;
+            child.stdin.end();
+            return;
+          }
+          for (const followup of spec.jsonLineProtocol.afterInitialize) {
+            child.stdin.write(JSON.stringify(followup) + "\n");
+          }
+          if (protocolPendingResponseIds.size === 0) {
+            protocolComplete = true;
+            child.stdin.end();
+            return;
+          }
+          continue;
+        }
+        if (protocolPendingResponseIds.delete(message.id)
+          && protocolPendingResponseIds.size === 0) {
+          protocolComplete = true;
+          child.stdin.end();
+          return;
+        }
+      }
+    }
+
+    child.stdout?.on("data", (chunk) => {
+      collect(stdout, chunk);
+      inspectProtocol(chunk);
+    });
     child.stderr?.on("data", (chunk) => collect(stderr, chunk));
+    child.stdin?.on("error", (error) => {
+      if (!settled) beginTermination("protocol input failed: " + (error.message || String(error)));
+    });
     child.once("error", (error) => {
       finish(commandFailure(spec, error.message || String(error), outputText()));
     });
@@ -383,6 +668,9 @@ export function runBoundedCommand(spec, {
     timeoutTimer = setTimeout(() => {
       beginTermination("timed out after " + timeoutMs + "ms");
     }, timeoutMs);
+    if (spec.jsonLineProtocol) {
+      child.stdin.write(JSON.stringify(spec.jsonLineProtocol.initial) + "\n");
+    }
   });
 }
 

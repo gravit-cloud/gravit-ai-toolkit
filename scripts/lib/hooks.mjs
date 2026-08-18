@@ -3,6 +3,7 @@ import { classifyRuntimeCommand } from "./runtime-command.mjs";
 
 const PROTOTYPE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const ROOT_REFERENCE = /\$\{(?:CLAUDE_PLUGIN_ROOT|PLUGIN_ROOT)\}/gu;
+const ROOT_EXECUTABLE_REFERENCE = /^\$\{(?:CLAUDE_PLUGIN_ROOT|PLUGIN_ROOT)\}(?=[\\/]|$)/u;
 const SHELL_TOKEN_BOUNDARIES = new Set([";", "&", "|", "<", ">", "(", ")", "`"]);
 const SHELL_CONTROL_COMMANDS = new Set([
   ".",
@@ -216,6 +217,78 @@ function commandTokens(command) {
   return tokens;
 }
 
+function assertNoExecutableShellExpansion(command) {
+  let quote;
+  let tokenStarted = false;
+  let contentStarted = false;
+  for (let index = 0; index < command.length; index += 1) {
+    const character = command[index];
+    if (quote === undefined) {
+      if (/\s/u.test(character)) {
+        if (tokenStarted) break;
+        continue;
+      }
+      if (character === "'" || character === '"') {
+        quote = character;
+        tokenStarted = true;
+        continue;
+      }
+      if (character === "\\") {
+        tokenStarted = true;
+        contentStarted = true;
+        index += 1;
+        continue;
+      }
+      if (character === "$" && !contentStarted) {
+        const root = ROOT_EXECUTABLE_REFERENCE.exec(command.slice(index));
+        if (root) {
+          tokenStarted = true;
+          contentStarted = true;
+          index += root[0].length - 1;
+          continue;
+        }
+      }
+      if (
+        character === "$"
+        || (!contentStarted && character === "~")
+        || character === "*"
+        || character === "?"
+        || character === "["
+      ) {
+        throw new Error("unsupported hook command executable expansion: " + command);
+      }
+      tokenStarted = true;
+      contentStarted = true;
+      continue;
+    }
+
+    if (character === quote) {
+      quote = undefined;
+      continue;
+    }
+    if (quote === '"' && character === "\\" && index + 1 < command.length) {
+      const next = command[index + 1];
+      if (["$", "`", '"', "\\"].includes(next)) {
+        contentStarted = true;
+        index += 1;
+        continue;
+      }
+    }
+    if (quote === '"' && character === "$" && !contentStarted) {
+      const root = ROOT_EXECUTABLE_REFERENCE.exec(command.slice(index));
+      if (root) {
+        contentStarted = true;
+        index += root[0].length - 1;
+        continue;
+      }
+    }
+    if (quote === '"' && character === "$") {
+      throw new Error("unsupported hook command executable expansion: " + command);
+    }
+    contentStarted = true;
+  }
+}
+
 function assignedValue(token) {
   const separator = token.indexOf("=");
   return separator === -1 ? undefined : token.slice(separator + 1);
@@ -385,6 +458,7 @@ function validateHookMap(hooks, context) {
         if (typeof hook.command !== "string" || hook.command.trim().length === 0) {
           throw new Error("command hook requires a non-empty string command: " + event);
         }
+        assertNoExecutableShellExpansion(hook.command);
         const tokens = commandTokens(hook.command);
         assertSafeRuntimeCommand(hook.command, tokens, context);
         assertNoAbsoluteCommandPath(hook.command, tokens);

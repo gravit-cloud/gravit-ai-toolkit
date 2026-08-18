@@ -704,7 +704,6 @@ const HOST_REFERENCES = {
     ["skills", ["skill"], "directory"],
     ["commands", ["command"], "file"],
     ["agents", ["agent"], "file"],
-    ["hooks", ["hook"], "file"],
     ["mcpServers", ["mcp"], "file"],
     ["lspServers", ["lsp"], "file"],
     ["outputStyles", ["output-style"], "file"],
@@ -747,6 +746,9 @@ function validateHostManifest({ pluginRoot, plugin, manifest, target, errors }) 
   if (host.name !== plugin.name) errors.push(`${plugin.name} ${target}: host manifest name mismatch`);
   if (host.version !== plugin.distributionVersion) {
     errors.push(`${plugin.name} ${target}: host manifest version mismatch`);
+  }
+  if (target === "claude" && Object.hasOwn(host, "hooks")) {
+    errors.push(`${plugin.name} claude: canonical hooks/hooks.json must use host auto-discovery`);
   }
   const referenceSpecs = [...HOST_REFERENCES[target]];
   if (target === "claude") {
