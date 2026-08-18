@@ -70,11 +70,11 @@ test("production catalog is neutral and fully pinned", () => {
   assert.deepEqual(
     catalog.plugins.map((plugin) => plugin.distributionVersion),
     [
-      "2.2.4-gravit.5",
+      "2.2.4-gravit.6",
       "1.0.1-gravit.3",
       "1.1.0-gravit.3",
-      "1.2.9-gravit.2",
-      "6.2.0-gravit.3",
+      "1.2.9-gravit.3",
+      "6.2.0-gravit.4",
       "1.0.0-gravit.4",
     ],
   );

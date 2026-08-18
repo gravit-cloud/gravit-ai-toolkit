@@ -3,8 +3,7 @@
     "name": "Gravit Cloud"
   },
   "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
-  "hooks": "./hooks/hooks.json",
   "name": "superpowers",
   "skills": "./skills/",
-  "version": "6.2.0-gravit.3"
+  "version": "6.2.0-gravit.4"
 }

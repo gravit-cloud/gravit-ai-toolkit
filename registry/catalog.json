@@ -6,7 +6,7 @@
       "name": "claude-seo",
       "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
       "category": "seo",
-      "distributionVersion": "2.2.4-gravit.5",
+      "distributionVersion": "2.2.4-gravit.6",
       "source": {
         "type": "github",
         "repo": "AgricIDaniel/claude-seo",
@@ -154,7 +154,7 @@
       "name": "azure",
       "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
       "category": "cloud",
-      "distributionVersion": "1.2.9-gravit.2",
+      "distributionVersion": "1.2.9-gravit.3",
       "runtimeDependencies": {
         "@azure/mcp": "2.0.5"
       },
@@ -214,7 +214,7 @@
       "name": "superpowers",
       "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
       "category": "development",
-      "distributionVersion": "6.2.0-gravit.3",
+      "distributionVersion": "6.2.0-gravit.4",
       "source": {
         "type": "github",
         "repo": "obra/superpowers",

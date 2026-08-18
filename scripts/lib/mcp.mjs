@@ -433,7 +433,5 @@ export function writeMcpConfig({ servers, target, filePath }) {
       seen.add(canonical.id);
       return [canonical.id, hostFields(canonical)];
     });
-  writeJson(filePath, target === "codex"
-    ? { mcp_servers: Object.fromEntries(entries) }
-    : { mcpServers: Object.fromEntries(entries) });
+  writeJson(filePath, { mcpServers: Object.fromEntries(entries) });
 }

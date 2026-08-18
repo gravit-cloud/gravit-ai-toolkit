@@ -243,6 +243,38 @@ test("rejects every unquoted shell composition operator before runtime inspectio
   }
 });
 
+test("rejects shell expansion in the executable token", () => {
+  for (const command of [
+    "$SHELL -c 'touch hook-ran'",
+    "${SHELL} -c 'touch hook-ran'",
+    '"$SHELL" -c "touch hook-ran"',
+    '"${SHELL}" -c "touch hook-ran"',
+    "~/bin/helper --run",
+    "~attacker/bin/helper --run",
+    "bin/* --run",
+    "bin/helper? --run",
+    "bin/[h]elper --run",
+  ]) {
+    assert.throws(
+      () => normalizeCommand(command),
+      /unsupported hook command executable expansion/,
+      command,
+    );
+  }
+});
+
+test("allows fixed plugin-root executable paths and quoted literal metacharacters", () => {
+  for (const [command, options] of [
+    ['"${CLAUDE_PLUGIN_ROOT}/bin/helper" --run', undefined],
+    ["${CLAUDE_PLUGIN_ROOT}/bin/helper --run", undefined],
+    ['"${PLUGIN_ROOT}/bin/helper" --run', { target: "codex" }],
+    ["'~/bin/helper' --run", undefined],
+    ["'bin/*' --run", undefined],
+  ]) {
+    assert.equal(normalizeCommand(command, options), command, command);
+  }
+});
+
 test("rejects active command substitutions inside double quotes", () => {
   for (const command of [
     'node "$(bin/helper)"',

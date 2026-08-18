@@ -289,7 +289,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "6.2.0-gravit.3",
+  "distributionVersion": "6.2.0-gravit.4",
   "name": "superpowers",
   "schemaVersion": 1,
   "targets": {
@@ -376,7 +376,7 @@
           "status": "preserved"
         }
       },
-      "digest": "15f7938cdc4b09b49da958465f22faef8ed580f9959ec2ed492b020849739ecc",
+      "digest": "c5fadbbd2622b6b238d3036d0ddac1b859a5c78c5ef70c1a4cad178e6303a066",
       "path": "targets/claude"
     },
     "codex": {
@@ -462,7 +462,7 @@
           "status": "transformed"
         }
       },
-      "digest": "d4e6b4a62d3c0237517877646d7f92354714f3c2777dbeb49a259c9ca673949d",
+      "digest": "2939ebbc765c3740ed147c29aa5d664789492d5d944180b040564b0392ce8aca",
       "path": "targets/codex"
     }
   }
