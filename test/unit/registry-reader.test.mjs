@@ -57,13 +57,7 @@ function fixtureRegistry(context, { objectFormat = "sha1" } = {}) {
       category: "development",
       distributionVersion: "1.0.0-gravit.1",
       source: { type: "local", path: "sources/nested-skills", root: "." },
-      targets: ["claude", "codex", "openclaw"],
-      adapterOptions: { openclaw: { bundleFormat: "codex" } },
-      targetPolicies: {
-        openclaw: {
-          unsupported: { hook: "openclaw-does-not-run-claude-hook-json" },
-        },
-      },
+      targets: ["claude", "codex"],
       policies: { default: "transform-or-fail", skills: "transform" },
     }],
   });
@@ -177,9 +171,13 @@ test("list returns locked versions and configured targets", (context) => {
   assert.deepEqual(reader.list(), [{
     name: "nested-skills",
     distributionVersion: "1.0.0-gravit.1",
-    targets: ["claude", "codex", "openclaw"],
+    targets: ["claude", "codex"],
     bundleDigest: fixtureBundleDigest,
   }]);
+  assert.throws(
+    () => registryReader.materializationSource(reader, "nested-skills", "openclaw"),
+    /unsupported materialization target: openclaw/,
+  );
 });
 
 test("public reader APIs cannot expose or poison captured registry state", (context) => {
@@ -193,7 +191,7 @@ test("public reader APIs cannot expose or poison captured registry state", (cont
   details.source.path = "outside";
   details.components[0].id = "poisoned";
 
-  assert.deepEqual(reader.list()[0].targets, ["claude", "codex", "openclaw"]);
+  assert.deepEqual(reader.list()[0].targets, ["claude", "codex"]);
   assert.equal(reader.inspect("nested-skills").source.path, "sources/nested-skills");
   assert.notEqual(reader.inspect("nested-skills").components[0].id, "poisoned");
 });
@@ -439,7 +437,7 @@ test("verify reports a mutated bundle file", (context) => {
 test("inspect refuses details when committed bundle bytes fail verification", (context) => {
   const root = copyFixtureRegistry(context);
   appendFileSync(
-    resolve(root, "plugins/nested-skills/targets/openclaw/skills/parent/SKILL.md"),
+    resolve(root, "plugins/nested-skills/targets/codex/skills/parent/SKILL.md"),
     "\nmutation\n",
   );
 
@@ -486,7 +484,7 @@ test("reader rejects unsafe plugin names and catalog-lock disagreement", (contex
 
   const catalogPath = resolve(root, "registry/catalog.json");
   const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
-  catalog.plugins[0].targets = ["claude", "codex"];
+  catalog.plugins[0].targets = ["claude"];
   writeJson(catalogPath, catalog);
   assert.throws(() => openRegistry(root).list(), /configured targets/);
 });

@@ -17,8 +17,7 @@
       "additionalProperties": false,
       "properties": {
         "claude": { "$ref": "#/$defs/target" },
-        "codex": { "$ref": "#/$defs/target" },
-        "openclaw": { "$ref": "#/$defs/target" }
+        "codex": { "$ref": "#/$defs/target" }
       }
     }
   },
@@ -97,8 +96,7 @@
       "additionalProperties": false,
       "properties": {
         "claude": { "$ref": "#/$defs/disposition" },
-        "codex": { "$ref": "#/$defs/disposition" },
-        "openclaw": { "$ref": "#/$defs/disposition" }
+        "codex": { "$ref": "#/$defs/disposition" }
       }
     },
     "component": {

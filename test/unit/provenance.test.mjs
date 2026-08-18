@@ -182,6 +182,10 @@ test("accounting rejects duplicate or prototype-like IDs and invalid targets", (
     () => accountComponents({ ...base, targets: ["future-host"] }),
     /unknown target: future-host/,
   );
+  assert.throws(
+    () => accountComponents({ ...base, targets: ["openclaw"] }),
+    /unknown target: openclaw/,
+  );
 });
 
 test("creates a deterministic deep-cloned lock entry with complete component provenance", (context) => {

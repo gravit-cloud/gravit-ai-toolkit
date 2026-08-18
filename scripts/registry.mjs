@@ -8,7 +8,7 @@ import {
   openRegistry,
 } from "./lib/registry-reader.mjs";
 
-const TARGETS = new Set(["claude", "codex", "openclaw"]);
+const TARGETS = new Set(["claude", "codex"]);
 
 function usage() {
   return "usage: registry.mjs list|inspect --plugin <name>|verify [--plugin <name>]"

@@ -33,22 +33,6 @@ const SUPPORT = Object.freeze({
     asset: Object.freeze(["preserved", "asset"]),
     app: Object.freeze(["preserved", "app"]),
   }),
-  openclaw: Object.freeze({
-    skill: Object.freeze(["transformed", "skill"]),
-    command: Object.freeze(["transformed", "skill"]),
-    mcp: Object.freeze(["transformed", "mcp"]),
-    executable: Object.freeze(["preserved", "executable"]),
-    asset: Object.freeze(["preserved", "asset"]),
-    agent: undefined,
-    hook: undefined,
-    lsp: undefined,
-    app: undefined,
-    "output-style": undefined,
-    monitor: undefined,
-    theme: undefined,
-    channel: undefined,
-    settings: undefined,
-  }),
 });
 
 const TARGETS = new Set(Object.keys(SUPPORT));

@@ -33,6 +33,7 @@ function validators() {
   return {
     agentPlugin: ajv.compile(schema("agent-plugin.schema.json")),
     lock: ajv.compile(schema("lock.schema.json")),
+    receipt: ajv.compile(schema("receipt.schema.json")),
   };
 }
 
@@ -155,6 +156,32 @@ test("agent plugin schema rejects unsafe paths, invalid dispositions, and unknow
     mutate(manifest);
     assert.equal(agentPlugin(manifest), false, JSON.stringify(manifest));
   }
+});
+
+test("schemas reject removed OpenClaw target declarations", () => {
+  const { agentPlugin, lock, receipt } = validators();
+
+  const manifest = agentManifest();
+  manifest.targets.openclaw = structuredClone(manifest.targets.codex);
+  manifest.components[0].targets.openclaw = disposition("transformed");
+  assert.equal(agentPlugin(manifest), false);
+
+  const locked = lockFile();
+  locked.plugins.fixture.targets.openclaw = DIGEST;
+  locked.plugins.fixture.components[0].targets.openclaw = disposition("transformed");
+  assert.equal(lock(locked), false);
+
+  assert.equal(receipt({
+    schemaVersion: 1,
+    registry: "gravit-cloud",
+    registryRevision: "a".repeat(40),
+    plugin: "fixture",
+    target: "openclaw",
+    distributionVersion: "1.0.0-gravit.1",
+    sourceBundleDigest: DIGEST,
+    sourceTargetDigest: DIGEST,
+    materializedDigest: DIGEST,
+  }), false);
 });
 
 test("lock schema compiles and accepts strict immutable provenance", () => {

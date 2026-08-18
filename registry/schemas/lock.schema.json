@@ -94,8 +94,7 @@
       "additionalProperties": false,
       "properties": {
         "claude": { "$ref": "#/$defs/disposition" },
-        "codex": { "$ref": "#/$defs/disposition" },
-        "openclaw": { "$ref": "#/$defs/disposition" }
+        "codex": { "$ref": "#/$defs/disposition" }
       }
     },
     "localSource": {
@@ -152,8 +151,7 @@
       "additionalProperties": false,
       "properties": {
         "claude": { "$ref": "#/$defs/digest" },
-        "codex": { "$ref": "#/$defs/digest" },
-        "openclaw": { "$ref": "#/$defs/digest" }
+        "codex": { "$ref": "#/$defs/digest" }
       }
     },
     "plugin": {

@@ -25,7 +25,7 @@ import {
 import { canonicalPath, pathsOverlap } from "./path-safety.mjs";
 
 const RECEIPT = ".gravit-plugin-receipt.json";
-const TARGETS = new Set(["claude", "codex", "openclaw"]);
+const TARGETS = new Set(["claude", "codex"]);
 const receiptSchema = JSON.parse(readFileSync(
   new URL("../../registry/schemas/receipt.schema.json", import.meta.url),
   "utf8",

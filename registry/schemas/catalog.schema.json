@@ -68,22 +68,7 @@
           "additionalProperties": false,
           "properties": {
             "claude": { "$ref": "#/$defs/targetPolicy" },
-            "codex": { "$ref": "#/$defs/targetPolicy" },
-            "openclaw": { "$ref": "#/$defs/targetPolicy" }
-          }
-        },
-        "adapterOptions": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "openclaw": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["bundleFormat"],
-              "properties": {
-                "bundleFormat": { "const": "codex" }
-              }
-            }
+            "codex": { "$ref": "#/$defs/targetPolicy" }
           }
         },
         "source": {
@@ -115,7 +100,7 @@
         "targets": {
           "type": "array",
           "uniqueItems": true,
-          "items": { "enum": ["claude", "codex", "openclaw"] }
+          "items": { "enum": ["claude", "codex"] }
         },
         "policies": {
           "type": "object",

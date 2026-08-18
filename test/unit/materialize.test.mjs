@@ -83,13 +83,7 @@ function fixtureRegistry(context) {
       category: "development",
       distributionVersion: "1.0.0-gravit.1",
       source: { type: "local", path: "sources/nested-skills", root: "." },
-      targets: ["claude", "codex", "openclaw"],
-      adapterOptions: { openclaw: { bundleFormat: "codex" } },
-      targetPolicies: {
-        openclaw: {
-          unsupported: { hook: "openclaw-does-not-run-claude-hook-json" },
-        },
-      },
+      targets: ["claude", "codex"],
       policies: { default: "transform-or-fail", skills: "transform" },
     }],
   });
@@ -675,9 +669,15 @@ test("validates complete receipts and rejects malformed receipt values", () => {
 test("CLI validates materialize options and target before output resolution", (context) => {
   const root = sandbox(context, "materialize-cli-");
   const output = resolve(root, "output");
+  assert.throws(
+    () => materialize({ target: "openclaw", outputPath: output }),
+    /unsupported materialization target: openclaw/,
+  );
+  assert.equal(existsSync(output), false);
   const invalidCases = [
     ["materialize"],
     ["materialize", "--plugin", "azure", "--target", "invalid", "--output", output],
+    ["materialize", "--plugin", "azure", "--target", "openclaw", "--output", output],
     ["materialize", "--plugin", "azure", "--target", "codex"],
     ["materialize", "--plugin", "azure", "--plugin", "azure", "--target", "codex", "--output", output],
     ["materialize", "--plugin", "azure", "--target", "codex", "--output", output, "--unknown", "x"],
