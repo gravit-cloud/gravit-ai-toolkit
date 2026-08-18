@@ -14,11 +14,6 @@
           "path": "targets/codex/skills/defuddle",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/defuddle",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -35,11 +30,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/json-canvas",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/json-canvas",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -60,11 +50,6 @@
           "path": "targets/codex/skills/obsidian-bases",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/obsidian-bases",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -81,11 +66,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/obsidian-cli",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/obsidian-cli",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -106,17 +86,12 @@
           "path": "targets/codex/skills/obsidian-markdown",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/obsidian-markdown",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.0.1-gravit.2",
+  "distributionVersion": "1.0.1-gravit.3",
   "name": "obsidian",
   "schemaVersion": 1,
   "targets": {
@@ -148,7 +123,7 @@
           "status": "preserved"
         }
       },
-      "digest": "ef356dca850dfa66cd5c6cc0c124127799271b8ade266a8c1df3eddbd542b905",
+      "digest": "89c43f4f95bd2fc0c6adf85f5d2fee1722edd4abd35ce846342929e84d63ea74",
       "path": "targets/claude"
     },
     "codex": {
@@ -179,39 +154,8 @@
           "status": "transformed"
         }
       },
-      "digest": "ea437c32d64103a6289af434c5c3e6f66e2f10c87b9cfacf8d193b0d33707a50",
+      "digest": "072ea750ce10a9136b8c1acd716afc5eced348c699d4636ec7402385c3444b45",
       "path": "targets/codex"
-    },
-    "openclaw": {
-      "components": {
-        "defuddle": {
-          "path": "targets/openclaw/skills/defuddle",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "json-canvas": {
-          "path": "targets/openclaw/skills/json-canvas",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "obsidian-bases": {
-          "path": "targets/openclaw/skills/obsidian-bases",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "obsidian-cli": {
-          "path": "targets/openclaw/skills/obsidian-cli",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "obsidian-markdown": {
-          "path": "targets/openclaw/skills/obsidian-markdown",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        }
-      },
-      "digest": "ea437c32d64103a6289af434c5c3e6f66e2f10c87b9cfacf8d193b0d33707a50",
-      "path": "targets/openclaw"
     }
   }
 }

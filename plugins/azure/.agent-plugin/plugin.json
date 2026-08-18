@@ -14,11 +14,6 @@
           "path": "targets/codex/skills/airunway-aks-setup",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/airunway-aks-setup",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -35,11 +30,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/appinsights-instrumentation",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/appinsights-instrumentation",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -60,11 +50,6 @@
           "path": "targets/codex/assets",
           "reasonCode": "native-component",
           "status": "preserved"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/bin/plugin-layout/assets",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "asset"
@@ -81,11 +66,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-ai",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-ai",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -106,11 +86,6 @@
           "path": "targets/codex/skills/azure-aigateway",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-aigateway",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -127,11 +102,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-app-onboard",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-app-onboard",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -152,11 +122,6 @@
           "path": "targets/codex/skills/azure-app-onboard-prereq",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-app-onboard-prereq",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -173,11 +138,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-cloud-migrate",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-cloud-migrate",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -198,11 +158,6 @@
           "path": "targets/codex/skills/azure-compliance",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-compliance",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -219,11 +174,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-compute",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-compute",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -244,11 +194,6 @@
           "path": "targets/codex/skills/azure-cost",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-cost",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -265,11 +210,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-deploy",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-deploy",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -290,11 +230,6 @@
           "path": "targets/codex/skills/azure-diagnostics",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-diagnostics",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -311,11 +246,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-enterprise-infra-planner",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-enterprise-infra-planner",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -336,11 +266,6 @@
           "path": "targets/codex/skills/azure-kubernetes",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-kubernetes",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -357,11 +282,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-kubernetes-automatic-readiness",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-kubernetes-automatic-readiness",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -382,11 +302,6 @@
           "path": "targets/codex/skills/azure-kusto",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-kusto",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -403,11 +318,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-messaging",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-messaging",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -428,11 +338,6 @@
           "path": "targets/codex/skills/azure-prepare",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-prepare",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -449,11 +354,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-quotas",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-quotas",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -474,11 +374,6 @@
           "path": "targets/codex/skills/azure-reliability",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-reliability",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -495,11 +390,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-resource-lookup",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-resource-lookup",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -520,11 +410,6 @@
           "path": "targets/codex/skills/azure-resource-visualizer",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-resource-visualizer",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -541,11 +426,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-storage",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-storage",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -566,11 +446,6 @@
           "path": "targets/codex/skills/azure-upgrade",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-upgrade",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -587,11 +462,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-validate",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/azure-validate",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -612,11 +482,6 @@
           "path": "targets/codex/skills/capacity",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/capacity",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -633,11 +498,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/customize",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/customize",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -658,11 +518,6 @@
           "path": "targets/codex/skills/deploy-model",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/deploy-model",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -679,11 +534,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/entra-agent-id",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/entra-agent-id",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -704,11 +554,6 @@
           "path": "targets/codex/skills/entra-app-registration",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/entra-app-registration",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -727,11 +572,6 @@
           "path": "targets/codex/hooks/scripts",
           "reasonCode": "native-component",
           "status": "preserved"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/bin/plugin-layout/hooks/scripts",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "executable"
@@ -748,11 +588,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/finetuning",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/finetuning",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -773,10 +608,6 @@
           "path": "targets/codex/hooks/hooks.json",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "reasonCode": "openclaw-does-not-run-claude-hook-json",
-          "status": "unsupported"
         }
       },
       "type": "hook"
@@ -793,11 +624,6 @@
         },
         "codex": {
           "path": "targets/codex/.mcp.json",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/.mcp.json",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -818,11 +644,6 @@
           "path": "targets/codex/skills/microsoft-foundry",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/microsoft-foundry",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -839,11 +660,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/preset",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/preset",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -864,17 +680,12 @@
           "path": "targets/codex/skills/python-appservice-deploy",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/python-appservice-deploy",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.2.9-gravit.1",
+  "distributionVersion": "1.2.9-gravit.2",
   "name": "azure",
   "schemaVersion": 1,
   "targets": {
@@ -1071,7 +882,7 @@
           "status": "preserved"
         }
       },
-      "digest": "349fc6c0973133343b1199cbb6b0c6ad3c2d43459ddd84cd9481f4b27d4e8ee0",
+      "digest": "a9b48c06071d4bbfde0000b6c5e9c37b9d8d20fef827da4daa3e10022248b91f",
       "path": "targets/claude"
     },
     "codex": {
@@ -1267,203 +1078,8 @@
           "status": "transformed"
         }
       },
-      "digest": "93f79620cdd15032c7d8ab410eebc09996a57c897cd5897cc28700d96df58082",
+      "digest": "fe32e8b7aa041ec068d590b9f30d6fd46b39a7b8058bbd159467e6eab8db615f",
       "path": "targets/codex"
-    },
-    "openclaw": {
-      "components": {
-        "airunway-aks-setup": {
-          "path": "targets/openclaw/skills/airunway-aks-setup",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "appinsights-instrumentation": {
-          "path": "targets/openclaw/skills/appinsights-instrumentation",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "asset-8bf729ffe074": {
-          "path": "targets/openclaw/bin/plugin-layout/assets",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-ai": {
-          "path": "targets/openclaw/skills/azure-ai",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-aigateway": {
-          "path": "targets/openclaw/skills/azure-aigateway",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-app-onboard": {
-          "path": "targets/openclaw/skills/azure-app-onboard",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-app-onboard-prereq": {
-          "path": "targets/openclaw/skills/azure-app-onboard-prereq",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-cloud-migrate": {
-          "path": "targets/openclaw/skills/azure-cloud-migrate",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-compliance": {
-          "path": "targets/openclaw/skills/azure-compliance",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-compute": {
-          "path": "targets/openclaw/skills/azure-compute",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-cost": {
-          "path": "targets/openclaw/skills/azure-cost",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-deploy": {
-          "path": "targets/openclaw/skills/azure-deploy",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-diagnostics": {
-          "path": "targets/openclaw/skills/azure-diagnostics",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-enterprise-infra-planner": {
-          "path": "targets/openclaw/skills/azure-enterprise-infra-planner",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-kubernetes": {
-          "path": "targets/openclaw/skills/azure-kubernetes",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-kubernetes-automatic-readiness": {
-          "path": "targets/openclaw/skills/azure-kubernetes-automatic-readiness",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-kusto": {
-          "path": "targets/openclaw/skills/azure-kusto",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-messaging": {
-          "path": "targets/openclaw/skills/azure-messaging",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-prepare": {
-          "path": "targets/openclaw/skills/azure-prepare",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-quotas": {
-          "path": "targets/openclaw/skills/azure-quotas",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-reliability": {
-          "path": "targets/openclaw/skills/azure-reliability",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-resource-lookup": {
-          "path": "targets/openclaw/skills/azure-resource-lookup",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-resource-visualizer": {
-          "path": "targets/openclaw/skills/azure-resource-visualizer",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-storage": {
-          "path": "targets/openclaw/skills/azure-storage",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-upgrade": {
-          "path": "targets/openclaw/skills/azure-upgrade",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "azure-validate": {
-          "path": "targets/openclaw/skills/azure-validate",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "capacity": {
-          "path": "targets/openclaw/skills/capacity",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "customize": {
-          "path": "targets/openclaw/skills/customize",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "deploy-model": {
-          "path": "targets/openclaw/skills/deploy-model",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "entra-agent-id": {
-          "path": "targets/openclaw/skills/entra-agent-id",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "entra-app-registration": {
-          "path": "targets/openclaw/skills/entra-app-registration",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "executable-3cfb0a3c9667": {
-          "path": "targets/openclaw/bin/plugin-layout/hooks/scripts",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "finetuning": {
-          "path": "targets/openclaw/skills/finetuning",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "hook-a28e4c3135b2": {
-          "reasonCode": "openclaw-does-not-run-claude-hook-json",
-          "status": "unsupported"
-        },
-        "mcp-d5d3368a61f8": {
-          "path": "targets/openclaw/.mcp.json",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "microsoft-foundry": {
-          "path": "targets/openclaw/skills/microsoft-foundry",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "preset": {
-          "path": "targets/openclaw/skills/preset",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "python-appservice-deploy": {
-          "path": "targets/openclaw/skills/python-appservice-deploy",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        }
-      },
-      "digest": "e43213cbd781d6ed9228609de7d0d472a8d8f9f4dd38fd53b897cb0ba4a14790",
-      "path": "targets/openclaw"
     }
   }
 }

@@ -14,11 +14,6 @@
           "path": "targets/codex/skills/claude-md-improver",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/claude-md-improver",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -35,11 +30,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/context7-doc-validation",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/context7-doc-validation",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -60,11 +50,6 @@
           "path": "targets/codex/skills/deep-change-review",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/deep-change-review",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -81,11 +66,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/excalidraw-diagram-generator",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/excalidraw-diagram-generator",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -106,11 +86,6 @@
           "path": "targets/codex/skills/git-commit",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/git-commit",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -127,11 +102,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/github-actions-templates",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/github-actions-templates",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -152,17 +122,12 @@
           "path": "targets/codex/skills/github-issues",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/github-issues",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.0.0-gravit.3",
+  "distributionVersion": "1.0.0-gravit.4",
   "name": "gravit-custom",
   "schemaVersion": 1,
   "targets": {
@@ -204,7 +169,7 @@
           "status": "preserved"
         }
       },
-      "digest": "7215f100088590ea2779354eddad4bc5ab95f070447fbcff8518d03b9bf144f3",
+      "digest": "77ef13a0be17afd146102b3a217587afee855a392e07ab25295c8e281ab31e77",
       "path": "targets/claude"
     },
     "codex": {
@@ -245,49 +210,8 @@
           "status": "transformed"
         }
       },
-      "digest": "ff67830e3220c2cdc4aafa060d833d87254a0cca3e2a0e24f4fe53d8a3ec4051",
+      "digest": "1a735219d640e9eb1854066ef4cab44a8e417575a31e841ca0d988062c85cf7b",
       "path": "targets/codex"
-    },
-    "openclaw": {
-      "components": {
-        "claude-md-improver": {
-          "path": "targets/openclaw/skills/claude-md-improver",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "context7-doc-validation": {
-          "path": "targets/openclaw/skills/context7-doc-validation",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "deep-change-review": {
-          "path": "targets/openclaw/skills/deep-change-review",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "excalidraw-diagram-generator": {
-          "path": "targets/openclaw/skills/excalidraw-diagram-generator",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "git-commit": {
-          "path": "targets/openclaw/skills/git-commit",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "github-actions-templates": {
-          "path": "targets/openclaw/skills/github-actions-templates",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "github-issues": {
-          "path": "targets/openclaw/skills/github-issues",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        }
-      },
-      "digest": "ff67830e3220c2cdc4aafa060d833d87254a0cca3e2a0e24f4fe53d8a3ec4051",
-      "path": "targets/openclaw"
     }
   }
 }

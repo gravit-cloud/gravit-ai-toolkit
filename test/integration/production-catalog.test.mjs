@@ -70,12 +70,12 @@ test("production catalog is neutral and fully pinned", () => {
   assert.deepEqual(
     catalog.plugins.map((plugin) => plugin.distributionVersion),
     [
-      "2.2.4-gravit.4",
-      "1.0.1-gravit.2",
-      "1.1.0-gravit.2",
-      "1.2.5-gravit.5",
-      "6.2.0-gravit.2",
-      "1.0.0-gravit.3",
+      "2.2.4-gravit.5",
+      "1.0.1-gravit.3",
+      "1.1.0-gravit.3",
+      "1.2.9-gravit.2",
+      "6.2.0-gravit.3",
+      "1.0.0-gravit.4",
     ],
   );
   for (const plugin of catalog.plugins.filter(({ source }) => source.type === "github")) {
@@ -121,8 +121,8 @@ test("production catalog is neutral and fully pinned", () => {
         source: {
           type: "github",
           repo: "microsoft/azure-skills",
-          ref: "v1.2.5",
-          sha: "013b97d8aab03ce8cd88944976e9988f8c829746",
+          ref: "v1.2.8",
+          sha: "1d88f75412afd408bc1d063a3acbe214d0d9fa0c",
           root: ".",
         },
       },
@@ -145,12 +145,6 @@ test("production catalog is neutral and fully pinned", () => {
         agent: "host-does-not-load-agents",
       },
     },
-    openclaw: {
-      unsupported: {
-        agent: "openclaw-detects-agents-only",
-        hook: "openclaw-does-not-run-claude-hook-json",
-      },
-    },
   });
   const azure = catalog.plugins.find(({ name }) => name === "azure");
   assert.equal(azure.runtimeDependencies["@azure/mcp"], "2.0.5");
@@ -170,11 +164,6 @@ test("production catalog is neutral and fully pinned", () => {
         theme: "host-does-not-load-themes",
       },
     },
-    openclaw: {
-      unsupported: {
-        hook: "openclaw-does-not-run-claude-hook-json",
-      },
-    },
   });
   assert.deepEqual(catalog.plugins.at(-1).source, {
     type: "local",
@@ -182,18 +171,10 @@ test("production catalog is neutral and fully pinned", () => {
     root: ".",
   });
   for (const plugin of catalog.plugins) {
-    assert.deepEqual(plugin.targets, ["claude", "codex", "openclaw"], plugin.name);
-    assert.deepEqual(plugin.adapterOptions, {
-      openclaw: { bundleFormat: "codex" },
-    }, plugin.name);
+    assert.deepEqual(plugin.targets, ["claude", "codex"], plugin.name);
+    assert.equal(Object.hasOwn(plugin, "adapterOptions"), false, plugin.name);
+    assert.equal(Object.hasOwn(plugin.targetPolicies || {}, "openclaw"), false, plugin.name);
   }
-  assert.deepEqual(catalog.plugins.find(({ name }) => name === "superpowers").targetPolicies, {
-    openclaw: {
-      unsupported: {
-        hook: "openclaw-does-not-run-claude-hook-json",
-      },
-    },
-  });
 });
 
 test("current repository passes offline validation after generated cutover", () => {
@@ -208,39 +189,12 @@ test("current repository passes offline validation after generated cutover", () 
   assert.equal(result.stderr, "");
 });
 
-test("production OpenClaw resources stay in safe namespaces with runtime-relative layout", () => {
-  const azureRoot = resolve(repositoryRoot, "plugins/azure/targets/openclaw");
-  const seoRoot = resolve(repositoryRoot, "plugins/claude-seo/targets/openclaw");
-  for (const root of [azureRoot, seoRoot]) {
-    assert.equal(existsSync(resolve(root, "hooks")), false);
-  }
-  assert.equal(
-    existsSync(resolve(azureRoot, "bin/plugin-layout/hooks/scripts/track-telemetry.sh")),
-    true,
-  );
-  assert.equal(
-    existsSync(resolve(azureRoot, "bin/plugin-layout/assets/azure-plugin-in-claude.png")),
-    true,
-  );
-
-  const launcher = resolve(seoRoot, "bin/plugin-layout/bin/claude-seo");
-  assert.equal(existsSync(launcher), true);
-  assert.deepEqual(
-    readFileSync(launcher),
-    readFileSync(resolve(repositoryRoot, "plugins/claude-seo/targets/codex/bin/claude-seo")),
-  );
-  assert.match(readFileSync(launcher, "utf8"), /\.\.\/scripts\/runtime\.py/u);
-  const runtime = resolve(dirname(launcher), "../scripts/runtime.py");
-  const seoUpdates = resolve(dirname(launcher), "../scripts/seo_updates.py");
-  assert.equal(existsSync(runtime), true);
-  assert.match(readFileSync(runtime, "utf8"), /parent\.parent/u);
-  assert.equal(existsSync(resolve(dirname(runtime), "../requirements.txt")), true);
-  assert.match(readFileSync(seoUpdates, "utf8"), /parents\[1\].*"data".*"google-updates\.json"/u);
-  assert.equal(existsSync(resolve(dirname(seoUpdates), "../data/google-updates.json")), true);
-  for (const root of [azureRoot, seoRoot]) {
-    for (const forbidden of ["data", "hooks", "requirements.txt", "scripts"]) {
-      assert.equal(existsSync(resolve(root, forbidden)), false, `${root}:${forbidden}`);
-    }
+test("production bundles contain only Claude and Codex targets", () => {
+  for (const name of expectedPluginNames) {
+    const targets = readdirSync(resolve(repositoryRoot, "plugins", name, "targets"), {
+      withFileTypes: true,
+    }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+    assert.deepEqual(targets, ["claude", "codex"], name);
   }
 });
 
