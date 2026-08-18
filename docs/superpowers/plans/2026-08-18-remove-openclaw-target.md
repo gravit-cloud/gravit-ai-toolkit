@@ -617,6 +617,7 @@ At the top of `docs/superpowers/specs/2026-07-27-agent-neutral-plugin-registry-d
 
 ```bash
 rg -n -i 'openclaw' AGENTS.md README.md package.json registry scripts .github plugins test \
+  --glob '!test/integration/production-catalog.test.mjs' \
   --glob '!test/unit/hooks.test.mjs' \
   --glob '!test/unit/mcp.test.mjs' \
   --glob '!test/unit/policy.test.mjs' \
@@ -627,7 +628,7 @@ rg -n -i 'openclaw' AGENTS.md README.md package.json registry scripts .github pl
   --glob '!test/unit/registry-schemas.test.mjs'
 ```
 
-Expected: no output. The excluded files may mention `openclaw` only in assertions that it is rejected as unsupported.
+Expected: no output. The excluded files may mention `openclaw` only in assertions that it is rejected as unsupported or absent.
 
 - [ ] **Step 3: Run the complete test and validation suite**
 
