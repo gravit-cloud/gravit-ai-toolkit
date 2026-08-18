@@ -169,7 +169,7 @@
       "name": "azure",
       "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
       "category": "cloud",
-      "distributionVersion": "1.2.5-gravit.5",
+      "distributionVersion": "1.2.9-gravit.1",
       "runtimeDependencies": {
         "@azure/mcp": "2.0.5"
       },
@@ -205,15 +205,15 @@
       "source": {
         "type": "github",
         "repo": "microsoft/azure-skills",
-        "ref": "v1.2.5",
-        "sha": "013b97d8aab03ce8cd88944976e9988f8c829746",
+        "ref": "v1.2.8",
+        "sha": "1d88f75412afd408bc1d063a3acbe214d0d9fa0c",
         "root": "."
       },
       "sourceContext": [
         { "path": ".claude-plugin/marketplace.json", "digest": "a7a0b983fa21f6c9d57b8e7e9fcdf5423bf9b4806cd4bd6dd47abb703f21f4bc" },
         { "path": ".cursor-plugin", "digest": "2b4f98be4a6fdfdd8732d01424e0e24d5682cdf223b0b575dacfc53ad2898974" },
         { "path": ".gitattributes", "digest": "42151e0bf6980298bd86308d57af4c4f2234f771c759e6aefd1b74f44194366e" },
-        { "path": ".github", "digest": "fb9c0b5cfd19297f7cfaa21ffe82475bb3b6e462415c5f72b5668f6948e5813e" },
+        { "path": ".github", "digest": "dbb6cdf32c3592945d8f095adbe965b8e16b3398cece5dbf8bc4b2c1ac93de15" },
         { "path": ".gitignore", "digest": "94ef0d59836664afa37de2807b8776fdecb9ac9412167e00065878f0833bd64d" },
         { "path": "README.md", "digest": "ad4d0870e759bf11c449141669def2c97a5b2b4486eb1743bf01f2b46a2daa40" },
         { "path": "SECURITY.md", "digest": "092e75a3f5e3645f2e7b6b5af2ceae725c9cdc53e62e4f81dcabc45fd8461754" },
@@ -221,8 +221,8 @@
         { "path": "gemini-extension.json", "digest": "51ea74527ef0ebd84d4bd62e3c10e64c46e48dd32b785324eff7df7cea31bddd" },
         { "path": "hooks/cursor-hooks.json", "digest": "27a5fe867c66b544c20a14c837d13fb68ae3f989786bda51686d03e6c8e1eda6" },
         { "path": "hooks/hooks.json", "digest": "366a343542061eeaa21525b997291d301013d0d6bcbfcad8bde29252ca921062" },
-        { "path": "landing-page", "digest": "8eda6a146b93c2fae2022f255547d3d9ff848d929f85c0c224f04c38d914a0ec" },
-        { "path": "plugin.json", "digest": "87a13e2e48643cfb5a141e520be8023ed4f4c8fef7b4dfd68b652a06a6614005" }
+        { "path": "landing-page", "digest": "4fa6c4743d758448273d005e4e39e562ac1b8c4d5fdd3714a0fac1bdfd8b149a" },
+        { "path": "plugin.json", "digest": "c1bb4327e8e36b1c57dc1f073331ae2a750db30e70633af948d4cd0ac9cdc103" }
       ],
       "adapterOptions": {
         "openclaw": { "bundleFormat": "codex" }

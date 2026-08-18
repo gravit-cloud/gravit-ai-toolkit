@@ -2,7 +2,7 @@
 
 Microsoft Fabric data (**Ontology** / **Fabric data agent** / **Power BI semantic model**) via Fabric IQ. Fabric IQ is exposed as an **MCP-style tool**: a flat tool entry carrying a `server_url` (the Fabric MCP endpoint for your artifact) + a `project_connection_id`. The workspace / ontology / artifact ids live in the **connection's target URL**, not the tool. Auth is a Fabric OAuth connection and requires **tenant admin consent**. For the toolbox concept, versions, and endpoint, see [toolbox.md](../toolbox.md).
 
-> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
+> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
 
 ---
 

@@ -2,7 +2,7 @@
 
 Attach a remote MCP server that authenticates with a **static key** (e.g. a GitHub PAT passed as a Bearer token) to a toolbox. This needs a **connection** (`--kind remote-tool --auth-type custom-keys`) — the toolbox references it by name and the created toolbox tool carries a populated `project_connection_id`. The key is stored on the connection, never in the toolbox spec.
 
-> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
+> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
 
 ---
 

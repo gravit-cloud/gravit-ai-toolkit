@@ -7,7 +7,7 @@ There are two ways to consume it from agent code:
 - **Default SDK — Microsoft Agent Framework (MAF).** The `FoundryToolbox` wrapper does all the plumbing (endpoint resolution, auth, per-request call-id, connect/close). This is the happy path below.
 - **Other — LangGraph, generic/BYO raw MCP client, or C#.** You wire the MCP client yourself. See [Bring Your Own (BYO) — raw MCP client](#bring-your-own-byo--raw-mcp-client).
 
-> 🚦 **Toolbox creation gate:** before creating a toolbox/connection, you MUST read the boundary rules in create-hosted.md → Toolbox creation boundary and follow them, then continue with the rest of this file.
+> 🚦 **Toolbox creation gate:** before creating a toolbox/connection, you MUST read the boundary rules in [create-hosted.md → Toolbox creation boundary](../create-hosted.md#toolbox-creation-boundary) and follow them, then continue with the rest of this file.
 
 > 💡 **This skill covers *consuming* an existing toolbox from agent code.** To add a tool (`web_search`, `file_search`, `azure_ai_search`, `code_interpreter`, `openapi`, `mcp`, `a2a_preview`, …), don't wire it to the agent — put it in a toolbox first, via the `azd ai` CLI ([toolbox.md → Create & use a toolbox](../../toolbox/toolbox.md#create--use-a-toolbox-happy-path)), [Foundry Toolkit (VS Code)](https://code.visualstudio.com/docs/intelligentapps/tool-catalog), or [Foundry Portal](https://ai.azure.com/). The agent only talks to the toolbox's MCP endpoint; add/remove/reconfigure tools there, not in agent code. For supported `type` values and adjacent capabilities (Agent Memory, Routines), see [toolbox.md](../../toolbox/toolbox.md).
 

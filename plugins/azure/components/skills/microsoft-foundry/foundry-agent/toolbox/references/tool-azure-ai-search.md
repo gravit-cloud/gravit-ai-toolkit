@@ -2,7 +2,7 @@
 
 Attach an Azure AI Search index to a toolbox. The index is referenced by an existing **`CognitiveSearch`** project connection (connection kind `cognitive-search`). The tool uses the **nested** shape: an `azure_ai_search: { indexes: [...] }` object under the tool entry, where each index carries `project_connection_id` + `index_name` (not a top-level `connections:` array). For the toolbox concept, versions, and endpoint, see [toolbox.md](../toolbox.md).
 
-> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
+> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
 
 ---
 

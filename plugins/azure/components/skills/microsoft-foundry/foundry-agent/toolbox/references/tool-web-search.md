@@ -2,7 +2,7 @@
 
 Basic Bing web search (Grounding with Bing Search) is a **connectionless built-in** — declared under a `tools:` block; **no project connection required**. This is the supported path today. For the toolbox concept, versions, and endpoint, see [toolbox.md](../toolbox.md).
 
-> 🚦 Before creating a toolbox/connection either way, read create-hosted.md → Toolbox creation boundary.
+> 🚦 Before creating a toolbox/connection either way, read [create-hosted.md → Toolbox creation boundary](../../create/create-hosted.md#toolbox-creation-boundary).
 
 ---
 
