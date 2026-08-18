@@ -19,7 +19,7 @@
     "registry": { "const": "gravit-cloud" },
     "registryRevision": { "type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$" },
     "plugin": { "type": "string" },
-    "target": { "enum": ["claude", "codex", "openclaw", "universal"] },
+    "target": { "enum": ["claude", "codex", "universal"] },
     "distributionVersion": { "type": "string" },
     "sourceBundleDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "sourceTargetDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },

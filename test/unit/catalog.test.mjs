@@ -108,6 +108,22 @@ test("accepts optional target policies with known targets, component types, and 
   assert.doesNotThrow(() => validateCatalog(catalog));
 });
 
+test("rejects removed OpenClaw target declarations", () => {
+  for (const mutate of [
+    (plugin) => { plugin.targets = ["openclaw"]; },
+    (plugin) => {
+      plugin.targetPolicies = { openclaw: { unsupported: {} } };
+    },
+    (plugin) => {
+      plugin.adapterOptions = { openclaw: { bundleFormat: "codex" } };
+    },
+  ]) {
+    const catalog = fixtureCatalog();
+    mutate(catalog.plugins[0]);
+    assert.throws(() => validateCatalog(catalog), /invalid registry catalog/);
+  }
+});
+
 test("accepts only exact safe catalog resource declarations", () => {
   const catalog = fixtureCatalog();
   catalog.plugins[0].resources = [

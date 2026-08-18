@@ -20,7 +20,7 @@ const COMPONENT_TYPES = new Set([
   "asset",
   "app",
 ]);
-const TARGET_NAMES = new Set(["claude", "codex", "openclaw"]);
+const TARGET_NAMES = new Set(["claude", "codex"]);
 const PROTOTYPE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const DIGEST = /^[a-f0-9]{64}$/;
 const COMMIT_SHA = /^[a-f0-9]{40}$/;

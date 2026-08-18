@@ -52,22 +52,6 @@ const EXPECTED_SUPPORT = {
     asset: ["preserved", "asset", "native-component"],
     app: ["preserved", "app", "native-component"],
   },
-  openclaw: {
-    skill: ["transformed", "skill", "target-translation"],
-    command: ["transformed", "skill", "command-to-skill"],
-    mcp: ["transformed", "mcp", "target-translation"],
-    executable: ["preserved", "executable", "native-component"],
-    asset: ["preserved", "asset", "native-component"],
-    agent: undefined,
-    hook: undefined,
-    lsp: undefined,
-    app: undefined,
-    "output-style": undefined,
-    monitor: undefined,
-    theme: undefined,
-    channel: undefined,
-    settings: undefined,
-  },
 };
 
 function component(type) {
@@ -148,6 +132,14 @@ test("fails closed for unknown targets and component types", () => {
       targetPolicies: {},
     }),
     /unknown target: future-host/,
+  );
+  assert.throws(
+    () => targetDisposition({
+      component: component("skill"),
+      target: "openclaw",
+      targetPolicies: {},
+    }),
+    /unknown target: openclaw/,
   );
   assert.throws(
     () => targetDisposition({
