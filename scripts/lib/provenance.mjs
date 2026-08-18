@@ -303,7 +303,6 @@ function validatePlugin(plugin) {
     "resources",
     "sourceContext",
     "targetPolicies",
-    "adapterOptions",
   ]), "plugin");
   assertOwn(plugin, "name", "plugin");
   assertOwn(plugin, "distributionVersion", "plugin");
