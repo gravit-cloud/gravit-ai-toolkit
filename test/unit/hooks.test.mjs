@@ -254,6 +254,9 @@ test("rejects shell expansion in the executable token", () => {
     "bin/* --run",
     "bin/helper? --run",
     "bin/[h]elper --run",
+    "{b..b}ash -c 'touch hook-ran'",
+    "b{a,a}sh -c 'touch hook-ran'",
+    "${CLAUDE_PLUGIN_ROOT}/{bin,evil}/helper --run",
   ]) {
     assert.throws(
       () => normalizeCommand(command),
@@ -270,6 +273,7 @@ test("allows fixed plugin-root executable paths and quoted literal metacharacter
     ['"${PLUGIN_ROOT}/bin/helper" --run', { target: "codex" }],
     ["'~/bin/helper' --run", undefined],
     ["'bin/*' --run", undefined],
+    ["'{b..b}ash' --version", undefined],
   ]) {
     assert.equal(normalizeCommand(command, options), command, command);
   }
