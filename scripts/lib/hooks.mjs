@@ -254,6 +254,8 @@ function assertNoExecutableShellExpansion(command) {
         || character === "*"
         || character === "?"
         || character === "["
+        || character === "{"
+        || character === "}"
       ) {
         throw new Error("unsupported hook command executable expansion: " + command);
       }
