@@ -158,12 +158,6 @@ Der Sync inventarisiert die vom Upstream deklarierten Komponenten, baut ein neut
 
 Die Codex-Projektion belegt nur die erzeugte Dateistruktur und ihre internen Referenzen. Sie garantiert weder, dass `bin/` automatisch in `PATH` liegt, noch dass Claude-spezifische Upstream-Umgebungsvariablen durch Codex bereitgestellt werden. Hook-Konfigurationen und lokale Skripte werden statisch validiert, aber während Sync und Validierung nicht ausgeführt.
 
-Die OpenClaw-Projektion ist ein Codex-formatkompatibler Adapter für Installation
-und statische Inspektion im deaktivierten Zustand. Sie lädt keinen nativen
-In-Process-Plugin-Code; im neutralen Manifest markierte, nicht unterstützte
-Komponenten wie Claude-Hook-JSON bleiben nicht lauffähig. Installation ist
-keine allgemeine Runtime-Kompatibilitätsgarantie.
-
 ### Universelle Release-Archive
 
 `npm run build` verifiziert die committed Registry und erzeugt write-once genau
@@ -171,7 +165,7 @@ ein deterministisches `dist/<plugin>-v<distributionVersion>.zip` je
 Katalog-Plugin. Jedes Archiv enthält unter genau einem Plugin-Root das
 universelle Bundle, alle Zielprojektionen, `LICENSE` und ein Receipt mit Ziel
 `universal`. Dieses Ziel gilt nur im Receipt-Schema; Materialisierung unterstützt
-weiterhin ausschließlich `claude`, `codex` und `openclaw`.
+weiterhin ausschließlich `claude` und `codex`.
 
 Vorhandene Archive oder Output-Bäume nie löschen, ersetzen oder bereinigen.
 Für Wiederholungs- oder Determinismusprüfungen zwei frische `DIST_DIR`-Roots
