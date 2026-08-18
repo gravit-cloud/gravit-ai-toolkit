@@ -1,6 +1,6 @@
 # gravit-ai-toolkit
 
-Kuratierte, agentenneutrale Plugin-Registry der Gravit Cloud Organisation für Claude Code, Codex und die statische OpenClaw-Adapterprojektion.
+Kuratierte, agentenneutrale Plugin-Registry der Gravit Cloud Organisation für Claude Code und Codex.
 
 ## Registry-Modell
 
@@ -8,7 +8,7 @@ Kuratierte, agentenneutrale Plugin-Registry der Gravit Cloud Organisation für C
 
 - `registry/lock.json` mit Provenienz und Digests,
 - `.claude-plugin/marketplace.json` und `.agents/plugins/marketplace.json`,
-- `plugins/<name>/` als universelles Bundle mit neutralen Komponenten sowie den Projektionen `targets/claude`, `targets/codex` und `targets/openclaw`.
+- `plugins/<name>/` als universelles Bundle mit neutralen Komponenten sowie den Projektionen `targets/claude` und `targets/codex`.
 
 `registry/lock.json`, die Marketplaces und `plugins/` werden nicht einzeln gepflegt oder von Hand geändert.
 
@@ -55,7 +55,7 @@ npm run registry -- inspect --plugin azure
 npm run registry -- verify --plugin azure
 ```
 
-Materialisierung ist unveränderlich und write-once. Der unmittelbare Parent muss existieren; das Ziel selbst darf noch nicht existieren. Der Pfad enthält deshalb Plugin, Distribution-Version, Registry-Revision und Ziel:
+Materialisierung unterstützt genau `claude` und `codex` und ist unveränderlich sowie write-once. Der unmittelbare Parent muss existieren; das Ziel selbst darf noch nicht existieren. Der Pfad enthält deshalb Plugin, Distribution-Version, Registry-Revision und Ziel:
 
 ```bash
 PLUGIN=azure
@@ -66,19 +66,12 @@ TARGET_PARENT="/opt/gravit/plugins/$PLUGIN/$DISTRIBUTION_VERSION/$REGISTRY_REVIS
 install -d "$TARGET_PARENT"
 npm run registry -- materialize \
   --plugin "$PLUGIN" \
-  --target codex \
-  --output "$TARGET_PARENT/codex"
+  --target claude \
+  --output "$TARGET_PARENT/claude"
 npm run registry -- materialize \
   --plugin "$PLUGIN" \
-  --target openclaw \
-  --output "$TARGET_PARENT/openclaw"
-openclaw config set plugins.enabled false --strict-json
-openclaw plugins install \
-  "$TARGET_PARENT/openclaw" \
-  --acknowledge-clawhub-risk
-openclaw plugins disable azure
-openclaw plugins list --json
-openclaw plugins inspect azure --json
+  --target codex \
+  --output "$TARGET_PARENT/codex"
 ```
 
 Eine erfolgreiche Materialisierung endet mit `.gravit-plugin-receipt.json`. Sie bindet Registry-Revision, Plugin, Ziel, Distribution-Version sowie Quell- und Ergebnis-Digests. Ein Fehler nach der exklusiven Zielerstellung lässt die unvollständige Ausgabe absichtlich zur Diagnose stehen; das Fehlen eines gültigen Receipts ist das Fehlersignal. Ein Deployment-Controller darf seinen eigenen `current`-Pointer erst umschalten, nachdem er das finale Receipt und alle Digests geprüft hat. Der Registry-Materializer löscht, ersetzt oder aktiviert keinen Consumer-Zustand.
@@ -87,10 +80,6 @@ Receipts werden nur aus einem unveränderten Git-Checkout veröffentlicht. Katal
 Lock und die ausgewählten `plugins/<name>`-Bundles müssen exakt im gebundenen
 `HEAD` liegen; uncommittierte Regeneration, untracked Bundle-Dateien oder ein
 HEAD-Wechsel während der Veröffentlichung brechen den Vorgang ab.
-
-## OpenClaw-Grenzen
-
-Der aktuelle Adapter erzeugt ein Codex-formatkompatibles Bundle, das OpenClaw im oben gezeigten Cold-Flow installieren und im deaktivierten Zustand statisch inspizieren kann. `plugins list --json` und `plugins inspect azure --json` werden dabei ausdrücklich ohne `--runtime` ausgeführt. Er lädt keinen nativen In-Process-Plugin-Code. Nicht unterstützte Komponenten bleiben im neutralen Manifest ausdrücklich markiert, beispielsweise Claude-Hook-JSON. Erfolgreiche Installation oder Inspektion ist deshalb keine pauschale Laufzeit-Kompatibilitätsgarantie.
 
 Ausführbare Ressourcen und Assets liegen ausschließlich unter den sicheren Wurzeln
 `bin/` oder `assets/`. Sobald ein Plugin mehrere Pfadressourcen enthält, bewahrt der
@@ -127,7 +116,7 @@ Ein Init-Job oder Deployment-Controller materialisiert auf einem schreibbaren Sh
 dist/<plugin>-v<distributionVersion>.zip
 ```
 
-Jedes ZIP besitzt genau einen Top-Level-Ordner mit dem Plugin-Namen und enthält das unveränderte universelle Bundle, alle drei Zielprojektionen, `LICENSE` und `.gravit-plugin-receipt.json`. Das Receipt-Ziel `universal` ist ausschließlich für diese Archive reserviert; alle drei Digest-Felder entsprechen dem verifizierten `bundleDigest` aus dem Lock.
+Jedes ZIP besitzt genau einen Top-Level-Ordner mit dem Plugin-Namen und enthält das unveränderte universelle Bundle, beide Zielprojektionen, `LICENSE` und `.gravit-plugin-receipt.json`. Das Receipt-Ziel `universal` ist ausschließlich für diese Archive reserviert; Materialisierung unterstützt ausschließlich `claude` und `codex`, und alle Digest-Felder entsprechen dem verifizierten `bundleDigest` aus dem Lock.
 
 Archive werden deterministisch mit festen Zeitstempeln, stabilen Modi und sortierten Pfaden gebaut. Veröffentlichung ist write-once: ein vorhandenes Archiv ist ein Fehler und wird weder gelöscht noch ersetzt. Das vollständig gebaute und geprüfte Archiv wird erst durch einen exklusiven atomaren Hard Link auf demselben Dateisystem unter seinem permanenten Namen sichtbar; der permanente Pfad wird niemals während des Schreibens exponiert. Private Build-Stages liegen außerhalb von Repository und `DIST_DIR` und bleiben auf Erfolg und Fehler zur Recovery erhalten. Für zwei Vergleichsbauten werden zwei neue Output-Roots verwendet:
 

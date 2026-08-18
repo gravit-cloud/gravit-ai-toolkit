@@ -1,5 +1,8 @@
 # Agent-neutraler Plugin-Registry- und Bundle-Generator
 
+> [!note] Target scope superseded
+> The neutral registry foundation remains valid, but its OpenClaw target scope is superseded by [Claude and Codex Registry Scope](./2026-08-18-claude-codex-registry-scope-design.md).
+
 Status: Architektur im Gespräch freigegeben; Dokument zur Review
 
 Datum: 2026-07-27
