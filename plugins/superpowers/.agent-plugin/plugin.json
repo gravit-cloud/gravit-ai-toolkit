@@ -14,11 +14,6 @@
           "path": "targets/codex/assets",
           "reasonCode": "native-component",
           "status": "preserved"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/assets",
-          "reasonCode": "native-component",
-          "status": "preserved"
         }
       },
       "type": "asset"
@@ -35,11 +30,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/brainstorming",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/brainstorming",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -60,11 +50,6 @@
           "path": "targets/codex/skills/dispatching-parallel-agents",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/dispatching-parallel-agents",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -81,11 +66,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/executing-plans",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/executing-plans",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -106,11 +86,6 @@
           "path": "targets/codex/skills/finishing-a-development-branch",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/finishing-a-development-branch",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -129,10 +104,6 @@
           "path": "targets/codex/hooks/hooks.json",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "reasonCode": "openclaw-does-not-run-claude-hook-json",
-          "status": "unsupported"
         }
       },
       "type": "hook"
@@ -149,11 +120,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/receiving-code-review",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/receiving-code-review",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -174,11 +140,6 @@
           "path": "targets/codex/skills/requesting-code-review",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/requesting-code-review",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -195,11 +156,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/subagent-driven-development",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/subagent-driven-development",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -220,11 +176,6 @@
           "path": "targets/codex/skills/systematic-debugging",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/systematic-debugging",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -241,11 +192,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/test-driven-development",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/test-driven-development",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -266,11 +212,6 @@
           "path": "targets/codex/skills/using-git-worktrees",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/using-git-worktrees",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -287,11 +228,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/using-superpowers",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/using-superpowers",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -312,11 +248,6 @@
           "path": "targets/codex/skills/verification-before-completion",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/verification-before-completion",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -333,11 +264,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/writing-plans",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/writing-plans",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -358,17 +284,12 @@
           "path": "targets/codex/skills/writing-skills",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/writing-skills",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
     }
   ],
-  "distributionVersion": "6.2.0-gravit.2",
+  "distributionVersion": "6.2.0-gravit.3",
   "name": "superpowers",
   "schemaVersion": 1,
   "targets": {
@@ -455,7 +376,7 @@
           "status": "preserved"
         }
       },
-      "digest": "e734bf90c146710f3186ba897f46a34a623ba4a6bea4adcb9ea5da2974c54641",
+      "digest": "15f7938cdc4b09b49da958465f22faef8ed580f9959ec2ed492b020849739ecc",
       "path": "targets/claude"
     },
     "codex": {
@@ -541,93 +462,8 @@
           "status": "transformed"
         }
       },
-      "digest": "32fa6f23b14215b6f43987806b5b299cdec27729d17c4465217aa9b185e9c938",
+      "digest": "d4e6b4a62d3c0237517877646d7f92354714f3c2777dbeb49a259c9ca673949d",
       "path": "targets/codex"
-    },
-    "openclaw": {
-      "components": {
-        "asset-8bf729ffe074": {
-          "path": "targets/openclaw/assets",
-          "reasonCode": "native-component",
-          "status": "preserved"
-        },
-        "brainstorming": {
-          "path": "targets/openclaw/skills/brainstorming",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "dispatching-parallel-agents": {
-          "path": "targets/openclaw/skills/dispatching-parallel-agents",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "executing-plans": {
-          "path": "targets/openclaw/skills/executing-plans",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "finishing-a-development-branch": {
-          "path": "targets/openclaw/skills/finishing-a-development-branch",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "hook-inline-ca3d163bab05": {
-          "reasonCode": "openclaw-does-not-run-claude-hook-json",
-          "status": "unsupported"
-        },
-        "receiving-code-review": {
-          "path": "targets/openclaw/skills/receiving-code-review",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "requesting-code-review": {
-          "path": "targets/openclaw/skills/requesting-code-review",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "subagent-driven-development": {
-          "path": "targets/openclaw/skills/subagent-driven-development",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "systematic-debugging": {
-          "path": "targets/openclaw/skills/systematic-debugging",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "test-driven-development": {
-          "path": "targets/openclaw/skills/test-driven-development",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "using-git-worktrees": {
-          "path": "targets/openclaw/skills/using-git-worktrees",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "using-superpowers": {
-          "path": "targets/openclaw/skills/using-superpowers",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "verification-before-completion": {
-          "path": "targets/openclaw/skills/verification-before-completion",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "writing-plans": {
-          "path": "targets/openclaw/skills/writing-plans",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "writing-skills": {
-          "path": "targets/openclaw/skills/writing-skills",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        }
-      },
-      "digest": "c36bd8eba791627d1ec10c0ebf04dc92d832663e99f0ff0ee4c82f8052cd5fd6",
-      "path": "targets/openclaw"
     }
   }
 }

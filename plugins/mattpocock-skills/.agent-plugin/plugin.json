@@ -14,11 +14,6 @@
           "path": "targets/codex/skills/ask-matt",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/ask-matt",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -35,11 +30,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/code-review",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/code-review",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -60,11 +50,6 @@
           "path": "targets/codex/skills/codebase-design",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/codebase-design",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -81,11 +66,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/diagnosing-bugs",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/diagnosing-bugs",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -106,11 +86,6 @@
           "path": "targets/codex/skills/domain-modeling",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/domain-modeling",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -127,11 +102,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/grill-me",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/grill-me",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -152,11 +122,6 @@
           "path": "targets/codex/skills/grill-with-docs",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/grill-with-docs",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -173,11 +138,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/grilling",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/grilling",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -198,11 +158,6 @@
           "path": "targets/codex/skills/handoff",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/handoff",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -219,11 +174,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/implement",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/implement",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -244,11 +194,6 @@
           "path": "targets/codex/skills/improve-codebase-architecture",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/improve-codebase-architecture",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -265,11 +210,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/research",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/research",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -290,11 +230,6 @@
           "path": "targets/codex/skills/setup-matt-pocock-skills",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/setup-matt-pocock-skills",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -311,11 +246,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/prototype",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/prototype",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -336,11 +266,6 @@
           "path": "targets/codex/skills/tdd",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/tdd",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -357,11 +282,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/teach",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/teach",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -382,11 +302,6 @@
           "path": "targets/codex/skills/to-spec",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/to-spec",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -403,11 +318,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/to-tickets",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/to-tickets",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -428,11 +338,6 @@
           "path": "targets/codex/skills/triage",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/triage",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
@@ -449,11 +354,6 @@
         },
         "codex": {
           "path": "targets/codex/skills/wayfinder",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/wayfinder",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -474,17 +374,12 @@
           "path": "targets/codex/skills/writing-great-skills",
           "reasonCode": "target-translation",
           "status": "transformed"
-        },
-        "openclaw": {
-          "path": "targets/openclaw/skills/writing-great-skills",
-          "reasonCode": "target-translation",
-          "status": "transformed"
         }
       },
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.1.0-gravit.2",
+  "distributionVersion": "1.1.0-gravit.3",
   "name": "mattpocock-skills",
   "schemaVersion": 1,
   "targets": {
@@ -596,7 +491,7 @@
           "status": "preserved"
         }
       },
-      "digest": "0189a8c52132a3d4a8fdc03eb797a614a474cdb22c31a8fd5c89488bfb319910",
+      "digest": "abd0684c91557131864cd8e3ec01064589285857e71c919762b2fbd0b4a8d370",
       "path": "targets/claude"
     },
     "codex": {
@@ -707,119 +602,8 @@
           "status": "transformed"
         }
       },
-      "digest": "8a341b063b0c42fab7255aac8c77f95b738fbd8cc5f3a85ddf336f8f07f4b027",
+      "digest": "1d6d45d4856ffcd21f2729e0d388d620b02363834ac291ef0e4e6c10df532cd3",
       "path": "targets/codex"
-    },
-    "openclaw": {
-      "components": {
-        "ask-matt": {
-          "path": "targets/openclaw/skills/ask-matt",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "code-review": {
-          "path": "targets/openclaw/skills/code-review",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "codebase-design": {
-          "path": "targets/openclaw/skills/codebase-design",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "diagnosing-bugs": {
-          "path": "targets/openclaw/skills/diagnosing-bugs",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "domain-modeling": {
-          "path": "targets/openclaw/skills/domain-modeling",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "grill-me": {
-          "path": "targets/openclaw/skills/grill-me",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "grill-with-docs": {
-          "path": "targets/openclaw/skills/grill-with-docs",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "grilling": {
-          "path": "targets/openclaw/skills/grilling",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "handoff": {
-          "path": "targets/openclaw/skills/handoff",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "implement": {
-          "path": "targets/openclaw/skills/implement",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "improve-codebase-architecture": {
-          "path": "targets/openclaw/skills/improve-codebase-architecture",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "research": {
-          "path": "targets/openclaw/skills/research",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "setup-matt-pocock-skills": {
-          "path": "targets/openclaw/skills/setup-matt-pocock-skills",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "skill-prototype-0f41e60c5628": {
-          "path": "targets/openclaw/skills/prototype",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "tdd": {
-          "path": "targets/openclaw/skills/tdd",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "teach": {
-          "path": "targets/openclaw/skills/teach",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "to-spec": {
-          "path": "targets/openclaw/skills/to-spec",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "to-tickets": {
-          "path": "targets/openclaw/skills/to-tickets",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "triage": {
-          "path": "targets/openclaw/skills/triage",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "wayfinder": {
-          "path": "targets/openclaw/skills/wayfinder",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        },
-        "writing-great-skills": {
-          "path": "targets/openclaw/skills/writing-great-skills",
-          "reasonCode": "target-translation",
-          "status": "transformed"
-        }
-      },
-      "digest": "8a341b063b0c42fab7255aac8c77f95b738fbd8cc5f3a85ddf336f8f07f4b027",
-      "path": "targets/openclaw"
     }
   }
 }

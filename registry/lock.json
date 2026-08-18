@@ -1,8 +1,8 @@
 {
-  "generatorDigest": "0aa1f6e0b91d09e3c23a64f70b0403f95cf728abda4883cf47f06fce593ca308",
+  "generatorDigest": "a6f11107938aaf0f918008c488ec3c2a05e80d70eedd2d70bd0c523861c933c6",
   "plugins": {
     "azure": {
-      "bundleDigest": "7213d4afbe05667f56fd1dae8a3041c5a3b63b0b1aa8d163314aec80aae71248",
+      "bundleDigest": "96b320bd6ae7478152e34c891bea08ea0aabfc57c99783ef6f48f514d0fd5441",
       "components": [
         {
           "digest": "4b903e0fa22960ebb1bf4ecd3219987eae65f6f6fa2553bc96eb1d737ad0243b",
@@ -15,11 +15,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/airunway-aks-setup",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/airunway-aks-setup",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -39,11 +34,6 @@
               "path": "targets/codex/skills/appinsights-instrumentation",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/appinsights-instrumentation",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -61,11 +51,6 @@
               "path": "targets/codex/assets",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/assets",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "asset"
@@ -81,11 +66,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-ai",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-ai",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -105,11 +85,6 @@
               "path": "targets/codex/skills/azure-aigateway",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-aigateway",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -125,11 +100,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-app-onboard",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-app-onboard",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -149,11 +119,6 @@
               "path": "targets/codex/skills/azure-app-onboard-prereq",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-app-onboard-prereq",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -169,11 +134,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-cloud-migrate",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-cloud-migrate",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -193,11 +153,6 @@
               "path": "targets/codex/skills/azure-compliance",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-compliance",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -213,11 +168,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-compute",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-compute",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -237,11 +187,6 @@
               "path": "targets/codex/skills/azure-cost",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-cost",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -257,11 +202,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-deploy",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-deploy",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -281,11 +221,6 @@
               "path": "targets/codex/skills/azure-diagnostics",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-diagnostics",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -301,11 +236,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-enterprise-infra-planner",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-enterprise-infra-planner",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -325,11 +255,6 @@
               "path": "targets/codex/skills/azure-kubernetes",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-kubernetes",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -345,11 +270,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-kubernetes-automatic-readiness",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-kubernetes-automatic-readiness",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -369,11 +289,6 @@
               "path": "targets/codex/skills/azure-kusto",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-kusto",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -389,11 +304,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-messaging",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-messaging",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -413,11 +323,6 @@
               "path": "targets/codex/skills/azure-prepare",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-prepare",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -433,11 +338,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-quotas",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-quotas",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -457,11 +357,6 @@
               "path": "targets/codex/skills/azure-reliability",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-reliability",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -477,11 +372,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-resource-lookup",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-resource-lookup",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -501,11 +391,6 @@
               "path": "targets/codex/skills/azure-resource-visualizer",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-resource-visualizer",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -521,11 +406,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-storage",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-storage",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -545,11 +425,6 @@
               "path": "targets/codex/skills/azure-upgrade",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-upgrade",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -565,11 +440,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/azure-validate",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/azure-validate",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -589,11 +459,6 @@
               "path": "targets/codex/skills/capacity",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/capacity",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -609,11 +474,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/customize",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/customize",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -633,11 +493,6 @@
               "path": "targets/codex/skills/deploy-model",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/deploy-model",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -653,11 +508,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/entra-agent-id",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/entra-agent-id",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -677,11 +527,6 @@
               "path": "targets/codex/skills/entra-app-registration",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/entra-app-registration",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -699,11 +544,6 @@
               "path": "targets/codex/hooks/scripts",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/hooks/scripts",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "executable"
@@ -719,11 +559,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/finetuning",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/finetuning",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -743,10 +578,6 @@
               "path": "targets/codex/hooks/hooks.json",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "reasonCode": "openclaw-does-not-run-claude-hook-json",
-              "status": "unsupported"
             }
           },
           "type": "hook"
@@ -762,11 +593,6 @@
             },
             "codex": {
               "path": "targets/codex/.mcp.json",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/.mcp.json",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -786,11 +612,6 @@
               "path": "targets/codex/skills/microsoft-foundry",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/microsoft-foundry",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -806,11 +627,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/preset",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/preset",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -830,18 +646,13 @@
               "path": "targets/codex/skills/python-appservice-deploy",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/python-appservice-deploy",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
         }
       ],
-      "distributionVersion": "1.2.9-gravit.1",
-      "generatorDigest": "0aa1f6e0b91d09e3c23a64f70b0403f95cf728abda4883cf47f06fce593ca308",
+      "distributionVersion": "1.2.9-gravit.2",
+      "generatorDigest": "a6f11107938aaf0f918008c488ec3c2a05e80d70eedd2d70bd0c523861c933c6",
       "name": "azure",
       "source": {
         "ref": "v1.2.8",
@@ -851,13 +662,12 @@
         "type": "github"
       },
       "targets": {
-        "claude": "349fc6c0973133343b1199cbb6b0c6ad3c2d43459ddd84cd9481f4b27d4e8ee0",
-        "codex": "93f79620cdd15032c7d8ab410eebc09996a57c897cd5897cc28700d96df58082",
-        "openclaw": "e43213cbd781d6ed9228609de7d0d472a8d8f9f4dd38fd53b897cb0ba4a14790"
+        "claude": "a9b48c06071d4bbfde0000b6c5e9c37b9d8d20fef827da4daa3e10022248b91f",
+        "codex": "fe32e8b7aa041ec068d590b9f30d6fd46b39a7b8058bbd159467e6eab8db615f"
       }
     },
     "claude-seo": {
-      "bundleDigest": "e507d64d2a45db53b560684c8db4c990d84dcadb8a4ee7a084e0fb7beda8dd4e",
+      "bundleDigest": "770a9b4da208c16735e4040c9870ec47b3cc0f5e93923723b7b7bb791004aed0",
       "components": [
         {
           "digest": "50ea6aafeb20813e786e82a6403ede9d75709b3a9ff27de28f055de994528520",
@@ -870,10 +680,6 @@
             },
             "codex": {
               "reasonCode": "host-does-not-load-agents",
-              "status": "unsupported"
-            },
-            "openclaw": {
-              "reasonCode": "openclaw-detects-agents-only",
               "status": "unsupported"
             }
           },
@@ -892,11 +698,6 @@
               "path": "targets/codex/data",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/data",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "asset"
@@ -914,11 +715,6 @@
               "path": "targets/codex/requirements.txt",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/requirements.txt",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "asset"
@@ -936,11 +732,6 @@
               "path": "targets/codex/assets",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/assets",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "asset"
@@ -958,11 +749,6 @@
               "path": "targets/codex/screenshots",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/screenshots",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "asset"
@@ -980,11 +766,6 @@
               "path": "targets/codex/pdf",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/pdf",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "asset"
@@ -1002,11 +783,6 @@
               "path": "targets/codex/schema",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/schema",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "asset"
@@ -1024,11 +800,6 @@
               "path": "targets/codex/hooks/validate-schema.py",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/hooks/validate-schema.py",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "executable"
@@ -1046,11 +817,6 @@
               "path": "targets/codex/extensions",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/extensions",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "executable"
@@ -1068,11 +834,6 @@
               "path": "targets/codex/hooks/run-python-hook.js",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/hooks/run-python-hook.js",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "executable"
@@ -1090,11 +851,6 @@
               "path": "targets/codex/bin",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/bin",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "executable"
@@ -1112,11 +868,6 @@
               "path": "targets/codex/scripts",
               "reasonCode": "native-component",
               "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/bin/plugin-layout/scripts",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "executable"
@@ -1134,10 +885,6 @@
               "path": "targets/codex/hooks/hooks.json",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "reasonCode": "openclaw-does-not-run-claude-hook-json",
-              "status": "unsupported"
             }
           },
           "type": "hook"
@@ -1153,11 +900,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1177,11 +919,6 @@
               "path": "targets/codex/skills/seo-audit",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-audit",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1197,11 +934,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-backlinks",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-backlinks",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1221,11 +953,6 @@
               "path": "targets/codex/skills/seo-cluster",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-cluster",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1241,11 +968,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-competitor-pages",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-competitor-pages",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1265,11 +987,6 @@
               "path": "targets/codex/skills/seo-content",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-content",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1285,11 +1002,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-content-brief",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-content-brief",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1309,11 +1021,6 @@
               "path": "targets/codex/skills/seo-dataforseo",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-dataforseo",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1329,11 +1036,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-drift",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-drift",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1353,11 +1055,6 @@
               "path": "targets/codex/skills/seo-ecommerce",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-ecommerce",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1373,11 +1070,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-flow",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-flow",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1397,11 +1089,6 @@
               "path": "targets/codex/skills/seo-geo",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-geo",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1417,11 +1104,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-google",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-google",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1441,11 +1123,6 @@
               "path": "targets/codex/skills/seo-hreflang",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-hreflang",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1461,11 +1138,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-image-gen",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-image-gen",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1485,11 +1157,6 @@
               "path": "targets/codex/skills/seo-images",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-images",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1505,11 +1172,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-local",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-local",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1529,11 +1191,6 @@
               "path": "targets/codex/skills/seo-maps",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-maps",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1549,11 +1206,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-page",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-page",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1573,11 +1225,6 @@
               "path": "targets/codex/skills/seo-plan",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-plan",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1593,11 +1240,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-programmatic",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-programmatic",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1617,11 +1259,6 @@
               "path": "targets/codex/skills/seo-schema",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-schema",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1637,11 +1274,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/seo-sitemap",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-sitemap",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1661,11 +1293,6 @@
               "path": "targets/codex/skills/seo-sxo",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-sxo",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1683,18 +1310,13 @@
               "path": "targets/codex/skills/seo-technical",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/seo-technical",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
         }
       ],
-      "distributionVersion": "2.2.4-gravit.4",
-      "generatorDigest": "0aa1f6e0b91d09e3c23a64f70b0403f95cf728abda4883cf47f06fce593ca308",
+      "distributionVersion": "2.2.4-gravit.5",
+      "generatorDigest": "a6f11107938aaf0f918008c488ec3c2a05e80d70eedd2d70bd0c523861c933c6",
       "name": "claude-seo",
       "source": {
         "ref": "v2.2.4",
@@ -1704,13 +1326,12 @@
         "type": "github"
       },
       "targets": {
-        "claude": "9ef280125fb4ca89bc69593c71b1e8fe3158ea018af6ae509ae286cdaf22a772",
-        "codex": "3d0ebece37ddf27e26b4ed38fe5ca3813d533934084cd66b79b1ce39490742d9",
-        "openclaw": "38c9461354a89eb9014ac13684d6747aad4f0810037a0b7d4fa239f455e39b78"
+        "claude": "4ebac6a23201ae255e13b92e54473edd92a7ff2a2efbdec6a33eb63059a5ccfe",
+        "codex": "d8e56dbf77be8d781db9dfe12a8d90c8bfbc5edd37dc932a4f75f83af9971101"
       }
     },
     "gravit-custom": {
-      "bundleDigest": "3eac12dbdf014def3d237b94b8ec0d15fee550dfaec06cb6d604d5d4a3276609",
+      "bundleDigest": "3606dc18a83bcb49d83f9404629b5c9e9a7e5e8c17d9a33e0af1e23e256b13e4",
       "components": [
         {
           "digest": "7c51b29eaca5f86121a67ecd9b357fd496a31f6f3a497b87f09ec25e325f07cc",
@@ -1723,11 +1344,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/claude-md-improver",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/claude-md-improver",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1747,11 +1363,6 @@
               "path": "targets/codex/skills/context7-doc-validation",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/context7-doc-validation",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1767,11 +1378,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/deep-change-review",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/deep-change-review",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1791,11 +1397,6 @@
               "path": "targets/codex/skills/excalidraw-diagram-generator",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/excalidraw-diagram-generator",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1811,11 +1412,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/git-commit",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/git-commit",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1835,11 +1431,6 @@
               "path": "targets/codex/skills/github-actions-templates",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/github-actions-templates",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1857,18 +1448,13 @@
               "path": "targets/codex/skills/github-issues",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/github-issues",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
         }
       ],
-      "distributionVersion": "1.0.0-gravit.3",
-      "generatorDigest": "0aa1f6e0b91d09e3c23a64f70b0403f95cf728abda4883cf47f06fce593ca308",
+      "distributionVersion": "1.0.0-gravit.4",
+      "generatorDigest": "a6f11107938aaf0f918008c488ec3c2a05e80d70eedd2d70bd0c523861c933c6",
       "name": "gravit-custom",
       "source": {
         "path": "sources/gravit-custom",
@@ -1876,13 +1462,12 @@
         "type": "local"
       },
       "targets": {
-        "claude": "7215f100088590ea2779354eddad4bc5ab95f070447fbcff8518d03b9bf144f3",
-        "codex": "ff67830e3220c2cdc4aafa060d833d87254a0cca3e2a0e24f4fe53d8a3ec4051",
-        "openclaw": "ff67830e3220c2cdc4aafa060d833d87254a0cca3e2a0e24f4fe53d8a3ec4051"
+        "claude": "77ef13a0be17afd146102b3a217587afee855a392e07ab25295c8e281ab31e77",
+        "codex": "1a735219d640e9eb1854066ef4cab44a8e417575a31e841ca0d988062c85cf7b"
       }
     },
     "mattpocock-skills": {
-      "bundleDigest": "4bc08cd5f1d75eb1a4a636f814dc82f2d7c5e3a773036d54c3871e1bedd98754",
+      "bundleDigest": "abc9a8ddd9f29acba5ee9df38e7dfb6d5530c2a3517c41a6afab6a84a6fe8d62",
       "components": [
         {
           "digest": "7f02140bf4ab46026aaacff98c754249158aabe26f95b2c69dcc0a85bb508d00",
@@ -1895,11 +1480,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/ask-matt",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/ask-matt",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1919,11 +1499,6 @@
               "path": "targets/codex/skills/code-review",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/code-review",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1939,11 +1514,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/codebase-design",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/codebase-design",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -1963,11 +1533,6 @@
               "path": "targets/codex/skills/diagnosing-bugs",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/diagnosing-bugs",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -1983,11 +1548,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/domain-modeling",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/domain-modeling",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2007,11 +1567,6 @@
               "path": "targets/codex/skills/grill-me",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/grill-me",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2027,11 +1582,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/grill-with-docs",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/grill-with-docs",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2051,11 +1601,6 @@
               "path": "targets/codex/skills/grilling",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/grilling",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2071,11 +1616,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/handoff",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/handoff",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2095,11 +1635,6 @@
               "path": "targets/codex/skills/implement",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/implement",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2115,11 +1650,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/improve-codebase-architecture",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/improve-codebase-architecture",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2139,11 +1669,6 @@
               "path": "targets/codex/skills/research",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/research",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2159,11 +1684,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/setup-matt-pocock-skills",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/setup-matt-pocock-skills",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2183,11 +1703,6 @@
               "path": "targets/codex/skills/prototype",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/prototype",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2203,11 +1718,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/tdd",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/tdd",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2227,11 +1737,6 @@
               "path": "targets/codex/skills/teach",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/teach",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2247,11 +1752,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/to-spec",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/to-spec",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2271,11 +1771,6 @@
               "path": "targets/codex/skills/to-tickets",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/to-tickets",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2291,11 +1786,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/triage",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/triage",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2315,11 +1805,6 @@
               "path": "targets/codex/skills/wayfinder",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/wayfinder",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2337,18 +1822,13 @@
               "path": "targets/codex/skills/writing-great-skills",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/writing-great-skills",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
         }
       ],
-      "distributionVersion": "1.1.0-gravit.2",
-      "generatorDigest": "0aa1f6e0b91d09e3c23a64f70b0403f95cf728abda4883cf47f06fce593ca308",
+      "distributionVersion": "1.1.0-gravit.3",
+      "generatorDigest": "a6f11107938aaf0f918008c488ec3c2a05e80d70eedd2d70bd0c523861c933c6",
       "name": "mattpocock-skills",
       "source": {
         "ref": "v1.1.0",
@@ -2358,13 +1838,12 @@
         "type": "github"
       },
       "targets": {
-        "claude": "0189a8c52132a3d4a8fdc03eb797a614a474cdb22c31a8fd5c89488bfb319910",
-        "codex": "8a341b063b0c42fab7255aac8c77f95b738fbd8cc5f3a85ddf336f8f07f4b027",
-        "openclaw": "8a341b063b0c42fab7255aac8c77f95b738fbd8cc5f3a85ddf336f8f07f4b027"
+        "claude": "abd0684c91557131864cd8e3ec01064589285857e71c919762b2fbd0b4a8d370",
+        "codex": "1d6d45d4856ffcd21f2729e0d388d620b02363834ac291ef0e4e6c10df532cd3"
       }
     },
     "obsidian": {
-      "bundleDigest": "96c716d5d7d8f7fc7d3fbb4b92e9f4ef28bfd2ebec3792a3bb91872f1b8ac3e9",
+      "bundleDigest": "317c30b7e54c7a6970f4b86150cd1b02f832fac36bf1b11d39e2b0675380b980",
       "components": [
         {
           "digest": "a2d56bc53d96891df85a16e8f8fdb1ae6acae53e05e629ef252f9a82b310d982",
@@ -2377,11 +1856,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/defuddle",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/defuddle",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2401,11 +1875,6 @@
               "path": "targets/codex/skills/json-canvas",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/json-canvas",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2421,11 +1890,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/obsidian-bases",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/obsidian-bases",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2445,11 +1909,6 @@
               "path": "targets/codex/skills/obsidian-cli",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/obsidian-cli",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2467,18 +1926,13 @@
               "path": "targets/codex/skills/obsidian-markdown",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/obsidian-markdown",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
         }
       ],
-      "distributionVersion": "1.0.1-gravit.2",
-      "generatorDigest": "0aa1f6e0b91d09e3c23a64f70b0403f95cf728abda4883cf47f06fce593ca308",
+      "distributionVersion": "1.0.1-gravit.3",
+      "generatorDigest": "a6f11107938aaf0f918008c488ec3c2a05e80d70eedd2d70bd0c523861c933c6",
       "name": "obsidian",
       "source": {
         "ref": "main",
@@ -2488,13 +1942,12 @@
         "type": "github"
       },
       "targets": {
-        "claude": "ef356dca850dfa66cd5c6cc0c124127799271b8ade266a8c1df3eddbd542b905",
-        "codex": "ea437c32d64103a6289af434c5c3e6f66e2f10c87b9cfacf8d193b0d33707a50",
-        "openclaw": "ea437c32d64103a6289af434c5c3e6f66e2f10c87b9cfacf8d193b0d33707a50"
+        "claude": "89c43f4f95bd2fc0c6adf85f5d2fee1722edd4abd35ce846342929e84d63ea74",
+        "codex": "072ea750ce10a9136b8c1acd716afc5eced348c699d4636ec7402385c3444b45"
       }
     },
     "superpowers": {
-      "bundleDigest": "1ca3237bd0a65e4f32bfce854642e88cefa70793bb3d317a5296cda5d67e4a73",
+      "bundleDigest": "e4554b9195254d4629f3bc57e1906a6cadd6a11fe98d02dfb07c20eb50c93886",
       "components": [
         {
           "digest": "2612738e8c0862f57896b9254bfe2269a6bd9f9fb74ddeeeb424b5e98115ae30",
@@ -2507,11 +1960,6 @@
             },
             "codex": {
               "path": "targets/codex/assets",
-              "reasonCode": "native-component",
-              "status": "preserved"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/assets",
               "reasonCode": "native-component",
               "status": "preserved"
             }
@@ -2531,11 +1979,6 @@
               "path": "targets/codex/skills/brainstorming",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/brainstorming",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2551,11 +1994,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/dispatching-parallel-agents",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/dispatching-parallel-agents",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2575,11 +2013,6 @@
               "path": "targets/codex/skills/executing-plans",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/executing-plans",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2595,11 +2028,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/finishing-a-development-branch",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/finishing-a-development-branch",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2619,10 +2047,6 @@
               "path": "targets/codex/hooks/hooks.json",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "reasonCode": "openclaw-does-not-run-claude-hook-json",
-              "status": "unsupported"
             }
           },
           "type": "hook"
@@ -2638,11 +2062,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/receiving-code-review",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/receiving-code-review",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2662,11 +2081,6 @@
               "path": "targets/codex/skills/requesting-code-review",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/requesting-code-review",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2682,11 +2096,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/subagent-driven-development",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/subagent-driven-development",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2706,11 +2115,6 @@
               "path": "targets/codex/skills/systematic-debugging",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/systematic-debugging",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2726,11 +2130,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/test-driven-development",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/test-driven-development",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2750,11 +2149,6 @@
               "path": "targets/codex/skills/using-git-worktrees",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/using-git-worktrees",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2770,11 +2164,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/using-superpowers",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/using-superpowers",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2794,11 +2183,6 @@
               "path": "targets/codex/skills/verification-before-completion",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/verification-before-completion",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
@@ -2814,11 +2198,6 @@
             },
             "codex": {
               "path": "targets/codex/skills/writing-plans",
-              "reasonCode": "target-translation",
-              "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/writing-plans",
               "reasonCode": "target-translation",
               "status": "transformed"
             }
@@ -2838,18 +2217,13 @@
               "path": "targets/codex/skills/writing-skills",
               "reasonCode": "target-translation",
               "status": "transformed"
-            },
-            "openclaw": {
-              "path": "targets/openclaw/skills/writing-skills",
-              "reasonCode": "target-translation",
-              "status": "transformed"
             }
           },
           "type": "skill"
         }
       ],
-      "distributionVersion": "6.2.0-gravit.2",
-      "generatorDigest": "0aa1f6e0b91d09e3c23a64f70b0403f95cf728abda4883cf47f06fce593ca308",
+      "distributionVersion": "6.2.0-gravit.3",
+      "generatorDigest": "a6f11107938aaf0f918008c488ec3c2a05e80d70eedd2d70bd0c523861c933c6",
       "name": "superpowers",
       "source": {
         "ref": "v6.2.0",
@@ -2859,9 +2233,8 @@
         "type": "github"
       },
       "targets": {
-        "claude": "e734bf90c146710f3186ba897f46a34a623ba4a6bea4adcb9ea5da2974c54641",
-        "codex": "32fa6f23b14215b6f43987806b5b299cdec27729d17c4465217aa9b185e9c938",
-        "openclaw": "c36bd8eba791627d1ec10c0ebf04dc92d832663e99f0ff0ee4c82f8052cd5fd6"
+        "claude": "15f7938cdc4b09b49da958465f22faef8ed580f9959ec2ed492b020849739ecc",
+        "codex": "d4e6b4a62d3c0237517877646d7f92354714f3c2777dbeb49a259c9ca673949d"
       }
     }
   },
