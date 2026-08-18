@@ -24,12 +24,10 @@ import { accountComponents } from "./provenance.mjs";
 import { renderSkills } from "./skills.mjs";
 import { renderClaudeTarget } from "./targets/claude.mjs";
 import { renderCodexTarget } from "./targets/codex.mjs";
-import { renderOpenClawTarget } from "./targets/openclaw.mjs";
 
 const TARGET_RENDERERS = {
   claude: renderClaudeTarget,
   codex: renderCodexTarget,
-  openclaw: renderOpenClawTarget,
 };
 function materializeCanonicalLicense({ sourcePath, bundleRoot }) {
   if (!sourcePath) return;
@@ -95,18 +93,12 @@ function assertAdapterResult({ plugin, target, bundleRoot, neutralComponents, re
   const components = Object.fromEntries(neutralComponents.map((component) => {
     const expected = component.targets[target];
     const actual = result.components[component.id];
-    const openClawRelocation = target === "openclaw"
-      && ["asset", "executable"].includes(component.type)
-      && expected.status === "preserved"
-      && expected.reasonCode === "native-component"
-      && actual?.status === "transformed"
-      && actual?.reasonCode === "target-translation";
     if (
       !actual
       || typeof actual !== "object"
       || Array.isArray(actual)
-      || (!openClawRelocation && actual.status !== expected.status)
-      || (!openClawRelocation && actual.reasonCode !== expected.reasonCode)
+      || actual.status !== expected.status
+      || actual.reasonCode !== expected.reasonCode
     ) {
       throw new Error(
         plugin.name + ": incorrect adapter disposition for " + target + " " + component.id,

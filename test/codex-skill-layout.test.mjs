@@ -35,11 +35,11 @@ test("generated Codex plugins expose only canonical top-level SKILL.md entrypoin
 
   for (const plugin of readdirSync(pluginsRoot, { withFileTypes: true })) {
     if (!plugin.isDirectory()) continue;
-    const skillsRoot = resolve(pluginsRoot, plugin.name, "skills");
+    const skillsRoot = resolve(pluginsRoot, plugin.name, "targets/codex/skills");
     for (const skillFile of walkSkillEntrypoints(skillsRoot)) {
       const path = relative(skillsRoot, skillFile).replaceAll("\\", "/");
       if (path.split("/").length !== 2) {
-        nestedEntrypoints.push(`${plugin.name}/skills/${path}`);
+        nestedEntrypoints.push(`${plugin.name}/targets/codex/skills/${path}`);
       }
     }
   }
@@ -52,7 +52,7 @@ test("generated Codex plugins expose only canonical top-level SKILL.md entrypoin
 });
 
 test("internal Azure phase instructions remain reachable as non-skill resources", () => {
-  const skillRoot = resolve(repositoryRoot, "plugins/azure/skills/azure-app-onboard");
+  const skillRoot = resolve(repositoryRoot, "plugins/azure/targets/codex/skills/azure-app-onboard");
   const expectedHeadings = {
     deploy: "# Deploy — IaC Execution & Health Verification",
     prepare: "# Prepare — Architecture Planning & Cost Estimation",
@@ -82,15 +82,15 @@ test("internal Azure phase instructions remain reachable as non-skill resources"
 });
 
 test("the repackaged Azure bundle has a newer Codex cache identity", () => {
-  const marketplace = JSON.parse(readFileSync(
-    resolve(repositoryRoot, ".claude-plugin/marketplace.json"),
+  const catalog = JSON.parse(readFileSync(
+    resolve(repositoryRoot, "registry/catalog.json"),
     "utf8",
   ));
-  const azureSourceVersion = marketplace.plugins.find(
+  const azureSourceVersion = catalog.plugins.find(
     (plugin) => plugin.name === "azure",
   ).source.ref;
   const azureManifest = JSON.parse(readFileSync(
-    resolve(repositoryRoot, "plugins/azure/.codex-plugin/plugin.json"),
+    resolve(repositoryRoot, "plugins/azure/targets/codex/.codex-plugin/plugin.json"),
     "utf8",
   ));
 

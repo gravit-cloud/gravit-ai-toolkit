@@ -8,7 +8,6 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -51,13 +50,8 @@ function fixtureRepository(context) {
     resolve(repositoryRoot, "node_modules/@openai/codex/bin/codex.js"),
     "export {};\n",
   );
-  file(resolve(repositoryRoot, "node_modules/openclaw/openclaw.mjs"), "export {};\n");
   file(resolve(repositoryRoot, ".claude-plugin/marketplace.json"), "{}\n");
   file(resolve(repositoryRoot, ".agents/plugins/marketplace.json"), "{}\n");
-  file(
-    resolve(repositoryRoot, "plugins/azure/targets/openclaw/.codex-plugin/plugin.json"),
-    '{"name":"azure","version":"1.2.5-gravit.4"}\n',
-  );
   return repositoryRoot;
 }
 
@@ -68,24 +62,7 @@ function commandFixture(context, parentEnv = {}) {
   return { commands, repositoryRoot, temporaryRoot };
 }
 
-function openClawFixturePaths(spec) {
-  const repositoryRoot = resolve(dirname(spec.args[0]), "../..");
-  const installPath = resolve(spec.env.OPENCLAW_STATE_DIR, "extensions/azure");
-  return {
-    installPath,
-    repositoryRoot,
-    sourcePath: resolve(repositoryRoot, "plugins/azure/targets/openclaw"),
-    workspaceDir: resolve(spec.env.HOME, ".openclaw/workspace"),
-  };
-}
-
 function successfulResult(spec) {
-  const openclaw = spec.name.startsWith("openclaw-")
-    ? openClawFixturePaths(spec)
-    : undefined;
-  if (spec.name === "openclaw-install") {
-    mkdirSync(openclaw.installPath, { recursive: true });
-  }
   const stdout = {
     "claude-validate": "Validating marketplace manifest\n✔ Validation passed\n",
     "codex-marketplace-add": JSON.stringify({
@@ -101,51 +78,6 @@ function successfulResult(spec) {
         marketplaceName: "gravit-cloud",
         installed: false,
       }],
-    }),
-    "openclaw-disable-all": "Updated plugins.enabled.\n",
-    "openclaw-install": "Installed plugin: azure\n",
-    "openclaw-disable-azure": 'Disabled plugin "azure".\n',
-    "openclaw-list": JSON.stringify({
-      plugins: [{
-        id: "azure",
-        name: "azure",
-        version: "1.2.5-gravit.4",
-        format: "bundle",
-        bundleFormat: "codex",
-        source: openclaw?.installPath,
-        rootDir: openclaw?.installPath,
-        origin: "global",
-        enabled: false,
-        status: "disabled",
-      }],
-    }),
-    "openclaw-inspect": JSON.stringify({
-      workspaceDir: openclaw?.workspaceDir,
-      plugin: {
-        id: "azure",
-        name: "azure",
-        version: "1.2.5-gravit.4",
-        format: "bundle",
-        bundleFormat: "codex",
-        bundleCapabilities: ["skills", "mcpServers"],
-        source: openclaw?.installPath,
-        rootDir: openclaw?.installPath,
-        origin: "global",
-        enabled: false,
-        explicitlyEnabled: false,
-        activated: false,
-        activationSource: "disabled",
-        activationReason: "disabled in config",
-        status: "disabled",
-        error: "disabled in config",
-      },
-      install: {
-        source: "path",
-        sourcePath: openclaw?.sourcePath,
-        installPath: openclaw?.installPath,
-        version: "1.2.5-gravit.4",
-        installedAt: "2026-08-01T12:00:00.000Z",
-      },
     }),
   }[spec.name];
   assert.ok(stdout, "missing fake output for " + spec.name);
@@ -173,17 +105,12 @@ test("uses the trusted Node entrypoints and never inherits a fake-node PATH", (c
     "node_modules/@anthropic-ai/claude-code/bin/claude.exe",
   );
   const codexEntry = resolve(repositoryRoot, "node_modules/@openai/codex/bin/codex.js");
-  const openclawEntry = resolve(repositoryRoot, "node_modules/openclaw/openclaw.mjs");
 
   assert.equal(commands[0].command, claudeNative);
   assert.equal(commands[0].args[0], "plugin");
   for (const command of commands.filter(({ name }) => name.startsWith("codex-"))) {
     assert.equal(command.command, process.execPath);
     assert.equal(command.args[0], codexEntry);
-  }
-  for (const command of commands.filter(({ name }) => name.startsWith("openclaw-"))) {
-    assert.equal(command.command, process.execPath);
-    assert.equal(command.args[0], openclawEntry);
   }
   for (const command of commands) {
     assert.equal(command.env.PATH, trustedPath);
@@ -198,17 +125,11 @@ test("keeps the static/local command order without add, setup, enable, or runtim
     "claude-validate",
     "codex-marketplace-add",
     "codex-plugin-list-available",
-    "openclaw-disable-all",
-    "openclaw-install",
-    "openclaw-disable-azure",
-    "openclaw-list",
-    "openclaw-inspect",
   ]);
   const clientArgs = commands.map(({ args }) => args.slice(1));
   assert.equal(clientArgs.some((args) => args.includes("--runtime")), false);
   assert.equal(clientArgs.some((args) => args[0] === "plugin" && args[1] === "add"), false);
   assert.equal(clientArgs.some((args) => args.includes("setup") || args.includes("enable")), false);
-  assert.equal(commands[4].args.at(-1), "--acknowledge-clawhub-risk");
 });
 
 test("passes only allowlisted variables into separate retained client homes", (context) => {
@@ -228,7 +149,7 @@ test("passes only allowlisted variables into separate retained client homes", (c
     assert.equal(command.env.TMPDIR.startsWith(command.env.HOME + "/"), true);
   }
   const homes = new Set(commands.map(({ env }) => env.HOME));
-  assert.equal(homes.size, 3);
+  assert.equal(homes.size, 2);
 });
 
 test("runs fake clients asynchronously and retains the exact smoke root", async (context) => {
@@ -247,13 +168,8 @@ test("runs fake clients asynchronously and retains the exact smoke root", async 
     "claude-validate",
     "codex-marketplace-add",
     "codex-plugin-list-available",
-    "openclaw-disable-all",
-    "openclaw-install",
-    "openclaw-disable-azure",
-    "openclaw-list",
-    "openclaw-inspect",
   ]);
-  assert.equal(observed.length, 8);
+  assert.equal(observed.length, 3);
   assert.equal(existsSync(result.recoveryPath), true);
   assert.equal(existsSync(resolve(result.recoveryPath, "claude/home")), true);
   for (const { options, spec } of observed) {
@@ -300,12 +216,6 @@ test("strict JSON validators reject malformed and false-positive client output",
         { pluginId: "azure@gravit-cloud", name: "azure", marketplaceName: "gravit-cloud", installed: false },
       ],
     })],
-    ["openclaw-list", JSON.stringify({
-      plugins: [{ id: "azure", format: "bundle", bundleFormat: "codex", enabled: true, status: "loaded" }],
-    })],
-    ["openclaw-inspect", JSON.stringify({
-      plugin: { id: "azure", format: "openclaw", bundleFormat: "codex", enabled: false, activated: false, status: "disabled" },
-    })],
   ];
 
   for (const [badName, badOutput] of badOutputs) {
@@ -321,171 +231,6 @@ test("strict JSON validators reject malformed and false-positive client output",
       caught = error;
       return new RegExp(badName + " failed").test(error.message);
     });
-    retainForTest(context, caught);
-  }
-});
-
-test("binds OpenClaw list and inspect provenance to one isolated installed artifact", async (context) => {
-  const cases = [
-    {
-      name: "list uses a non-bundle format",
-      target: "openclaw-list",
-      mutate(value) {
-        value.plugins[0].format = "openclaw";
-      },
-    },
-    {
-      name: "list uses the wrong bundle subtype",
-      target: "openclaw-list",
-      mutate(value) {
-        value.plugins[0].bundleFormat = "claude";
-      },
-    },
-    {
-      name: "list reports a non-global origin",
-      target: "openclaw-list",
-      mutate(value) {
-        value.plugins[0].origin = "workspace";
-      },
-    },
-    {
-      name: "list source outside the isolated state",
-      target: "openclaw-list",
-      mutate(value, spec) {
-        value.plugins[0].source = resolve(spec.env.HOME, "alternate-state/extensions/azure");
-      },
-    },
-    {
-      name: "list root outside the isolated state",
-      target: "openclaw-list",
-      mutate(value, spec) {
-        value.plugins[0].rootDir = resolve(spec.env.HOME, "alternate-state/extensions/azure");
-      },
-    },
-    {
-      name: "inspect source differs from list",
-      target: "openclaw-inspect",
-      mutate(value, spec) {
-        value.plugin.source = resolve(spec.env.OPENCLAW_STATE_DIR, "extensions/other-azure");
-      },
-    },
-    {
-      name: "inspect root differs from the install",
-      target: "openclaw-inspect",
-      mutate(value, spec) {
-        value.plugin.rootDir = resolve(spec.env.OPENCLAW_STATE_DIR, "extensions/other-azure");
-      },
-    },
-    {
-      name: "inspect installation has the wrong source subtype",
-      target: "openclaw-inspect",
-      mutate(value) {
-        value.install.source = "registry";
-      },
-    },
-    {
-      name: "inspect reports different bundle capabilities",
-      target: "openclaw-inspect",
-      mutate(value) {
-        value.plugin.bundleCapabilities = ["skills"];
-      },
-    },
-    {
-      name: "inspect sourcePath points at another repository tree",
-      target: "openclaw-inspect",
-      mutate(value, spec) {
-        const { repositoryRoot } = openClawFixturePaths(spec);
-        value.install.sourcePath = resolve(repositoryRoot, "plugins/other/targets/openclaw");
-      },
-    },
-    {
-      name: "inspect installPath points at another state tree",
-      target: "openclaw-inspect",
-      mutate(value, spec) {
-        value.install.installPath = resolve(spec.env.HOME, "alternate-state/extensions/azure");
-      },
-    },
-    {
-      name: "inspect workspace points at another home tree",
-      target: "openclaw-inspect",
-      mutate(value, spec) {
-        value.workspaceDir = resolve(dirname(spec.env.HOME), "alternate-home/.openclaw/workspace");
-      },
-    },
-    {
-      name: "list and inspect versions identify different artifacts",
-      target: "openclaw-inspect",
-      mutate(value) {
-        value.plugin.version = "1.2.5-gravit.different";
-      },
-    },
-    {
-      name: "inspect install metadata identifies a different version",
-      target: "openclaw-inspect",
-      mutate(value) {
-        value.install.version = "1.2.5-gravit.different";
-      },
-    },
-    {
-      name: "inspect install metadata has no pinned timestamp shape",
-      target: "openclaw-inspect",
-      mutate(value) {
-        value.install.installedAt = "yesterday";
-      },
-    },
-    {
-      name: "installed extension is a symlink outside state",
-      target: "openclaw-list",
-      setup(spec) {
-        const { installPath } = openClawFixturePaths(spec);
-        const outside = resolve(spec.env.HOME, "extension-escape");
-        mkdirSync(outside, { recursive: true });
-        rmSync(installPath, { recursive: true, force: true });
-        symlinkSync(outside, installPath, "dir");
-      },
-    },
-    {
-      name: "workspace ancestor is a symlink outside its canonical location",
-      target: "openclaw-inspect",
-      setup(spec) {
-        const outside = resolve(spec.env.HOME, "workspace-escape");
-        mkdirSync(outside, { recursive: true });
-        symlinkSync(outside, resolve(spec.env.HOME, ".openclaw"), "dir");
-      },
-    },
-    {
-      name: "state root is replaced by a symlink to another state",
-      target: "openclaw-list",
-      setup(spec) {
-        const stateDir = spec.env.OPENCLAW_STATE_DIR;
-        const outside = resolve(spec.env.HOME, "state-escape");
-        mkdirSync(resolve(outside, "extensions/azure"), { recursive: true });
-        rmSync(stateDir, { recursive: true, force: true });
-        symlinkSync(outside, stateDir, "dir");
-      },
-    },
-  ];
-
-  for (const testCase of cases) {
-    const repositoryRoot = fixtureRepository(context);
-    let caught;
-    await assert.rejects(runClientSmoke(repositoryRoot, {
-      async commandRunner(spec) {
-        const result = successfulResult(spec);
-        if (spec.name === testCase.target) {
-          testCase.setup?.(spec);
-          if (testCase.mutate) {
-            const value = JSON.parse(result.stdout);
-            testCase.mutate(value, spec);
-            result.stdout = JSON.stringify(value);
-          }
-        }
-        return result;
-      },
-    }), (error) => {
-      caught = error;
-      return new RegExp(testCase.target + " failed").test(error.message);
-    }, testCase.name);
     retainForTest(context, caught);
   }
 });

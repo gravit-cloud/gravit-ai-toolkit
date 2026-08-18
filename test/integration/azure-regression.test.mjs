@@ -90,33 +90,6 @@ test("Azure Codex bundle contains pinned MCP and unique skills", () => {
   }
 });
 
-test("Azure OpenClaw bundle retains the pinned MCP and exact 34-skill projection", () => {
-  const root = resolve(repositoryRoot, "plugins/azure");
-  const target = "openclaw";
-  const targetRoot = resolve(root, `targets/${target}`);
-  const manifest = JSON.parse(readFileSync(
-    resolve(targetRoot, ".codex-plugin/plugin.json"),
-  ));
-  assert.equal(manifest.skills, "./skills/");
-  assert.equal(manifest.mcpServers, "./.mcp.json");
-  assert.equal(Object.hasOwn(manifest, "hooks"), false);
-  const mcp = readFileSync(resolve(targetRoot, ".mcp.json"), "utf8");
-  assert.match(mcp, /@azure\/mcp@2\.0\.5/);
-  assert.doesNotMatch(mcp, /@latest/);
-  const names = readdirSync(resolve(targetRoot, "skills"), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => parseFrontmatter(readFileSync(
-      resolve(targetRoot, "skills", entry.name, "SKILL.md"),
-      "utf8",
-    ).replace(/^\uFEFF/u, "")).attributes.name);
-  assert.deepEqual([...names].sort(), EXPECTED_AZURE_SKILLS);
-  assert.deepEqual(validateRecursiveSkills(resolve(targetRoot, "skills"), {
-    target: "codex",
-    projectionRoot: targetRoot,
-    allowedComponentRoots: allowedComponentRoots(root, target),
-  }), []);
-});
-
 test("Azure target projections preserve exact runtime links and 34 unique public skills", () => {
   const root = resolve(repositoryRoot, "plugins/azure");
   for (const target of ["claude", "codex"]) {

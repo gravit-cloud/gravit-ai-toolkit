@@ -42,7 +42,7 @@ function relativeSourcePath(component) {
   return value;
 }
 
-function nativeDestination({ component, targetRoot, target }) {
+function nativeDestination({ component, targetRoot }) {
   if (component.type === "app") return resolve(targetRoot, ".app.json");
   const root = component.type === "asset" ? "assets" : "bin";
   if (
@@ -50,16 +50,6 @@ function nativeDestination({ component, targetRoot, target }) {
     && ["asset", "executable"].includes(component.type)
   ) {
     const sourceRelative = relativeSourcePath(component);
-    if (target === "openclaw") {
-      const nested = sourceRelative === root || sourceRelative.startsWith(root + "/")
-        ? sourceRelative
-        : root + "/" + sourceRelative;
-      return assertInside(
-        targetRoot,
-        resolve(targetRoot, nested),
-        "target component",
-      );
-    }
     return assertInside(
       targetRoot,
       resolve(targetRoot, sourceRelative),
@@ -74,24 +64,6 @@ function nativeDestination({ component, targetRoot, target }) {
     ? sourceRelative
     : root + "/" + basename(sourceRelative);
   return assertInside(targetRoot, resolve(targetRoot, nested), "target component");
-}
-
-function preserveOpenClawSharedLayout(nativePlans, targetRoot) {
-  const pathPlans = nativePlans.filter(({ component }) => (
-    component.sourceFormat === "path"
-      && ["asset", "executable"].includes(component.type)
-  ));
-  if (pathPlans.length <= 1) return;
-  const root = pathPlans.some(({ component }) => component.type === "executable")
-    ? "bin"
-    : "assets";
-  for (const plan of pathPlans) {
-    plan.destination = assertInside(
-      targetRoot,
-      resolve(targetRoot, root, "plugin-layout", relativeSourcePath(plan.component)),
-      "OpenClaw target component",
-    );
-  }
 }
 
 function commandSkillName(sourcePath) {
@@ -115,14 +87,14 @@ function mergeHooks(records, options) {
   return { hooks };
 }
 
-export function renderCodexFormatTarget({
+export function renderCodexTarget({
   plugin,
   inventory,
   neutralComponents,
   bundleRoot,
-  target = "codex",
 }) {
-  const targetRoot = resolve(bundleRoot, "targets", target);
+  const target = "codex";
+  const targetRoot = resolve(bundleRoot, "targets/codex");
   const skillRoot = resolve(targetRoot, "skills");
   const records = new Map(inventory.components.map((component) => [component.id, component]));
   const components = {};
@@ -159,7 +131,7 @@ export function renderCodexFormatTarget({
     else if (["app", "asset", "executable"].includes(neutral.type)) {
       nativePlans.push({
         component: record,
-        destination: nativeDestination({ component: record, targetRoot, target }),
+        destination: nativeDestination({ component: record, targetRoot }),
       });
     } else {
       throw new Error("unsupported Codex rendered component: " + neutral.type);
@@ -172,9 +144,6 @@ export function renderCodexFormatTarget({
     resolve(targetRoot, "hooks/hooks.json"),
     skillRoot,
   ];
-  if (target === "openclaw") {
-    preserveOpenClawSharedLayout(nativePlans, targetRoot);
-  }
   const orderedNativePlans = nativePlans.sort((left, right) => (
     compareCodePoints(left.destination, right.destination)
   ));
@@ -206,15 +175,8 @@ export function renderCodexFormatTarget({
       destination: plan.destination,
     });
     const neutral = neutralComponents.find(({ id }) => id === plan.component.id);
-    const relocated = target === "openclaw"
-      && plan.component.sourceFormat === "path"
-      && ["asset", "executable"].includes(plan.component.type)
-      && relative(targetRoot, plan.destination).replaceAll("\\", "/")
-        !== relativeSourcePath(plan.component);
     components[plan.component.id] = {
-      ...(relocated
-        ? { status: "transformed", reasonCode: "target-translation" }
-        : neutral.targets[target]),
+      ...neutral.targets[target],
       path: targetPath(bundleRoot, plan.destination),
     };
     if (
@@ -322,8 +284,4 @@ export function renderCodexFormatTarget({
   });
   writeJson(resolve(targetRoot, ".codex-plugin/plugin.json"), manifest);
   return { digest: treeHash(targetRoot), components };
-}
-
-export function renderCodexTarget(input) {
-  return renderCodexFormatTarget({ ...input, target: "codex" });
 }
