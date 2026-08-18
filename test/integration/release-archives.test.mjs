@@ -112,8 +112,7 @@ function fixtureRegistry(context, { license = "fixture license\n" } = {}) {
       category: "development",
       distributionVersion: "1.0.0-gravit.1",
       source: { type: "local", path: "sources/fixture", root: "." },
-      targets: ["claude", "codex", "openclaw"],
-      adapterOptions: { openclaw: { bundleFormat: "codex" } },
+      targets: ["claude", "codex"],
       policies: { default: "transform-or-fail", skills: "transform" },
     }],
   });
@@ -218,7 +217,6 @@ function assertSafeArchive(pluginName, archive, locked) {
     ".agent-plugin/plugin.json",
     "targets/claude/.claude-plugin/plugin.json",
     "targets/codex/.codex-plugin/plugin.json",
-    "targets/openclaw/.codex-plugin/plugin.json",
     "LICENSE",
     RECEIPT,
   ]) {
@@ -642,8 +640,6 @@ test("a post-link failure reports one complete permanent archive", async (contex
           "fixture/targets/claude/skills/fixture/SKILL.md",
           "fixture/targets/codex/.codex-plugin/plugin.json",
           "fixture/targets/codex/skills/fixture/SKILL.md",
-          "fixture/targets/openclaw/.codex-plugin/plugin.json",
-          "fixture/targets/openclaw/skills/fixture/SKILL.md",
         ]);
         assert.doesNotThrow(() => validateReceipt(archiveReceipt(destination, "fixture")));
         throw new Error("injected post-link failure");

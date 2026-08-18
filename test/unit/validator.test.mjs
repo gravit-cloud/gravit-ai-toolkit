@@ -31,7 +31,7 @@ function writeSkill(root, relativeDirectory, name) {
   );
 }
 
-function validRepository(context, { includeOpenClaw = false } = {}) {
+function validRepository(context) {
   const parent = mkdtempSync(resolve(tmpdir(), "registry-validator-"));
   context.after(() => rmSync(parent, { recursive: true, force: true }));
   const repositoryRoot = resolve(parent, "repository");
@@ -80,17 +80,7 @@ function validRepository(context, { includeOpenClaw = false } = {}) {
         path: "source-only-context.txt",
         digest: sourceContextHash(sourceContextPath),
       }],
-      targets: includeOpenClaw ? ["claude", "codex", "openclaw"] : ["claude", "codex"],
-      ...(includeOpenClaw ? {
-        adapterOptions: { openclaw: { bundleFormat: "codex" } },
-        targetPolicies: {
-          openclaw: {
-            unsupported: {
-              hook: "openclaw-does-not-run-claude-hook-json",
-            },
-          },
-        },
-      } : {}),
+      targets: ["claude", "codex"],
       policies: { default: "transform-or-fail", skills: "transform" },
     }],
   }));
@@ -102,97 +92,6 @@ function validRepository(context, { includeOpenClaw = false } = {}) {
   });
   return repositoryRoot;
 }
-
-test("OpenClaw rejects every unsupported host binding and target root", (context) => {
-  const repositoryRoot = validRepository(context, { includeOpenClaw: true });
-  const targetRoot = "plugins/fixture/targets/openclaw";
-  mutateJson(repositoryRoot, targetRoot + "/.codex-plugin/plugin.json", (host) => {
-    host.agents = ["./agents/reviewer.md"];
-    host.hooks = "./hooks/hooks.json";
-    host.lspServers = "./.lsp.json";
-    host.apps = "./.app.json";
-    host.outputStyles = ["./output-styles/terse.md"];
-    host.channels = ["./channels/alerts.json"];
-    host.settings = "./settings.json";
-    host.experimental = {
-      monitors: "./monitors/monitors.json",
-      themes: "./themes/",
-    };
-  });
-  for (const [path, contents] of [
-    ["agents/reviewer.md", "# reviewer\n"],
-    ["hooks/hooks.json", "{}\n"],
-    [".lsp.json", "{}\n"],
-    [".app.json", "{}\n"],
-    ["output-styles/terse.md", "# terse\n"],
-    ["monitors/monitors.json", "{}\n"],
-    ["themes/theme.json", "{}\n"],
-    ["channels/alerts.json", "{}\n"],
-    ["settings.json", "{}\n"],
-  ]) {
-    const destination = resolve(repositoryRoot, targetRoot, path);
-    mkdirSync(resolve(destination, ".."), { recursive: true });
-    writeFileSync(destination, contents);
-  }
-  refreshGeneratedDigests(repositoryRoot);
-
-  const errors = validateRepository({ repositoryRoot });
-  for (const field of [
-    "agents",
-    "hooks",
-    "lspServers",
-    "apps",
-    "outputStyles",
-    "channels",
-    "settings",
-    "experimental",
-  ]) {
-    assertHasError(errors, `openclaw host manifest must not declare ${field}`);
-  }
-  for (const path of [
-    "agents",
-    "hooks",
-    ".lsp.json",
-    ".app.json",
-    "output-styles",
-    "monitors",
-    "themes",
-    "channels",
-    "settings.json",
-  ]) {
-    assertHasError(errors, `openclaw target must not contain ${path}`);
-  }
-});
-
-test("OpenClaw rejects a reserved target root even when an executable disposition owns it", (context) => {
-  const repositoryRoot = validRepository(context, { includeOpenClaw: true });
-  const pluginRoot = resolve(repositoryRoot, "plugins/fixture");
-  const targetRoot = resolve(pluginRoot, "targets/openclaw");
-  const sourcePath = resolve(targetRoot, "bin/helper.sh");
-  const forbiddenPath = resolve(targetRoot, "hooks/helper.sh");
-  mkdirSync(resolve(forbiddenPath, ".."), { recursive: true });
-  renameSync(sourcePath, forbiddenPath);
-
-  const manifestPath = resolve(pluginRoot, ".agent-plugin/plugin.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  const executable = manifest.components.find(({ type }) => type === "executable");
-  executable.targets.openclaw.path = "targets/openclaw/hooks/helper.sh";
-  manifest.targets.openclaw.components[executable.id].path =
-    "targets/openclaw/hooks/helper.sh";
-  writeJson(manifestPath, manifest);
-
-  const lockPath = resolve(repositoryRoot, "registry/lock.json");
-  const lock = readJson(repositoryRoot, "registry/lock.json");
-  const lockedExecutable = lock.plugins.fixture.components.find(({ id }) => id === executable.id);
-  lockedExecutable.targets.openclaw.path = "targets/openclaw/hooks/helper.sh";
-  writeJson(lockPath, lock);
-  refreshGeneratedDigests(repositoryRoot);
-
-  assertHasError(
-    validateRepository({ repositoryRoot }),
-    "openclaw target must not contain hooks",
-  );
-});
 
 function readJson(repositoryRoot, relativePath) {
   return JSON.parse(readFileSync(resolve(repositoryRoot, relativePath), "utf8"));
