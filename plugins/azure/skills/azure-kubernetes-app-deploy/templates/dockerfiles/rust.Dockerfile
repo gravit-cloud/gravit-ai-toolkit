@@ -51,7 +51,7 @@ RUN test -f /app/target/release/app || (echo "ERROR: Binary 'app' not found at /
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime
 # ---------------------------------------------------------------------------
-FROM gcr.io/distroless/cc-debian12
+FROM gcr.io/distroless/cc-debian12@sha256:e5d81ddde149641e2a9ba55be4545bc125c67de07508b03ba4c22e6eb0ded5aa
 
 WORKDIR /app
 
