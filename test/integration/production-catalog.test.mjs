@@ -72,9 +72,9 @@ test("production catalog is neutral and fully pinned", () => {
     [
       "2.2.4-gravit.6",
       "1.0.1-gravit.3",
-      "1.1.0-gravit.3",
-      "1.2.9-gravit.3",
-      "6.2.0-gravit.4",
+      "1.2.3-gravit.1",
+      "1.2.30-gravit.1",
+      "6.3.0-gravit.1",
       "1.0.0-gravit.4",
     ],
   );
@@ -111,8 +111,8 @@ test("production catalog is neutral and fully pinned", () => {
         source: {
           type: "github",
           repo: "mattpocock/skills",
-          ref: "v1.1.0",
-          sha: "d574778f94cf620fcc8ce741584093bc650a61d3",
+          ref: "v1.2.3",
+          sha: "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
           root: ".",
         },
       },
@@ -121,8 +121,8 @@ test("production catalog is neutral and fully pinned", () => {
         source: {
           type: "github",
           repo: "microsoft/azure-skills",
-          ref: "v1.2.8",
-          sha: "1d88f75412afd408bc1d063a3acbe214d0d9fa0c",
+          ref: "v1.2.29",
+          sha: "16dc8c51ba7fda44c18781b5e4c0ca40a7a06a55",
           root: ".",
         },
       },
@@ -131,8 +131,8 @@ test("production catalog is neutral and fully pinned", () => {
         source: {
           type: "github",
           repo: "obra/superpowers",
-          ref: "v6.2.0",
-          sha: "3dcbd5c4b48e02263fbf4a3c01e3fe4f81d584d9",
+          ref: "v6.3.0",
+          sha: "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
           root: ".",
         },
       },

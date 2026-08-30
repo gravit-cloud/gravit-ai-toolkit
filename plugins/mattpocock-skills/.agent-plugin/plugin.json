@@ -1,7 +1,7 @@
 {
   "components": [
     {
-      "digest": "7f02140bf4ab46026aaacff98c754249158aabe26f95b2c69dcc0a85bb508d00",
+      "digest": "aef5d01c0f24f371b7616351916a39ae8d55a585683b054163b89457dcf7077f",
       "id": "ask-matt",
       "path": "components/skills/ask-matt",
       "targets": {
@@ -19,7 +19,7 @@
       "type": "skill"
     },
     {
-      "digest": "b204f2007642bfebdb9f1665e6fa5651cd86c27123e02ff967ae1b83b7d74a5d",
+      "digest": "e079c2cdb57e5342e3b4efecf13e3058fce56711fcf9a392d529de0da28c5cc3",
       "id": "code-review",
       "path": "components/skills/code-review",
       "targets": {
@@ -37,7 +37,7 @@
       "type": "skill"
     },
     {
-      "digest": "74fb578f5fea2650d84368c3fba95c093872efa857fb22dcf53b50f72cd50556",
+      "digest": "3734b9a4b324571c9f3a379c04cc2f950727c7a351abc22b921036f497363ed3",
       "id": "codebase-design",
       "path": "components/skills/codebase-design",
       "targets": {
@@ -55,7 +55,7 @@
       "type": "skill"
     },
     {
-      "digest": "7a1156b55bfc39286487f4328c6c4b5574c7b3514eba957a7eb8cbf45ea9b49c",
+      "digest": "b5601e4ac601f990feffac2594471c63f37c3f40080bc0e15744176bf4e39cdb",
       "id": "diagnosing-bugs",
       "path": "components/skills/diagnosing-bugs",
       "targets": {
@@ -73,7 +73,7 @@
       "type": "skill"
     },
     {
-      "digest": "6bbbc1b86c2352b4a2b89e883fb5a2c899e71aa7a8bb4255939cef8725c18c39",
+      "digest": "0b535cb108febce88b7918b6b663a48240a3454036d4476c47d8135a0863e50a",
       "id": "domain-modeling",
       "path": "components/skills/domain-modeling",
       "targets": {
@@ -91,7 +91,7 @@
       "type": "skill"
     },
     {
-      "digest": "5b13d06e10096218f51e70176181a89d749a6271fa180df9d826a8f04c654ea9",
+      "digest": "348edf245c8bb5f21ff697049c4dd3a5f06dc8b2a4b4e7d5fa5cdcc219c684f4",
       "id": "grill-me",
       "path": "components/skills/grill-me",
       "targets": {
@@ -109,7 +109,7 @@
       "type": "skill"
     },
     {
-      "digest": "0490640f602b640eed65602b972dcbcfaf4acd8f3d3be8010cf506b20bd31354",
+      "digest": "9e8e5d62e5cdb9d35a4a7ed9871ac32b6508e075d58f24d847acb335d6865d5f",
       "id": "grill-with-docs",
       "path": "components/skills/grill-with-docs",
       "targets": {
@@ -127,7 +127,7 @@
       "type": "skill"
     },
     {
-      "digest": "147ee454c629d3ecf7c4d7cb97e8512ce3201276d6e5c1029cfb06c70abe89ff",
+      "digest": "641aecf056438a6c2ed5ce9594dc950779de111f137bf1cdc9a2cbf8e4ea1940",
       "id": "grilling",
       "path": "components/skills/grilling",
       "targets": {
@@ -145,7 +145,7 @@
       "type": "skill"
     },
     {
-      "digest": "bb7be5da7594bad996c0122535c411e5eb11929f130929a44057820eea7713ee",
+      "digest": "1205d688a2dcb61b28ae7c4acd8071bdb764badd94883ff1dab7a986ed302b83",
       "id": "handoff",
       "path": "components/skills/handoff",
       "targets": {
@@ -163,7 +163,7 @@
       "type": "skill"
     },
     {
-      "digest": "d730d59074d9e41a6de505fc4461b5bf22de5eb0fd353abe02c8207147af275c",
+      "digest": "3965a624cd9c6e0b418213d253beabed0a2e6a70d8737e9d506ba0591092b51b",
       "id": "implement",
       "path": "components/skills/implement",
       "targets": {
@@ -181,7 +181,7 @@
       "type": "skill"
     },
     {
-      "digest": "47a27472194379bf65c08f773a5c987a7e368af098b0c8ec898ed44324ccc45d",
+      "digest": "c6e70900b66792d8a2efa01b32d80ffea53e882aa9a8294c3e4ccceb93bd4199",
       "id": "improve-codebase-architecture",
       "path": "components/skills/improve-codebase-architecture",
       "targets": {
@@ -199,7 +199,7 @@
       "type": "skill"
     },
     {
-      "digest": "13d1a3bf9f0fd519f7af5959f53c0a27e0655fdb348db1f9e53150aa4ec95157",
+      "digest": "1d7d2cc1f6488117985abc0ca7349967a9a6066ee8ffade535f17d3c1b7591f3",
       "id": "research",
       "path": "components/skills/research",
       "targets": {
@@ -217,7 +217,25 @@
       "type": "skill"
     },
     {
-      "digest": "908ad83549de493ab1c519f308e7c0f43c8f387bcfe070e9e7b6e4abc84cb7cd",
+      "digest": "847e4ad1a85b76d2d33ae6a89b52d40786b6fdae8d46ca381632f15a90cb70be",
+      "id": "resolving-merge-conflicts",
+      "path": "components/skills/resolving-merge-conflicts",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/resolving-merge-conflicts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/resolving-merge-conflicts",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "bdeb21fdd2d5c9f35e524de2d8499fe57bf677f1fe9375699edae25d39838bee",
       "id": "setup-matt-pocock-skills",
       "path": "components/skills/setup-matt-pocock-skills",
       "targets": {
@@ -235,7 +253,7 @@
       "type": "skill"
     },
     {
-      "digest": "f135c4197f61600bdfdfbb6fa59253ceb4febaa9dd2af4687ac0b5318a9d5c71",
+      "digest": "3ff75b7304dc9915357f4d5c7d76362b626aac04691e80d15af8db7d23bf356c",
       "id": "skill-prototype-0f41e60c5628",
       "path": "components/skills/prototype",
       "targets": {
@@ -253,7 +271,7 @@
       "type": "skill"
     },
     {
-      "digest": "0c0cf8ac1250cee667df5ef88485873614dde75c636e27096c84572392f99579",
+      "digest": "cc85c4e0436639735897efa3a20381ff7ec48f54dcbb74d2e7eb75d271ef04fb",
       "id": "tdd",
       "path": "components/skills/tdd",
       "targets": {
@@ -271,7 +289,7 @@
       "type": "skill"
     },
     {
-      "digest": "b7c348d5bf5b4ab05e747e206db369419c82b8bf20184787e7fd66cc982fd605",
+      "digest": "2b0bca0da88dda6d6007cda2639c5f24864fa29fb5d511e0552d4dbf0c7dfd9d",
       "id": "teach",
       "path": "components/skills/teach",
       "targets": {
@@ -289,7 +307,25 @@
       "type": "skill"
     },
     {
-      "digest": "26bb38b0b95cb03e325670d2e02a3010cba8f2734aa8a6b5dcc7ecbb865f6b48",
+      "digest": "c0de8bccad08d1c8d34751e61ad33f3f045e3824272d75a6b388235787f85433",
+      "id": "to-questionnaire",
+      "path": "components/skills/to-questionnaire",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/to-questionnaire",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/to-questionnaire",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "1b3071da7d4719c29976d77d6d2617a84fe1efd0d07c4933b1143396ac8271ef",
       "id": "to-spec",
       "path": "components/skills/to-spec",
       "targets": {
@@ -307,7 +343,7 @@
       "type": "skill"
     },
     {
-      "digest": "0bb8da7f0a372838c723d635c8efb7bbc27a9e1d1ca37f6baf0b07b5442efdb2",
+      "digest": "4f7a4acbe576b26747f3161e93487934471e93fdc21f5561f50f412dc30653b5",
       "id": "to-tickets",
       "path": "components/skills/to-tickets",
       "targets": {
@@ -325,7 +361,7 @@
       "type": "skill"
     },
     {
-      "digest": "981c63686b07e6a1464d71c980541895cc96687b198ad7806eb4590afee2931b",
+      "digest": "9140d69af390ab4f30dcbea2d5a16a16654793576dbf46078308f65b58f21275",
       "id": "triage",
       "path": "components/skills/triage",
       "targets": {
@@ -343,7 +379,25 @@
       "type": "skill"
     },
     {
-      "digest": "11a5cef13e4465442f5f2d1b8d68d078533da5758c6224d3a91c836132c4020b",
+      "digest": "d8dd73506efc8f162fcde1b4fe2c51db83fe5afda269375b4054c5b5951e1218",
+      "id": "wait-what",
+      "path": "components/skills/wait-what",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/wait-what",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/wait-what",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "8395b3d09e2bb76fa4c2e3d75786cfa125903428850d89c85c6b5858f3554ee7",
       "id": "wayfinder",
       "path": "components/skills/wayfinder",
       "targets": {
@@ -361,17 +415,35 @@
       "type": "skill"
     },
     {
-      "digest": "f712ec55df5e4ca4183f1811afd96566575d494d817b7e8f7dfdb4787726a2dd",
-      "id": "writing-great-skills",
-      "path": "components/skills/writing-great-skills",
+      "digest": "2d629aeb4b135f8a4ec70f61a04512a577bc35ffb6c4316eb5758faf60c0ddd6",
+      "id": "wizard",
+      "path": "components/skills/wizard",
       "targets": {
         "claude": {
-          "path": "targets/claude/skills/writing-great-skills",
+          "path": "targets/claude/skills/wizard",
           "reasonCode": "native-component",
           "status": "preserved"
         },
         "codex": {
-          "path": "targets/codex/skills/writing-great-skills",
+          "path": "targets/codex/skills/wizard",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "d0158033e57150508c7aae5934f69d1a1a5c8011ca93298f32a741b60fa34fbc",
+      "id": "writing-for-agents",
+      "path": "components/skills/writing-for-agents",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/writing-for-agents",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/writing-for-agents",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -379,7 +451,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.1.0-gravit.3",
+  "distributionVersion": "1.2.3-gravit.1",
   "name": "mattpocock-skills",
   "schemaVersion": 1,
   "targets": {
@@ -445,6 +517,11 @@
           "reasonCode": "native-component",
           "status": "preserved"
         },
+        "resolving-merge-conflicts": {
+          "path": "targets/claude/skills/resolving-merge-conflicts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
         "setup-matt-pocock-skills": {
           "path": "targets/claude/skills/setup-matt-pocock-skills",
           "reasonCode": "native-component",
@@ -465,6 +542,11 @@
           "reasonCode": "native-component",
           "status": "preserved"
         },
+        "to-questionnaire": {
+          "path": "targets/claude/skills/to-questionnaire",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
         "to-spec": {
           "path": "targets/claude/skills/to-spec",
           "reasonCode": "native-component",
@@ -480,18 +562,28 @@
           "reasonCode": "native-component",
           "status": "preserved"
         },
+        "wait-what": {
+          "path": "targets/claude/skills/wait-what",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
         "wayfinder": {
           "path": "targets/claude/skills/wayfinder",
           "reasonCode": "native-component",
           "status": "preserved"
         },
-        "writing-great-skills": {
-          "path": "targets/claude/skills/writing-great-skills",
+        "wizard": {
+          "path": "targets/claude/skills/wizard",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "writing-for-agents": {
+          "path": "targets/claude/skills/writing-for-agents",
           "reasonCode": "native-component",
           "status": "preserved"
         }
       },
-      "digest": "abd0684c91557131864cd8e3ec01064589285857e71c919762b2fbd0b4a8d370",
+      "digest": "196ce0f0cccde2c3226a20d4e4c7f6107c61eaeef1b49e5e603a3e59956a493f",
       "path": "targets/claude"
     },
     "codex": {
@@ -556,6 +648,11 @@
           "reasonCode": "target-translation",
           "status": "transformed"
         },
+        "resolving-merge-conflicts": {
+          "path": "targets/codex/skills/resolving-merge-conflicts",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
         "setup-matt-pocock-skills": {
           "path": "targets/codex/skills/setup-matt-pocock-skills",
           "reasonCode": "target-translation",
@@ -576,6 +673,11 @@
           "reasonCode": "target-translation",
           "status": "transformed"
         },
+        "to-questionnaire": {
+          "path": "targets/codex/skills/to-questionnaire",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
         "to-spec": {
           "path": "targets/codex/skills/to-spec",
           "reasonCode": "target-translation",
@@ -591,18 +693,28 @@
           "reasonCode": "target-translation",
           "status": "transformed"
         },
+        "wait-what": {
+          "path": "targets/codex/skills/wait-what",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
         "wayfinder": {
           "path": "targets/codex/skills/wayfinder",
           "reasonCode": "target-translation",
           "status": "transformed"
         },
-        "writing-great-skills": {
-          "path": "targets/codex/skills/writing-great-skills",
+        "wizard": {
+          "path": "targets/codex/skills/wizard",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "writing-for-agents": {
+          "path": "targets/codex/skills/writing-for-agents",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
       },
-      "digest": "1d6d45d4856ffcd21f2729e0d388d620b02363834ac291ef0e4e6c10df532cd3",
+      "digest": "9cd887231b76955e9ed367bfe3d3a112dfb5727632fd8b50550fa5eacb758c2a",
       "path": "targets/codex"
     }
   }

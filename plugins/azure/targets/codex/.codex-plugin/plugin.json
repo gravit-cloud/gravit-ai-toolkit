@@ -18,5 +18,5 @@
   "mcpServers": "./.mcp.json",
   "name": "azure",
   "skills": "./skills/",
-  "version": "1.2.9-gravit.3"
+  "version": "1.2.30-gravit.1"
 }

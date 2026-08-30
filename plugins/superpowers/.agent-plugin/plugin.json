@@ -19,7 +19,7 @@
       "type": "asset"
     },
     {
-      "digest": "a84290da09d640ccabc4ae7c3512d2b7296adde611616b0fd78981042a8b3621",
+      "digest": "bf93daff18c9fdce1f7b1d4eea02d9c26d637b4a7b1fd8dc4d80540857aa9f2b",
       "id": "brainstorming",
       "path": "components/skills/brainstorming",
       "targets": {
@@ -73,7 +73,7 @@
       "type": "skill"
     },
     {
-      "digest": "3416d195649f49e068ad8aadc5c084726200cd02e85df24c99980cd8070dfdac",
+      "digest": "addffe21c64918eda1925f02022774c3e1df7db5377be75c291802227768c5cf",
       "id": "finishing-a-development-branch",
       "path": "components/skills/finishing-a-development-branch",
       "targets": {
@@ -127,7 +127,7 @@
       "type": "skill"
     },
     {
-      "digest": "e9e90d94114058973f437cce681a6d88f05350a05b3cfc2fb26af504ea5bef08",
+      "digest": "dfcaf5ce3111cb2f3aeee4c63fa0461909dc8e40f040c6730aab8fc809743185",
       "id": "requesting-code-review",
       "path": "components/skills/requesting-code-review",
       "targets": {
@@ -145,7 +145,7 @@
       "type": "skill"
     },
     {
-      "digest": "e56516824cec9a4bcf075c9ce526627603f4ec2d5cc7eeb68b350743d5a3ec81",
+      "digest": "775335b7814783ffbfca03f4d2b04988382608a58d921224eddfbcb85a6adafd",
       "id": "subagent-driven-development",
       "path": "components/skills/subagent-driven-development",
       "targets": {
@@ -217,7 +217,7 @@
       "type": "skill"
     },
     {
-      "digest": "aa0fa978be4266c64ec0b77ba619f6a6e1b08202a6ee83f8ebbd28cb552e8b8f",
+      "digest": "59c69bb541e463270c195b6893c83f46589bf93230479d1b690951a4a7a781d0",
       "id": "using-superpowers",
       "path": "components/skills/using-superpowers",
       "targets": {
@@ -253,7 +253,7 @@
       "type": "skill"
     },
     {
-      "digest": "768eb0e203d59bf0cf13046dde95f4e6ca8e8eb691154b8c58b6c39ebc1bcd9d",
+      "digest": "5278aeb1c2d64615025615e525000ba16cd2775f9e81f448b61fa4217ec8628c",
       "id": "writing-plans",
       "path": "components/skills/writing-plans",
       "targets": {
@@ -271,7 +271,7 @@
       "type": "skill"
     },
     {
-      "digest": "863ebad0428c85aa94e3a2c5b305faa8a2935073ee0afb6c6118a52e1f521797",
+      "digest": "ba725e9c1fc6cebc12990e37a89f17a2e85e72cf193650dd0f98271477feaba8",
       "id": "writing-skills",
       "path": "components/skills/writing-skills",
       "targets": {
@@ -289,7 +289,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "6.2.0-gravit.4",
+  "distributionVersion": "6.3.0-gravit.1",
   "name": "superpowers",
   "schemaVersion": 1,
   "targets": {
@@ -376,7 +376,7 @@
           "status": "preserved"
         }
       },
-      "digest": "c5fadbbd2622b6b238d3036d0ddac1b859a5c78c5ef70c1a4cad178e6303a066",
+      "digest": "f3c76cf00065a90867ddeb2618d6028dfb885a2d8c3dcbf054451386e0a966a4",
       "path": "targets/claude"
     },
     "codex": {
@@ -462,7 +462,7 @@
           "status": "transformed"
         }
       },
-      "digest": "2939ebbc765c3740ed147c29aa5d664789492d5d944180b040564b0392ce8aca",
+      "digest": "976a1433a54d198e4f527766d3a6ae20e2bc2bc666d3332cb143479dbecdeb3f",
       "path": "targets/codex"
     }
   }

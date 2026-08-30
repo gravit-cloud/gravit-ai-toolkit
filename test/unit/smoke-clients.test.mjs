@@ -41,6 +41,7 @@ const EXPECTED_AZURE_SKILLS = [
   "azure-diagnostics",
   "azure-enterprise-infra-planner",
   "azure-kubernetes",
+  "azure-kubernetes-app-deploy",
   "azure-kubernetes-automatic-readiness",
   "azure-kusto",
   "azure-messaging",
@@ -144,7 +145,7 @@ function successfulResult(spec, repositoryRoot) {
     }]),
     "claude-plugin-components": [
       `azure ${FIXTURE_AZURE_VERSION}`,
-      `  Skills (34)  ${EXPECTED_AZURE_SKILLS.join(", ")}`,
+      `  Skills (${EXPECTED_AZURE_SKILLS.length})  ${EXPECTED_AZURE_SKILLS.join(", ")}`,
       "  MCP servers (1)  azure  (tool schemas resolved at runtime; not counted)",
       "",
     ].join("\n"),

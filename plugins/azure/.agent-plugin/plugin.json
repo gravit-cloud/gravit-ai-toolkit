@@ -91,7 +91,7 @@
       "type": "skill"
     },
     {
-      "digest": "509372233fa1c153025171cc1a4b2943a7e1b159eaeef8c4d1e71e731cde8a11",
+      "digest": "1ef6af67cd3841df90a73ea9d74a6ab4ab71c88c6fbd9b9d1351c18adea86b6f",
       "id": "azure-app-onboard",
       "path": "components/skills/azure-app-onboard",
       "targets": {
@@ -217,7 +217,7 @@
       "type": "skill"
     },
     {
-      "digest": "a890eec07036d2e1e4d83739ec8e16dd7e69b9ca155db8b456f421ca26970e51",
+      "digest": "81c3492bc94a87362d7e3a7e5c4b1b5b316db9558e21e8160403706fbe675a33",
       "id": "azure-diagnostics",
       "path": "components/skills/azure-diagnostics",
       "targets": {
@@ -253,7 +253,7 @@
       "type": "skill"
     },
     {
-      "digest": "409b16d1b54ca401005f1f6bcb13386ef3ac4f05f8d4269423db5caffbfbd787",
+      "digest": "3f4e2895d2f8336145cdc4c1e263b20037d5cf81eef46de91151ba1996254a35",
       "id": "azure-kubernetes",
       "path": "components/skills/azure-kubernetes",
       "targets": {
@@ -264,6 +264,24 @@
         },
         "codex": {
           "path": "targets/codex/skills/azure-kubernetes",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "40126f63ebcf8c502535e3064d1ea8f89efa6ebecc39b0fffa6bf8ea0b7e5bb7",
+      "id": "azure-kubernetes-app-deploy",
+      "path": "components/skills/azure-kubernetes-app-deploy",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/azure-kubernetes-app-deploy",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/azure-kubernetes-app-deploy",
           "reasonCode": "target-translation",
           "status": "transformed"
         }
@@ -451,7 +469,7 @@
       "type": "skill"
     },
     {
-      "digest": "f95b7d51c04c454f00d6eaf5bb70b075261c7d6cfbef352cfc5941c95dfd63a0",
+      "digest": "87189cbb982bdfd159cf0f8b1c909053a56fce365b5c9eb55f57cd6d24b44fc1",
       "id": "azure-validate",
       "path": "components/skills/azure-validate",
       "targets": {
@@ -469,7 +487,7 @@
       "type": "skill"
     },
     {
-      "digest": "c4e63a27e2688966a5f4e4fd693e7b37d6d8e6ce177026e91d8e05b685a26492",
+      "digest": "7a665e4e8ca4d2a45e78b8076c3d42bb43199dabdd64ad98a2d45e8d145958ca",
       "id": "capacity",
       "path": "components/skills/capacity",
       "targets": {
@@ -487,7 +505,7 @@
       "type": "skill"
     },
     {
-      "digest": "c6a6493bfe195919f9fe9d807841b57f7d99865062fb050fa579330f3065e40f",
+      "digest": "739a57583d33d475db586073da6cffb210dd3deb27dbcf6576e7815ffc23b9f7",
       "id": "customize",
       "path": "components/skills/customize",
       "targets": {
@@ -505,7 +523,7 @@
       "type": "skill"
     },
     {
-      "digest": "755dc1e31c8b701f5f46a9b7360c8e5318a688e7a35554cdb5851d09215643e4",
+      "digest": "376800ec41f37a5675806a65beb929f5210d57316d86fd8897fb021599bfcfda",
       "id": "deploy-model",
       "path": "components/skills/deploy-model",
       "targets": {
@@ -559,7 +577,7 @@
       "type": "skill"
     },
     {
-      "digest": "0ac85c701719c2c744c16103cc522535646e1791f63d817c030f128e6daa77f8",
+      "digest": "48726746e6f00a0f21e99638f77f8fa2e7cf77d37d7c1747b83ee9e02936f464",
       "id": "executable-3cfb0a3c9667",
       "path": "components/executable/executable-3cfb0a3c9667",
       "targets": {
@@ -577,7 +595,7 @@
       "type": "executable"
     },
     {
-      "digest": "f75385c54fa29799311abf9229c1f5188ff1106bfda6097fd6e837fedd8bd137",
+      "digest": "ce0e1aaf37e4be809e96704e1155d8c095509cc188bb32055882354633247138",
       "id": "finetuning",
       "path": "components/skills/finetuning",
       "targets": {
@@ -631,7 +649,7 @@
       "type": "mcp"
     },
     {
-      "digest": "72b602fd70ae132e10052aad87d0e142485b0ebfce0b87b3c5596dcdb2076ace",
+      "digest": "ad8621bb9aeb69b23644794e9a6ab4f9a24a33367d59f4f9a8e5a48fd9739f45",
       "id": "microsoft-foundry",
       "path": "components/skills/microsoft-foundry",
       "targets": {
@@ -649,7 +667,7 @@
       "type": "skill"
     },
     {
-      "digest": "70902ea7ad654134ed9f12840fb726adc6077a456c9a5c02541b3b77f4d9d8a9",
+      "digest": "f697b2fb2c037d0c0bc0d8960ed38e17a8f66d96fc3ffe07fdd4ce317287895e",
       "id": "preset",
       "path": "components/skills/preset",
       "targets": {
@@ -685,7 +703,7 @@
       "type": "skill"
     }
   ],
-  "distributionVersion": "1.2.9-gravit.3",
+  "distributionVersion": "1.2.30-gravit.1",
   "name": "azure",
   "schemaVersion": 1,
   "targets": {
@@ -763,6 +781,11 @@
         },
         "azure-kubernetes": {
           "path": "targets/claude/skills/azure-kubernetes",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "azure-kubernetes-app-deploy": {
+          "path": "targets/claude/skills/azure-kubernetes-app-deploy",
           "reasonCode": "native-component",
           "status": "preserved"
         },
@@ -882,7 +905,7 @@
           "status": "preserved"
         }
       },
-      "digest": "28c0705c4b9c754cb375c7c17fab6efb0570456c6ae4c51dcfdbc0a1539344d5",
+      "digest": "302c28de048501c77558c455e861c5df86134444647892e0a8351da314532df9",
       "path": "targets/claude"
     },
     "codex": {
@@ -959,6 +982,11 @@
         },
         "azure-kubernetes": {
           "path": "targets/codex/skills/azure-kubernetes",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "azure-kubernetes-app-deploy": {
+          "path": "targets/codex/skills/azure-kubernetes-app-deploy",
           "reasonCode": "target-translation",
           "status": "transformed"
         },
@@ -1078,7 +1106,7 @@
           "status": "transformed"
         }
       },
-      "digest": "37c83f9f963a8a06ad2ab12b1315e487f5005096e0ccdf2e6b2ebd27532c7d74",
+      "digest": "977066aa4b19eb4795faab1f4d8514ea9901dff996e299feaa33c7ce75aee920",
       "path": "targets/codex"
     }
   }

@@ -22,6 +22,7 @@ const EXPECTED_AZURE_SKILLS = [
   "azure-diagnostics",
   "azure-enterprise-infra-planner",
   "azure-kubernetes",
+  "azure-kubernetes-app-deploy",
   "azure-kubernetes-automatic-readiness",
   "azure-kusto",
   "azure-messaging",
@@ -90,7 +91,7 @@ test("Azure Codex bundle contains pinned MCP and unique skills", () => {
   }
 });
 
-test("Azure target projections preserve exact runtime links and 34 unique public skills", () => {
+test("Azure target projections preserve exact runtime links and 35 unique public skills", () => {
   const root = resolve(repositoryRoot, "plugins/azure");
   for (const target of ["claude", "codex"]) {
     const targetRoot = resolve(root, `targets/${target}`);

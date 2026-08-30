@@ -34,6 +34,7 @@ const EXPECTED_AZURE_SKILLS = Object.freeze([
   "azure-diagnostics",
   "azure-enterprise-infra-planner",
   "azure-kubernetes",
+  "azure-kubernetes-app-deploy",
   "azure-kubernetes-automatic-readiness",
   "azure-kusto",
   "azure-messaging",
@@ -225,7 +226,11 @@ function validateClaudeComponents(stdout, expectedVersion) {
   if (!new RegExp(`^azure ${expectedVersion.replaceAll(".", "\\.")}$`, "mu").test(stdout)) {
     throw new Error("claude-plugin-components returned the wrong Azure version");
   }
-  const skills = /^\s*Skills \(34\)\s{2}(.+)$/mu.exec(stdout)?.[1]?.split(", ");
+  const skillsPattern = new RegExp(
+    `^\\s*Skills \\(${EXPECTED_AZURE_SKILLS.length}\\)\\s{2}(.+)$`,
+    "mu",
+  );
+  const skills = skillsPattern.exec(stdout)?.[1]?.split(", ");
   if (JSON.stringify(skills) !== JSON.stringify(EXPECTED_AZURE_SKILLS)) {
     throw new Error("claude-plugin-components did not recognize all Azure skills");
   }
