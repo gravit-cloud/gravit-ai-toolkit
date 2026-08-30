@@ -36,28 +36,31 @@ function claimStage(stage) {
   }
   try {
     const stats = fstatSync(descriptor);
-    return { device: stats.dev, inode: stats.ino };
-  } finally {
-    closeSync(descriptor);
-  }
-}
-
-function stageIdentity(stage) {
-  try {
-    const stats = lstatSync(stage);
-    return { device: stats.dev, inode: stats.ino };
+    return { descriptor, device: stats.dev, inode: stats.ino };
   } catch (error) {
-    if (error.code === "ENOENT") return undefined;
+    closeSync(descriptor);
     throw error;
   }
 }
 
-function sameStage(left, right) {
-  return Boolean(
-    left
-    && right
-    && left.device === right.device
-    && left.inode === right.inode,
+function sameStage(stage, claim) {
+  let bound;
+  try {
+    bound = lstatSync(stage);
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+  const opened = fstatSync(claim.descriptor);
+  return (
+    opened.isFile()
+    && opened.nlink === 1
+    && bound.isFile()
+    && !bound.isSymbolicLink()
+    && opened.dev === claim.device
+    && opened.ino === claim.inode
+    && bound.dev === claim.device
+    && bound.ino === claim.inode
   );
 }
 
@@ -139,33 +142,37 @@ export function stageSource({
 
   mkdirSync(destinationRoot, { recursive: true });
   const claim = claimStage(stage);
-  const workspace = mkdtempSync(resolve(destinationRoot, "." + plugin.name + ".source-"));
-  const sourceStage = resolve(workspace, "repository");
   try {
-    populateStage(sourceStage);
-    if (!sameStage(stageIdentity(stage), claim)) {
-      throw new Error("plugin staging destination ownership changed: " + stage);
+    const workspace = mkdtempSync(resolve(destinationRoot, "." + plugin.name + ".source-"));
+    const sourceStage = resolve(workspace, "repository");
+    try {
+      populateStage(sourceStage);
+      if (!sameStage(stage, claim)) {
+        throw new Error("plugin staging destination ownership changed: " + stage);
+      }
+      const safeStage = assertRealInside(
+        workspace,
+        sourceStage,
+        "plugin staging destination",
+      );
+      const configuredRoot = assertInside(
+        sourceStage,
+        resolve(sourceStage, plugin.source.root || "."),
+        "plugin source root",
+      );
+      const safeRoot = assertRealInside(
+        safeStage,
+        configuredRoot,
+        "plugin source root",
+      );
+      if (!statSync(safeRoot).isDirectory()) {
+        throw new Error("plugin source root must be a directory: " + configuredRoot);
+      }
+      return safeRoot;
+    } catch (error) {
+      throw withRecoveryPath(error, workspace);
     }
-    const safeStage = assertRealInside(
-      workspace,
-      sourceStage,
-      "plugin staging destination",
-    );
-    const configuredRoot = assertInside(
-      sourceStage,
-      resolve(sourceStage, plugin.source.root || "."),
-      "plugin source root",
-    );
-    const safeRoot = assertRealInside(
-      safeStage,
-      configuredRoot,
-      "plugin source root",
-    );
-    if (!statSync(safeRoot).isDirectory()) {
-      throw new Error("plugin source root must be a directory: " + configuredRoot);
-    }
-    return safeRoot;
-  } catch (error) {
-    throw withRecoveryPath(error, workspace);
+  } finally {
+    closeSync(claim.descriptor);
   }
 }

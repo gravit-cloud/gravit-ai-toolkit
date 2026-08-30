@@ -83,11 +83,15 @@ function assertManagedArtifact(path, relativePath, label) {
 }
 
 function permissionMode(stats) {
-  return stats.mode & 0o7777;
+  return typeof stats.mode === "bigint"
+    ? Number(stats.mode & 0o7777n)
+    : stats.mode & 0o7777;
 }
 
 function sameStatIdentity(left, right) {
-  return left.dev === right.dev && left.ino === right.ino;
+  return left.dev === right.dev
+    && left.ino === right.ino
+    && left.birthtimeNs === right.birthtimeNs;
 }
 
 function deterministicArtifactSnapshot(entries) {
@@ -110,7 +114,7 @@ function claimArtifact(path, label) {
   const entries = [];
 
   function visit(currentPath, relativePath) {
-    const before = lstatSync(currentPath);
+    const before = lstatSync(currentPath, { bigint: true });
     if (before.isSymbolicLink()) {
       throw new Error(
         "symbolic links are not allowed in " + label + ": " + currentPath,
@@ -120,12 +124,13 @@ function claimArtifact(path, label) {
     const common = {
       relativePath,
       mode: permissionMode(before),
-      device: before.dev,
-      inode: before.ino,
+      device: Number(before.dev),
+      inode: Number(before.ino),
+      birthTimeNs: String(before.birthtimeNs),
     };
     if (before.isFile()) {
       const digest = sha256(readFileSync(currentPath));
-      const after = lstatSync(currentPath);
+      const after = lstatSync(currentPath, { bigint: true });
       if (
         !after.isFile()
         || after.isSymbolicLink()
@@ -149,7 +154,7 @@ function claimArtifact(path, label) {
       visit(resolve(currentPath, name), childRelative);
     }
     const afterNames = readdirSync(currentPath).sort(compareCodePoints);
-    const after = lstatSync(currentPath);
+    const after = lstatSync(currentPath, { bigint: true });
     if (
       !after.isDirectory()
       || after.isSymbolicLink()
@@ -241,13 +246,13 @@ function validateArtifactClaim(claim, expectedRootType, label) {
     if (entry?.type === "file") {
       assertExactPlainDataObject(
         entry,
-        ["relativePath", "type", "mode", "device", "inode", "digest"],
+        ["relativePath", "type", "mode", "device", "inode", "birthTimeNs", "digest"],
         entryLabel,
       );
     } else {
       assertExactPlainDataObject(
         entry,
-        ["relativePath", "type", "mode", "device", "inode"],
+        ["relativePath", "type", "mode", "device", "inode", "birthTimeNs"],
         entryLabel,
       );
     }
@@ -268,6 +273,9 @@ function validateArtifactClaim(claim, expectedRootType, label) {
     assertClaimInteger(entry.mode, entryLabel + " mode", 0o7777);
     assertClaimInteger(entry.device, entryLabel + " device");
     assertClaimInteger(entry.inode, entryLabel + " inode");
+    if (typeof entry.birthTimeNs !== "string" || !/^(?:0|[1-9]\d*)$/.test(entry.birthTimeNs)) {
+      throw new Error(entryLabel + " has an invalid birth time");
+    }
     if (entry.type === "file" && !/^[a-f0-9]{64}$/.test(entry.digest)) {
       throw new Error(entryLabel + " has an invalid file digest");
     }
@@ -319,7 +327,8 @@ function assertArtifactClaim(path, expected, label) {
       return entry.relativePath !== expectedEntry.relativePath
         || entry.type !== expectedEntry.type
         || entry.device !== expectedEntry.device
-        || entry.inode !== expectedEntry.inode;
+        || entry.inode !== expectedEntry.inode
+        || entry.birthTimeNs !== expectedEntry.birthTimeNs;
     })
   ) {
     throw new Error(label + " ownership changed: " + path);
@@ -331,7 +340,7 @@ function assertArtifactClaim(path, expected, label) {
 }
 
 function assertClaimedEntry(path, expected, label) {
-  const stats = lstatSync(path);
+  const stats = lstatSync(path, { bigint: true });
   const actualType = stats.isSymbolicLink()
     ? "symbolic-link"
     : stats.isFile()
@@ -341,8 +350,9 @@ function assertClaimedEntry(path, expected, label) {
         : "unsupported";
   if (
     actualType !== expected.type
-    || stats.dev !== expected.device
-    || stats.ino !== expected.inode
+    || Number(stats.dev) !== expected.device
+    || Number(stats.ino) !== expected.inode
+    || String(stats.birthtimeNs) !== expected.birthTimeNs
     || permissionMode(stats) !== expected.mode
   ) {
     throw new Error(label + " ownership or metadata changed: " + path);
