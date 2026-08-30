@@ -1,0 +1,721 @@
+{
+  "components": [
+    {
+      "digest": "aef5d01c0f24f371b7616351916a39ae8d55a585683b054163b89457dcf7077f",
+      "id": "ask-matt",
+      "path": "components/skills/ask-matt",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/ask-matt",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/ask-matt",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "e079c2cdb57e5342e3b4efecf13e3058fce56711fcf9a392d529de0da28c5cc3",
+      "id": "code-review",
+      "path": "components/skills/code-review",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/code-review",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/code-review",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "3734b9a4b324571c9f3a379c04cc2f950727c7a351abc22b921036f497363ed3",
+      "id": "codebase-design",
+      "path": "components/skills/codebase-design",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/codebase-design",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/codebase-design",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "b5601e4ac601f990feffac2594471c63f37c3f40080bc0e15744176bf4e39cdb",
+      "id": "diagnosing-bugs",
+      "path": "components/skills/diagnosing-bugs",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/diagnosing-bugs",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/diagnosing-bugs",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "0b535cb108febce88b7918b6b663a48240a3454036d4476c47d8135a0863e50a",
+      "id": "domain-modeling",
+      "path": "components/skills/domain-modeling",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/domain-modeling",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/domain-modeling",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "348edf245c8bb5f21ff697049c4dd3a5f06dc8b2a4b4e7d5fa5cdcc219c684f4",
+      "id": "grill-me",
+      "path": "components/skills/grill-me",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/grill-me",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/grill-me",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "9e8e5d62e5cdb9d35a4a7ed9871ac32b6508e075d58f24d847acb335d6865d5f",
+      "id": "grill-with-docs",
+      "path": "components/skills/grill-with-docs",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/grill-with-docs",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/grill-with-docs",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "641aecf056438a6c2ed5ce9594dc950779de111f137bf1cdc9a2cbf8e4ea1940",
+      "id": "grilling",
+      "path": "components/skills/grilling",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/grilling",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/grilling",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "1205d688a2dcb61b28ae7c4acd8071bdb764badd94883ff1dab7a986ed302b83",
+      "id": "handoff",
+      "path": "components/skills/handoff",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/handoff",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/handoff",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "3965a624cd9c6e0b418213d253beabed0a2e6a70d8737e9d506ba0591092b51b",
+      "id": "implement",
+      "path": "components/skills/implement",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/implement",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/implement",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "c6e70900b66792d8a2efa01b32d80ffea53e882aa9a8294c3e4ccceb93bd4199",
+      "id": "improve-codebase-architecture",
+      "path": "components/skills/improve-codebase-architecture",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/improve-codebase-architecture",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/improve-codebase-architecture",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "1d7d2cc1f6488117985abc0ca7349967a9a6066ee8ffade535f17d3c1b7591f3",
+      "id": "research",
+      "path": "components/skills/research",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/research",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/research",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "847e4ad1a85b76d2d33ae6a89b52d40786b6fdae8d46ca381632f15a90cb70be",
+      "id": "resolving-merge-conflicts",
+      "path": "components/skills/resolving-merge-conflicts",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/resolving-merge-conflicts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/resolving-merge-conflicts",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "bdeb21fdd2d5c9f35e524de2d8499fe57bf677f1fe9375699edae25d39838bee",
+      "id": "setup-matt-pocock-skills",
+      "path": "components/skills/setup-matt-pocock-skills",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/setup-matt-pocock-skills",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/setup-matt-pocock-skills",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "3ff75b7304dc9915357f4d5c7d76362b626aac04691e80d15af8db7d23bf356c",
+      "id": "skill-prototype-0f41e60c5628",
+      "path": "components/skills/prototype",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/prototype",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/prototype",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "cc85c4e0436639735897efa3a20381ff7ec48f54dcbb74d2e7eb75d271ef04fb",
+      "id": "tdd",
+      "path": "components/skills/tdd",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/tdd",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/tdd",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "2b0bca0da88dda6d6007cda2639c5f24864fa29fb5d511e0552d4dbf0c7dfd9d",
+      "id": "teach",
+      "path": "components/skills/teach",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/teach",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/teach",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "c0de8bccad08d1c8d34751e61ad33f3f045e3824272d75a6b388235787f85433",
+      "id": "to-questionnaire",
+      "path": "components/skills/to-questionnaire",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/to-questionnaire",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/to-questionnaire",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "1b3071da7d4719c29976d77d6d2617a84fe1efd0d07c4933b1143396ac8271ef",
+      "id": "to-spec",
+      "path": "components/skills/to-spec",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/to-spec",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/to-spec",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "4f7a4acbe576b26747f3161e93487934471e93fdc21f5561f50f412dc30653b5",
+      "id": "to-tickets",
+      "path": "components/skills/to-tickets",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/to-tickets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/to-tickets",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "9140d69af390ab4f30dcbea2d5a16a16654793576dbf46078308f65b58f21275",
+      "id": "triage",
+      "path": "components/skills/triage",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/triage",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/triage",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "d8dd73506efc8f162fcde1b4fe2c51db83fe5afda269375b4054c5b5951e1218",
+      "id": "wait-what",
+      "path": "components/skills/wait-what",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/wait-what",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/wait-what",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "8395b3d09e2bb76fa4c2e3d75786cfa125903428850d89c85c6b5858f3554ee7",
+      "id": "wayfinder",
+      "path": "components/skills/wayfinder",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/wayfinder",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/wayfinder",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "2d629aeb4b135f8a4ec70f61a04512a577bc35ffb6c4316eb5758faf60c0ddd6",
+      "id": "wizard",
+      "path": "components/skills/wizard",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/wizard",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/wizard",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "d0158033e57150508c7aae5934f69d1a1a5c8011ca93298f32a741b60fa34fbc",
+      "id": "writing-for-agents",
+      "path": "components/skills/writing-for-agents",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/writing-for-agents",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/writing-for-agents",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    }
+  ],
+  "distributionVersion": "1.2.3-gravit.1",
+  "name": "mattpocock-skills",
+  "schemaVersion": 1,
+  "targets": {
+    "claude": {
+      "components": {
+        "ask-matt": {
+          "path": "targets/claude/skills/ask-matt",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "code-review": {
+          "path": "targets/claude/skills/code-review",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codebase-design": {
+          "path": "targets/claude/skills/codebase-design",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "diagnosing-bugs": {
+          "path": "targets/claude/skills/diagnosing-bugs",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "domain-modeling": {
+          "path": "targets/claude/skills/domain-modeling",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "grill-me": {
+          "path": "targets/claude/skills/grill-me",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "grill-with-docs": {
+          "path": "targets/claude/skills/grill-with-docs",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "grilling": {
+          "path": "targets/claude/skills/grilling",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "handoff": {
+          "path": "targets/claude/skills/handoff",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "implement": {
+          "path": "targets/claude/skills/implement",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "improve-codebase-architecture": {
+          "path": "targets/claude/skills/improve-codebase-architecture",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "research": {
+          "path": "targets/claude/skills/research",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "resolving-merge-conflicts": {
+          "path": "targets/claude/skills/resolving-merge-conflicts",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "setup-matt-pocock-skills": {
+          "path": "targets/claude/skills/setup-matt-pocock-skills",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "skill-prototype-0f41e60c5628": {
+          "path": "targets/claude/skills/prototype",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "tdd": {
+          "path": "targets/claude/skills/tdd",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "teach": {
+          "path": "targets/claude/skills/teach",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "to-questionnaire": {
+          "path": "targets/claude/skills/to-questionnaire",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "to-spec": {
+          "path": "targets/claude/skills/to-spec",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "to-tickets": {
+          "path": "targets/claude/skills/to-tickets",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "triage": {
+          "path": "targets/claude/skills/triage",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "wait-what": {
+          "path": "targets/claude/skills/wait-what",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "wayfinder": {
+          "path": "targets/claude/skills/wayfinder",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "wizard": {
+          "path": "targets/claude/skills/wizard",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "writing-for-agents": {
+          "path": "targets/claude/skills/writing-for-agents",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "digest": "196ce0f0cccde2c3226a20d4e4c7f6107c61eaeef1b49e5e603a3e59956a493f",
+      "path": "targets/claude"
+    },
+    "codex": {
+      "components": {
+        "ask-matt": {
+          "path": "targets/codex/skills/ask-matt",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "code-review": {
+          "path": "targets/codex/skills/code-review",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "codebase-design": {
+          "path": "targets/codex/skills/codebase-design",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "diagnosing-bugs": {
+          "path": "targets/codex/skills/diagnosing-bugs",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "domain-modeling": {
+          "path": "targets/codex/skills/domain-modeling",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "grill-me": {
+          "path": "targets/codex/skills/grill-me",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "grill-with-docs": {
+          "path": "targets/codex/skills/grill-with-docs",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "grilling": {
+          "path": "targets/codex/skills/grilling",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "handoff": {
+          "path": "targets/codex/skills/handoff",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "implement": {
+          "path": "targets/codex/skills/implement",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "improve-codebase-architecture": {
+          "path": "targets/codex/skills/improve-codebase-architecture",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "research": {
+          "path": "targets/codex/skills/research",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "resolving-merge-conflicts": {
+          "path": "targets/codex/skills/resolving-merge-conflicts",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "setup-matt-pocock-skills": {
+          "path": "targets/codex/skills/setup-matt-pocock-skills",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "skill-prototype-0f41e60c5628": {
+          "path": "targets/codex/skills/prototype",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "tdd": {
+          "path": "targets/codex/skills/tdd",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "teach": {
+          "path": "targets/codex/skills/teach",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "to-questionnaire": {
+          "path": "targets/codex/skills/to-questionnaire",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "to-spec": {
+          "path": "targets/codex/skills/to-spec",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "to-tickets": {
+          "path": "targets/codex/skills/to-tickets",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "triage": {
+          "path": "targets/codex/skills/triage",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "wait-what": {
+          "path": "targets/codex/skills/wait-what",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "wayfinder": {
+          "path": "targets/codex/skills/wayfinder",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "wizard": {
+          "path": "targets/codex/skills/wizard",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "writing-for-agents": {
+          "path": "targets/codex/skills/writing-for-agents",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "digest": "9cd887231b76955e9ed367bfe3d3a112dfb5727632fd8b50550fa5eacb758c2a",
+      "path": "targets/codex"
+    }
+  }
+}

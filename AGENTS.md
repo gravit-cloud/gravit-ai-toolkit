@@ -2,12 +2,12 @@
 
 **gravit-ai-toolkit** ist ein kuratierter Plugin-Marketplace der Gravit Cloud Organisation für Claude Code und Codex.
 
-- `.claude-plugin/marketplace.json` ist die einzige manuell gepflegte Quelle der Wahrheit für Plugin-Auswahl, Versionen und SHA-Pins.
-- `.agents/plugins/marketplace.json` ist der daraus generierte native Codex-Marketplace.
-- Verlinkte Codex-Plugins unter `plugins/<name>/` werden aus den Claude-Pins generiert.
-- `plugins/gravit-custom/` ist ein gemeinsam gepflegtes Dual-Plugin mit Claude- und Codex-Manifest und sieben Gravit-eigenen Skills.
+- `registry/catalog.json` ist die einzige manuell gepflegte Quelle für Plugin-Auswahl, Distribution-Versionen, Quell-Pins, Ressourcen und Ziel-Policies.
+- `sources/` enthält lokal gepflegte Plugin-Quellen, darunter `sources/gravit-custom/`.
+- Alle Verzeichnisse unter `plugins/`, `.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json` und `registry/lock.json` werden gemeinsam generiert.
+- Generierte Plugin-Interna nie von Hand bearbeiten. Nach Änderungen an Katalog oder lokalen Quellen `npm run plugins:sync` ausführen und alle verwalteten Ausgaben zusammen committen.
 
-Nach Änderungen am Claude-Katalog oder an `gravit-custom` immer `npm run plugins:sync` ausführen und `.agents/` sowie `plugins/` gemeinsam committen. Generierte verlinkte Plugin-Verzeichnisse nicht von Hand bearbeiten.
+Vor dem Commit immer `npm test && npm run validate` ausführen.
 
 ---
 
@@ -15,61 +15,63 @@ Nach Änderungen am Claude-Katalog oder an `gravit-custom` immer `npm run plugin
 
 ```
 .claude-plugin/
-  marketplace.json         # Quelle der Wahrheit: 5 verlinkte Plugins + gravit-custom
+  marketplace.json         # generierter Claude-Marketplace
 .agents/plugins/
-  marketplace.json         # nativer Codex-Katalog (generiert)
+  marketplace.json         # generierter Codex-Marketplace
+registry/
+  catalog.json             # einzige gepflegte Katalog- und Pin-Quelle
+  lock.json                # generierte Provenienz, Digests und Dispositionen
+  schemas/                 # neutrale Registry-Schemas
+sources/
+  gravit-custom/           # lokal gepflegte Dual-Plugin-Quelle
 plugins/
-  <linked-plugin>/         # native Codex-Plugins (generiert)
-    .codex-plugin/plugin.json
-    skills/<name>/SKILL.md
-  gravit-custom/           # lokales Dual-Plugin
-    .claude-plugin/plugin.json
-    .codex-plugin/plugin.json
-    skills/<name>/SKILL.md # sieben Gravit-eigene Skills
+  <plugin>/                # vollständig generiertes neutrales Bundle
+    .agent-plugin/plugin.json
+    components/            # neutrale Komponenten
+    targets/claude/        # Claude-Projektion
+    targets/codex/         # Codex-Projektion
 scripts/
-  sync-plugins.mjs         # Claude-Katalog → Codex-Katalog und Plugins
-  validate.mjs             # gemeinsame Struktur- und Metadatenprüfung
-build.sh                   # baut dist/*.zip für gravit-custom (Claude Desktop + Releases)
-package.json               # Build-/Release-Tooling für gravit-custom
+  sync-plugins.mjs         # gesamtes Registry-Modell generieren
+  validate.mjs             # Offline-Validierung aller Artefakte
+  build-registry.mjs       # atomarer Registry-Builder
+build.sh                   # baut Release-Archive
+package.json               # Build-, Test- und Release-Tooling
 AGENTS.md                  # Diese Datei
 CLAUDE.md                  # @AGENTS.md (Referenz für Claude Code)
 README.md
 LICENSE
 ```
 
----
+### Plugin hinzufügen oder Quell-Pin ändern
 
-## Enthaltene Plugins
-
-| Plugin | Typ | Quelle | Pin |
-|---|---|---|---|
-| `claude-seo` | verlinkt | `AgricIDaniel/claude-seo` | `v2.2.0` + SHA |
-| `obsidian` | verlinkt | `kepano/obsidian-skills` | `main` + SHA |
-| `mattpocock-skills` | verlinkt | `mattpocock/skills` | `v1.1.0` + SHA |
-| `azure` | verlinkt | `microsoft/azure-skills` | `v1.1.91` + SHA |
-| `superpowers` | verlinkt | `obra/superpowers` | `v6.1.1` + SHA |
-| `gravit-custom` | lokal | `./plugins/gravit-custom` | `v1.0.0` |
-
-### Verlinktes Plugin hinzufügen / Version ändern
-
-Neuer Eintrag im `plugins`-Array von `.claude-plugin/marketplace.json`:
+Neuer Eintrag im `plugins`-Array von `registry/catalog.json`:
 
 ```json
 {
   "name": "mein-plugin",
   "description": "Kurzbeschreibung",
-  "source": { "source": "github", "repo": "owner/repo", "ref": "v1.0.0", "sha": "<40-stelliger-commit>" }
+  "category": "development",
+  "distributionVersion": "1.0.0-gravit.1",
+  "source": {
+    "type": "github",
+    "repo": "owner/repo",
+    "ref": "v1.0.0",
+    "sha": "<40-stelliger-commit>",
+    "root": "."
+  },
+  "targets": ["claude", "codex"],
+  "policies": { "default": "transform-or-fail", "skills": "transform" }
 }
 ```
 
 - `ref` = lesbarer Branch/Tag für Review und Renovate.
 - `sha` = verpflichtender, exakter 40-stelliger Commit-Pin für Installation und Sync.
-- Monorepo: `{ "source": "git-subdir", "url": "…", "path": "pfad/zum/plugin" }`.
-- Voraussetzung: Ziel-Repo ist ein Claude-Code-Plugin (`.claude-plugin/plugin.json` und/oder `skills/` im Repo-Root).
+- `root` = optionaler Plugin-Unterpfad innerhalb des gepinnten Repositories.
+- Nicht aus dem Upstream-Manifest ableitbare Laufzeitressourcen müssen explizit über `resources` katalogisiert werden.
 
 ### Skill zu `gravit-custom` hinzufügen
 
-1. `plugins/gravit-custom/skills/<name>/SKILL.md` anlegen:
+1. `sources/gravit-custom/skills/<name>/SKILL.md` anlegen:
 
 ```yaml
 ---
@@ -87,8 +89,8 @@ metadata:
 ```
 
 2. Für Releases `npm run version:set -- <version>` verwenden; das aktualisiert Paket- und Pluginversion gemeinsam.
-3. `npm run plugins:sync` ausführen, damit das Codex-Manifest konsistent bleibt.
-4. `bash build.sh` erkennt Skills automatisch und baut die versionierten Archive.
+3. `npm run plugins:sync` ausführen, damit neutrale Bundles und beide Zielprojektionen konsistent bleiben.
+4. `bash build.sh` verifiziert die committed Registry und baut genau ein versioniertes universelles Archiv je Katalog-Plugin. Einzelne Skill-ZIPs werden nicht mehr erzeugt.
 
 ---
 
@@ -131,10 +133,51 @@ Alternativ Plugins in der Codex-App über `/plugins` auswählen.
 ```bash
 npm ci
 npm run plugins:sync
+npm test
 npm run validate
 ```
 
-Der Sync verarbeitet nur aktive, vom Upstream-Plugin deklarierte Skills, normalisiert sie auf `skills/<name>/SKILL.md` und erzeugt Codex-Manifeste. Claude-spezifische `disable-model-invocation: true`-Flags werden nur in generierten Codex-Kopien entfernt. MCP-gestützte Skills funktionieren in Codex nur vollständig, wenn der passende MCP-Server konfiguriert ist.
+Für Produktionsverbraucher ist die Registry-CLI die verifizierte Schnittstelle:
+
+```bash
+npm run registry -- list
+npm run registry -- inspect --plugin azure
+npm run registry -- verify --plugin azure
+```
+
+Materialisierungen sind write-once und müssen unter einem Pfad der Form
+`<shared-root>/<plugin>/<distributionVersion>/<registryRevision>/<target>`
+liegen. Der unmittelbare Parent existiert, das Ziel noch nicht. Ein gültiges
+`.gravit-plugin-receipt.json` schließt die Materialisierung ab; unvollständige
+Ausgaben ohne gültiges Receipt bleiben als Recovery-Signal erhalten. Nur ein
+Deployment-Controller darf nach Receipt- und Digest-Prüfung seinen eigenen
+`current`-Pointer umschalten. Der Registry-Materializer löscht, ersetzt oder
+aktiviert keinen Consumer-Zustand.
+
+Der Sync inventarisiert die vom Upstream deklarierten Komponenten, baut ein neutrales Bundle und erzeugt daraus Claude- und Codex-Projektionen. Claude-spezifische `disable-model-invocation: true`-Flags werden nur in generierten Codex-Skills entfernt. Unterstützte MCP-Definitionen werden in die jeweilige Zielprojektion eingebettet und aus dem Host-Manifest referenziert; Laufzeitpakete müssen im Katalog exakt gepinnt sein.
+
+Die Codex-Projektion belegt nur die erzeugte Dateistruktur und ihre internen Referenzen. Sie garantiert weder, dass `bin/` automatisch in `PATH` liegt, noch dass Claude-spezifische Upstream-Umgebungsvariablen durch Codex bereitgestellt werden. Hook-Konfigurationen und lokale Skripte werden statisch validiert, aber während Sync und Validierung nicht ausgeführt.
+
+### Universelle Release-Archive
+
+`npm run build` verifiziert die committed Registry und erzeugt write-once genau
+ein deterministisches `dist/<plugin>-v<distributionVersion>.zip` je
+Katalog-Plugin. Jedes Archiv enthält unter genau einem Plugin-Root das
+universelle Bundle, alle Zielprojektionen, `LICENSE` und ein Receipt mit Ziel
+`universal`. Dieses Ziel gilt nur im Receipt-Schema; Materialisierung unterstützt
+weiterhin ausschließlich `claude` und `codex`.
+
+Vorhandene Archive oder Output-Bäume nie löschen, ersetzen oder bereinigen.
+Für Wiederholungs- oder Determinismusprüfungen zwei frische `DIST_DIR`-Roots
+verwenden. Private Release-Stages bleiben auf Erfolg und Fehler erhalten. ZIP
+und UnZIP werden ausschließlich über vertrauenswürdige absolute Systempfade,
+statische Argumentarrays und minimale Umgebungen aufgerufen; Bundle-Inhalte
+werden nie ausgeführt.
+
+Produktionsconsumer pinnen immer ein Release-Tag oder einen exakten Commit,
+niemals `main`. CI installiert mit `npm ci --ignore-scripts`, verwendet Node 24
+und pinnt Container/Actions unveränderlich. Shared-Volume-Consumer mounten nur
+eine vom Controller vollständig verifizierte Revision read-only.
 
 ---
 
@@ -240,7 +283,7 @@ In `.mcp.json` eintragen:
 
 ## Attribution
 
-Verlinkte Plugins werden aus ihren Original-Repos bezogen und behalten Lizenz und Autorenschaft. Die exakte Herkunft und Revision steht im Claude-Marketplace; die jeweilige Upstream-Lizenz wird in das generierte Codex-Plugin kopiert.
+Externe Plugins werden aus ihren Original-Repos bezogen und behalten Lizenz und Autorenschaft. Exakte Herkunft, Revision und Artefakt-Digests stehen in `registry/catalog.json` und der generierten `registry/lock.json`; die jeweilige Upstream-Lizenz liegt im Root des generierten Plugin-Bundles.
 
 | Quelle | Inhalt | Autor |
 |---|---|---|
@@ -250,7 +293,7 @@ Verlinkte Plugins werden aus ihren Original-Repos bezogen und behalten Lizenz un
 | [`microsoft/azure-skills`](https://github.com/microsoft/azure-skills) | Azure-Skills + MCP | Microsoft |
 | [`obra/superpowers`](https://github.com/obra/superpowers) | Entwicklungs-Workflows und Skills | Jesse Vincent |
 
-Die `MIT`-Lizenz dieses Repos bezieht sich auf die Kuratierung, Doku, Build-Skripte und lokal gepflegte Skills unter `plugins/gravit-custom/skills/`. Verlinkte Plugins unterliegen ihren jeweiligen Upstream-Lizenzen unter `plugins/<name>/LICENSE`.
+Die `MIT`-Lizenz dieses Repos bezieht sich auf die Kuratierung, Doku, Build-Skripte und lokal gepflegte Quellen unter `sources/gravit-custom/`. Externe Plugins unterliegen ihren jeweiligen Upstream-Lizenzen unter `plugins/<name>/LICENSE`.
 
 ---
 

@@ -1,0 +1,370 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { validateVersionHistory } from "../../scripts/lib/validator.mjs";
+import {
+  parseCompareLockJson,
+  parseValidateArguments,
+} from "../../scripts/validate.mjs";
+
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const validateScript = resolve(repositoryRoot, "scripts/validate.mjs");
+
+function lockWith(distributionVersion, bundleDigest) {
+  return {
+    plugins: {
+      azure: { distributionVersion, bundleDigest },
+    },
+  };
+}
+
+test("rejects reuse of one distribution version for another digest", () => {
+  const baseLock = lockWith("1.2.5-gravit.4", "a".repeat(64));
+  const currentLock = lockWith("1.2.5-gravit.4", "b".repeat(64));
+
+  assert.deepEqual(validateVersionHistory({ currentLock, baseLock }), [
+    "azure: bundle changed without distributionVersion bump",
+  ]);
+});
+
+test("allows unchanged identities and version-only corrections", () => {
+  const digestA = "a".repeat(64);
+  const digestB = "b".repeat(64);
+
+  assert.deepEqual(validateVersionHistory({
+    baseLock: lockWith("9.0.0-gravit.8", digestA),
+    currentLock: lockWith("9.0.0-gravit.8", digestA),
+  }), []);
+  assert.deepEqual(validateVersionHistory({
+    baseLock: lockWith("9.0.0-gravit.8", digestA),
+    currentLock: lockWith("1.0.0-gravit.1", digestA),
+  }), []);
+});
+
+test("rejects a distribution version regression when bundle bytes change", () => {
+  assert.deepEqual(validateVersionHistory({
+    baseLock: lockWith("1.2.5-gravit.3", "a".repeat(64)),
+    currentLock: lockWith("1.2.5-gravit.2", "b".repeat(64)),
+  }), ["azure: bundle changed without distributionVersion bump"]);
+});
+
+test("allows new current plugins and removed base plugins", () => {
+  const currentOnly = lockWith("1.0.0-gravit.1", "a".repeat(64));
+  const baseOnly = lockWith("2.0.0-gravit.2", "b".repeat(64));
+
+  assert.deepEqual(validateVersionHistory({
+    currentLock: currentOnly,
+    baseLock: { plugins: {} },
+  }), []);
+  assert.deepEqual(validateVersionHistory({
+    currentLock: { plugins: {} },
+    baseLock: baseOnly,
+  }), []);
+});
+
+test("returns unique collisions sorted by registry plugin name", () => {
+  const baseLock = {
+    plugins: {
+      zeta: { distributionVersion: "2.0.0-gravit.3", bundleDigest: "a".repeat(64) },
+      alpha: { distributionVersion: "1.0.0-gravit.7", bundleDigest: "b".repeat(64) },
+    },
+  };
+  const currentLock = {
+    plugins: {
+      zeta: { distributionVersion: "2.0.0-gravit.3", bundleDigest: "c".repeat(64) },
+      alpha: { distributionVersion: "1.0.0-gravit.7", bundleDigest: "d".repeat(64) },
+    },
+  };
+
+  assert.deepEqual(validateVersionHistory({ currentLock, baseLock }), [
+    "alpha: bundle changed without distributionVersion bump",
+    "zeta: bundle changed without distributionVersion bump",
+  ]);
+});
+
+test("accepts null-prototype lock containers", () => {
+  const plugins = Object.create(null);
+  const entry = Object.create(null);
+  entry.distributionVersion = "1.0.0-gravit.1";
+  entry.bundleDigest = "a".repeat(64);
+  plugins.azure = entry;
+  const currentLock = Object.create(null);
+  currentLock.plugins = plugins;
+
+  assert.deepEqual(validateVersionHistory({
+    currentLock,
+    baseLock: { plugins: {} },
+  }), []);
+});
+
+test("rejects malformed lock containers without throwing incidental type errors", () => {
+  const valid = lockWith("1.0.0-gravit.1", "a".repeat(64));
+  const inheritedPlugins = Object.create({ plugins: {} });
+  const customPrototypePlugins = Object.create({ inherited: true });
+  const malformedInputs = [
+    { currentLock: null, baseLock: valid, fragment: "current lock must be a plain object" },
+    { currentLock: inheritedPlugins, baseLock: valid, fragment: "current lock must be a plain object" },
+    { currentLock: {}, baseLock: valid, fragment: "current lock requires own plugins" },
+    {
+      currentLock: { plugins: undefined },
+      baseLock: valid,
+      fragment: "current lock plugins must be a plain object",
+    },
+    {
+      currentLock: { plugins: customPrototypePlugins },
+      baseLock: valid,
+      fragment: "current lock plugins must be a plain object",
+    },
+    { currentLock: valid, baseLock: [], fragment: "base lock must be a plain object" },
+    { currentLock: valid, baseLock: {}, fragment: "base lock requires own plugins" },
+    {
+      currentLock: valid,
+      baseLock: { plugins: null },
+      fragment: "base lock plugins must be a plain object",
+    },
+  ];
+
+  for (const { currentLock, baseLock, fragment } of malformedInputs) {
+    const errors = validateVersionHistory({ currentLock, baseLock });
+    assert.equal(errors.some((error) => error.includes(fragment)), true, JSON.stringify(errors));
+  }
+});
+
+test("rejects unsafe names and malformed version entries on either side", () => {
+  const digest = "a".repeat(64);
+  const invalidEntries = [
+    { value: null, fragment: "must be a plain object" },
+    {
+      value: Object.create({ distributionVersion: "1.0.0-gravit.1", bundleDigest: digest }),
+      fragment: "must be a plain object",
+    },
+    { value: { bundleDigest: digest }, fragment: "requires own distributionVersion" },
+    {
+      value: { distributionVersion: undefined, bundleDigest: digest },
+      fragment: "distributionVersion must match X.Y.Z-gravit.N",
+    },
+    {
+      value: { distributionVersion: "1.0.0-gravit.1" },
+      fragment: "requires own bundleDigest",
+    },
+    {
+      value: { distributionVersion: "1.0.0", bundleDigest: digest },
+      fragment: "must match X.Y.Z-gravit.N",
+    },
+    {
+      value: { distributionVersion: "1.0.0-gravit.0", bundleDigest: digest },
+      fragment: "must match X.Y.Z-gravit.N",
+    },
+    {
+      value: { distributionVersion: "1.0.0-gravit.9007199254740992", bundleDigest: digest },
+      fragment: "must match X.Y.Z-gravit.N",
+    },
+    {
+      value: { distributionVersion: "9007199254740992.0.0-gravit.1", bundleDigest: digest },
+      fragment: "must match X.Y.Z-gravit.N",
+    },
+    {
+      value: { distributionVersion: "1.0.0-gravit.1", bundleDigest: "A".repeat(64) },
+      fragment: "must be a lowercase SHA-256 digest",
+    },
+  ];
+
+  for (const side of ["currentLock", "baseLock"]) {
+    for (const { value, fragment } of invalidEntries) {
+      const malformed = { plugins: { azure: value } };
+      const input = { currentLock: validLock(), baseLock: validLock(), [side]: malformed };
+      const errors = validateVersionHistory(input);
+      assert.equal(errors.some((error) => error.includes(fragment)), true, `${side}: ${errors}`);
+    }
+  }
+
+  for (const unsafeName of ["Azure", "two words", "constructor", "prototype"] ) {
+    const plugins = Object.create(null);
+    plugins[unsafeName] = {
+      distributionVersion: "1.0.0-gravit.1",
+      bundleDigest: digest,
+    };
+    const errors = validateVersionHistory({
+      currentLock: { plugins },
+      baseLock: { plugins: {} },
+    });
+    assert.equal(errors.some((error) => error.includes("invalid registry plugin name")), true);
+  }
+});
+
+test("rejects accessor, symbol, and non-enumerable plugin properties", () => {
+  const accessorLock = {};
+  Object.defineProperty(accessorLock, "plugins", {
+    enumerable: true,
+    get() {
+      throw new Error("must not execute");
+    },
+  });
+  const symbolPlugins = { [Symbol("hidden")]: validLock().plugins.azure };
+  const nonEnumerablePlugins = {};
+  Object.defineProperty(nonEnumerablePlugins, "azure", {
+    enumerable: false,
+    value: null,
+  });
+
+  assert.deepEqual(validateVersionHistory({
+    currentLock: accessorLock,
+    baseLock: validLock(),
+  }), ["current lock plugins must be an own data property"]);
+  assert.equal(validateVersionHistory({
+    currentLock: { plugins: symbolPlugins },
+    baseLock: validLock(),
+  }).some((error) => error.includes("invalid registry plugin name")), true);
+  assert.equal(validateVersionHistory({
+    currentLock: { plugins: nonEnumerablePlugins },
+    baseLock: validLock(),
+  }).some((error) => error.includes("current lock plugin azure must be a plain object")), true);
+});
+
+test("does not mutate frozen history inputs", () => {
+  const currentLock = lockWith("1.0.0-gravit.1", "a".repeat(64));
+  const baseLock = lockWith("1.0.0-gravit.1", "b".repeat(64));
+  Object.freeze(currentLock.plugins.azure);
+  Object.freeze(currentLock.plugins);
+  Object.freeze(currentLock);
+  Object.freeze(baseLock.plugins.azure);
+  Object.freeze(baseLock.plugins);
+  Object.freeze(baseLock);
+
+  assert.doesNotThrow(() => validateVersionHistory({ currentLock, baseLock }));
+  assert.equal(currentLock.plugins.azure.bundleDigest, "a".repeat(64));
+  assert.equal(baseLock.plugins.azure.bundleDigest, "b".repeat(64));
+});
+
+test("validate argument parser rejects unknown, repeated, missing, and extra arguments", () => {
+  const cases = [
+    ["--unknown", "/definitely/not/a/lock.json"],
+    ["--compare-lock"],
+    ["--compare-lock", "/not/read.json", "extra"],
+    ["--compare-lock", "/not/read.json", "--compare-lock", "/also-not-read.json"],
+  ];
+  for (const args of cases) {
+    assert.throws(
+      () => parseValidateArguments(args),
+      /usage: node scripts\/validate\.mjs \[--compare-lock <path>\]/,
+    );
+  }
+  assert.deepEqual(parseValidateArguments([]), {});
+  assert.deepEqual(parseValidateArguments(["--compare-lock", "base.json"]), {
+    comparePath: "base.json",
+  });
+});
+
+test("real validate CLI rejects arguments before reading their paths", () => {
+  const result = runValidate(["--unknown", "/definitely/not/a/lock.json"]);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  assert.match(result.stderr, /usage: node scripts\/validate\.mjs \[--compare-lock <path>\]/);
+  assert.doesNotMatch(result.stderr, /ENOENT|not\/a\/lock/);
+});
+
+test("compare-lock JSON feeds the pure identity collision boundary", () => {
+  const baseLock = JSON.parse(readFileSync(resolve(repositoryRoot, "registry/lock.json"), "utf8"));
+  const [name] = Object.keys(baseLock.plugins).sort();
+  baseLock.plugins[name].bundleDigest = baseLock.plugins[name].bundleDigest === "a".repeat(64)
+    ? "b".repeat(64)
+    : "a".repeat(64);
+  const currentLock = JSON.parse(readFileSync(resolve(repositoryRoot, "registry/lock.json"), "utf8"));
+
+  const errors = validateVersionHistory({
+    currentLock,
+    baseLock: parseCompareLockJson(JSON.stringify(baseLock)),
+  });
+
+  assert.match(
+    errors.join("\n"),
+    new RegExp(`${name}: bundle changed without distributionVersion bump`),
+  );
+});
+
+test("real validate CLI rejects a changed bundle with a regressed version", (context) => {
+  const baseLock = JSON.parse(readFileSync(resolve(repositoryRoot, "registry/lock.json"), "utf8"));
+  const [name] = Object.keys(baseLock.plugins).sort();
+  const current = baseLock.plugins[name];
+  const match = /^(\d+\.\d+\.\d+-gravit\.)(\d+)$/u.exec(current.distributionVersion);
+  assert.notEqual(match, null);
+  current.distributionVersion = match[1] + String(Number(match[2]) + 1);
+  current.bundleDigest = current.bundleDigest === "a".repeat(64)
+    ? "b".repeat(64)
+    : "a".repeat(64);
+  const root = temporaryDirectory(context);
+  const basePath = resolve(root, "base-lock.json");
+  writeFileSync(basePath, JSON.stringify(baseLock));
+
+  const result = runValidate(["--compare-lock", basePath]);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  assert.match(result.stderr, new RegExp(`${name}: bundle changed without distributionVersion bump`));
+});
+
+test("compare-lock parser treats input as bounded inert JSON and rejects invalid shapes", (context) => {
+  const temporaryRoot = temporaryDirectory(context);
+  const marker = resolve(temporaryRoot, "executed");
+  const malformed = `{${"x".repeat(10_000)}}; require("node:fs").writeFileSync(${JSON.stringify(marker)}, "bad")`;
+
+  assert.throws(
+    () => parseCompareLockJson(malformed),
+    /compare lock: invalid JSON/,
+  );
+  assert.equal(existsSync(marker), false);
+
+  const errors = validateVersionHistory({
+    currentLock: validLock(),
+    baseLock: parseCompareLockJson("{}\n"),
+  });
+  assert.equal(errors.some((error) => error.includes("base lock requires own plugins")), true);
+});
+
+test("validation workflow delegates merge-base extraction to the offline helper", () => {
+  const workflow = readFileSync(resolve(repositoryRoot, ".github/workflows/validate.yml"), "utf8");
+  const checkoutBlocks = workflow.split(/\n(?=\s*- uses: actions\/checkout@)/u).slice(1);
+
+  assert.equal(checkoutBlocks.length, 2);
+  assert.match(checkoutBlocks[0], /fetch-depth:\s*0/u);
+  assert.doesNotMatch(checkoutBlocks[1], /fetch-depth:/u);
+  assert.match(workflow, /name: Extract merge-base registry lock/u);
+  assert.match(workflow, /if: github\.event_name == 'pull_request'/u);
+  assert.match(workflow, /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/u);
+  assert.match(
+    workflow,
+    /run: node scripts\/extract-base-lock\.mjs --base-sha "\$BASE_SHA" --output "\$RUNNER_TEMP\/gravit-base-lock\.json"/u,
+  );
+  assert.match(
+    workflow,
+    /run: node scripts\/validate\.mjs --compare-lock "\$RUNNER_TEMP\/gravit-base-lock\.json"/u,
+  );
+  assert.doesNotMatch(workflow, /run: \|[\s\S]*?git (?:fetch|checkout|worktree|rev-parse|merge-base|ls-tree|cat-file)/u);
+});
+
+function validLock() {
+  return lockWith("1.0.0-gravit.1", "a".repeat(64));
+}
+
+function runValidate(args) {
+  return spawnSync(process.execPath, [validateScript, ...args], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    timeout: 30_000,
+  });
+}
+
+function temporaryDirectory(context) {
+  const root = mkdtempSync(resolve(tmpdir(), "registry-base-lock-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  return root;
+}

@@ -5,23 +5,54 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+      - name: Install pinned tooling
+        run: npm ci --ignore-scripts
+      - name: Extract merge-base registry lock
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/extract-base-lock.mjs --base-sha "$BASE_SHA" --output "$RUNNER_TEMP/gravit-base-lock.json"
+      - name: Validate version identity
+        if: github.event_name == 'pull_request'
+        run: node scripts/validate.mjs --compare-lock "$RUNNER_TEMP/gravit-base-lock.json"
+      - name: Run offline tests and registry validation
+        run: |
+          npm test
+          npm run validate
+          npm run registry:verify
+      - name: Verify deterministic generation
+        run: |
+          npm run plugins:sync
+          git diff --exit-code -- registry .claude-plugin .agents plugins
+      - name: Build release archives
+        run: npm run build
+
+  client-smoke:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
-      - name: Install pinned tooling
-        run: npm ci
-      - name: Validate repository metadata and native plugin manifests
-        run: npm run validate
-      - name: Validate Claude marketplace schema
-        run: npx --no-install @anthropic-ai/claude-code plugin validate .
-      - name: Rebuild native Codex plugins and verify they are committed
-        run: |
-          npm run plugins:sync
-          git diff --exit-code -- .agents plugins
-      - name: Build release archives
-        run: npm run build
+      - name: Install exact client CLIs without package lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Prepare the exact Claude native wrapper
+        run: node node_modules/@anthropic-ai/claude-code/install.cjs
+      - name: Smoke test supported clients against local bundles
+        run: npm run smoke:clients

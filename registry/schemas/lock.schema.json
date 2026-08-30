@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gravit.cloud/schemas/plugin-lock-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatorDigest", "plugins"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generatorDigest": { "$ref": "#/$defs/digest" },
+    "plugins": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/registryName" },
+      "additionalProperties": { "$ref": "#/$defs/plugin" }
+    }
+  },
+  "$defs": {
+    "registryName": {
+      "type": "string",
+      "allOf": [
+        { "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        { "not": { "enum": ["__proto__", "constructor", "prototype"] } }
+      ]
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*))(?:\\.(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*)))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "allOf": [
+        { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+        { "not": { "pattern": "\\\\" } },
+        { "not": { "pattern": "//|/$" } },
+        { "not": { "pattern": "(?:^|/)\\.\\.?(?:/|$)" } },
+        { "not": { "pattern": "[\\u0000-\\u001f]" } }
+      ]
+    },
+    "sourceRoot": {
+      "oneOf": [
+        { "const": "." },
+        { "$ref": "#/$defs/safePath" }
+      ]
+    },
+    "componentType": {
+      "enum": [
+        "skill",
+        "command",
+        "agent",
+        "hook",
+        "mcp",
+        "lsp",
+        "output-style",
+        "monitor",
+        "theme",
+        "channel",
+        "executable",
+        "settings",
+        "asset",
+        "app"
+      ]
+    },
+    "supportedDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reasonCode"],
+      "properties": {
+        "status": { "enum": ["preserved", "transformed"] },
+        "reasonCode": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "path": { "$ref": "#/$defs/safePath" }
+      }
+    },
+    "unavailableDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reasonCode"],
+      "properties": {
+        "status": { "enum": ["unsupported", "rejected"] },
+        "reasonCode": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+      }
+    },
+    "disposition": {
+      "oneOf": [
+        { "$ref": "#/$defs/supportedDisposition" },
+        { "$ref": "#/$defs/unavailableDisposition" }
+      ]
+    },
+    "hostDispositions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "claude": { "$ref": "#/$defs/disposition" },
+        "codex": { "$ref": "#/$defs/disposition" }
+      }
+    },
+    "localSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "const": "local" },
+        "path": { "$ref": "#/$defs/safePath" },
+        "root": { "$ref": "#/$defs/sourceRoot" }
+      }
+    },
+    "githubSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "repo", "ref", "sha"],
+      "properties": {
+        "type": { "const": "github" },
+        "repo": {
+          "type": "string",
+          "allOf": [
+            { "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+            { "not": { "pattern": "^(?:\\.\\.?)/|/\\.\\.?$" } }
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\u0000-\\u001f]+$"
+        },
+        "sha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "root": { "$ref": "#/$defs/sourceRoot" }
+      }
+    },
+    "source": {
+      "oneOf": [
+        { "$ref": "#/$defs/localSource" },
+        { "$ref": "#/$defs/githubSource" }
+      ]
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "digest", "targets"],
+      "properties": {
+        "id": { "$ref": "#/$defs/registryName" },
+        "type": { "$ref": "#/$defs/componentType" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "targets": { "$ref": "#/$defs/hostDispositions" }
+      }
+    },
+    "targetDigests": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "claude": { "$ref": "#/$defs/digest" },
+        "codex": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "distributionVersion",
+        "source",
+        "generatorDigest",
+        "bundleDigest",
+        "components",
+        "targets"
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/registryName" },
+        "distributionVersion": { "$ref": "#/$defs/semver" },
+        "source": { "$ref": "#/$defs/source" },
+        "generatorDigest": { "$ref": "#/$defs/digest" },
+        "bundleDigest": { "$ref": "#/$defs/digest" },
+        "components": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/component" }
+        },
+        "targets": { "$ref": "#/$defs/targetDigests" }
+      }
+    }
+  }
+}

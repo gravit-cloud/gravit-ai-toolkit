@@ -1,0 +1,29 @@
+{
+  "agents": [
+    "./agents/seo-backlinks.md",
+    "./agents/seo-cluster.md",
+    "./agents/seo-content.md",
+    "./agents/seo-dataforseo.md",
+    "./agents/seo-drift.md",
+    "./agents/seo-ecommerce.md",
+    "./agents/seo-flow.md",
+    "./agents/seo-geo.md",
+    "./agents/seo-google.md",
+    "./agents/seo-image-gen.md",
+    "./agents/seo-local.md",
+    "./agents/seo-maps.md",
+    "./agents/seo-performance.md",
+    "./agents/seo-schema.md",
+    "./agents/seo-sitemap.md",
+    "./agents/seo-sxo.md",
+    "./agents/seo-technical.md",
+    "./agents/seo-visual.md"
+  ],
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
+  "name": "claude-seo",
+  "skills": "./skills/",
+  "version": "2.2.4-gravit.6"
+}

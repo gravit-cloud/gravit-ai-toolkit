@@ -1,0 +1,250 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import Ajv from "ajv/dist/2020.js";
+import { buildPluginBundle } from "../../scripts/lib/bundle-builder.mjs";
+import { sha256, sourceContextHash, treeHash } from "../../scripts/lib/hash.mjs";
+import { assertRegistryName } from "../../scripts/lib/path-safety.mjs";
+import { createLockEntry } from "../../scripts/lib/provenance.mjs";
+import { validateRecursiveSkills } from "../../scripts/lib/validator.mjs";
+
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const completeFixture = resolve(repositoryRoot, "test/fixtures/complete-plugin");
+const allTypes = [
+  "agent",
+  "app",
+  "asset",
+  "channel",
+  "command",
+  "executable",
+  "hook",
+  "lsp",
+  "mcp",
+  "monitor",
+  "output-style",
+  "settings",
+  "skill",
+  "theme",
+];
+
+function completePlugin() {
+  return {
+    name: "complete",
+    description: "Complete component fixture",
+    category: "development",
+    distributionVersion: "1.0.0-gravit.1",
+    runtimeDependencies: { "@fixture/mcp": "1.2.3" },
+    source: {
+      type: "local",
+      path: "test/fixtures/complete-plugin",
+      root: ".",
+    },
+    sourceContext: ["README.md"].map((path) => ({
+      path,
+      digest: sourceContextHash(resolve(completeFixture, path)),
+    })),
+    targets: ["codex", "claude"],
+    policies: { default: "transform-or-fail", skills: "transform" },
+    targetPolicies: {
+      claude: { unsupported: { app: "host-does-not-load-apps" } },
+      codex: {
+        unsupported: {
+          agent: "host-does-not-load-agents",
+          lsp: "host-does-not-load-lsp",
+          "output-style": "host-does-not-load-output-styles",
+          monitor: "host-does-not-load-monitors",
+          theme: "host-does-not-load-themes",
+          channel: "host-does-not-load-channels",
+          settings: "host-does-not-load-settings",
+        },
+      },
+    },
+  };
+}
+
+function sandbox(context, prefix = "component-accounting-") {
+  const root = mkdtempSync(resolve(tmpdir(), prefix));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  return { root, bundleRoot: resolve(root, "bundle") };
+}
+
+function validateManifest(manifest) {
+  const schema = JSON.parse(readFileSync(
+    resolve(repositoryRoot, "registry/schemas/agent-plugin.schema.json"),
+    "utf8",
+  ));
+  const validate = new Ajv({ allErrors: true, strict: true }).compile(schema);
+  assert.equal(validate(manifest), true, JSON.stringify(validate.errors));
+}
+
+test("materializes every inventory component and accounts for it on every target", (context) => {
+  const { bundleRoot } = sandbox(context);
+  const plugin = completePlugin();
+  const before = structuredClone(plugin);
+
+  const manifest = buildPluginBundle({
+    plugin,
+    sourceRoot: completeFixture,
+    bundleRoot,
+  });
+
+  assert.deepEqual(plugin, before);
+  assert.deepEqual(
+    [...new Set(manifest.components.map(({ type }) => type))].sort(),
+    allTypes,
+  );
+  assert.equal(manifest.components.length, 14);
+  assert.deepEqual(
+    manifest.components.map(({ id }) => id),
+    [...manifest.components.map(({ id }) => id)].sort(),
+  );
+
+  const componentIds = manifest.components.map(({ id }) => id);
+  for (const component of manifest.components) {
+    const materialized = resolve(bundleRoot, component.path);
+    assert.equal(existsSync(materialized), true, component.type + ":" + component.id);
+    assert.equal(component.digest, treeHash(materialized));
+    assert.deepEqual(Object.keys(component.targets), ["claude", "codex"]);
+    assert.equal(JSON.stringify(component.targets).includes("renderAs"), false);
+    for (const target of ["claude", "codex"]) {
+      assert.deepEqual(
+        manifest.targets[target].components[component.id],
+        component.targets[target],
+      );
+      if (["unsupported", "rejected"].includes(component.targets[target].status)) {
+        assert.equal(Object.hasOwn(component.targets[target], "path"), false);
+      } else {
+        assert.equal(existsSync(resolve(bundleRoot, component.targets[target].path)), true);
+      }
+    }
+  }
+
+  assert.deepEqual(Object.keys(manifest.targets), ["claude", "codex"]);
+  for (const target of ["claude", "codex"]) {
+    const result = manifest.targets[target];
+    assert.equal(result.path, "targets/" + target);
+    assert.equal(result.digest, treeHash(resolve(bundleRoot, result.path)));
+    assert.deepEqual(Object.keys(result.components), componentIds);
+  }
+  validateManifest(manifest);
+
+  const lockEntry = createLockEntry({
+    plugin,
+    source: plugin.source,
+    bundleRoot,
+    components: manifest.components.map(({ id, type, digest }) => ({ id, type, digest })),
+    targets: manifest.targets,
+    generatorDigest: "d".repeat(64),
+  });
+  assert.deepEqual(lockEntry.targets, {
+    claude: manifest.targets.claude.digest,
+    codex: manifest.targets.codex.digest,
+  });
+  assert.equal(lockEntry.components.length, manifest.components.length);
+  assert.equal(lockEntry.bundleDigest, treeHash(bundleRoot));
+});
+
+test("keeps the public prototype skill name behind a safe component identity", (context) => {
+  const { root, bundleRoot } = sandbox(context, "prototype-skill-");
+  const sourceRoot = resolve(root, "source");
+  mkdirSync(resolve(sourceRoot, ".claude-plugin"), { recursive: true });
+  writeFileSync(
+    resolve(sourceRoot, ".claude-plugin/plugin.json"),
+    JSON.stringify({
+      name: "prototype-fixture",
+      version: "1.0.0",
+      skills: ["./skills/prototype"],
+    }),
+  );
+  mkdirSync(resolve(sourceRoot, "skills/prototype"), { recursive: true });
+  writeFileSync(
+    resolve(sourceRoot, "skills/prototype/SKILL.md"),
+    "---\nname: prototype\ndescription: Prototype safely\n---\n",
+  );
+  const plugin = {
+    name: "prototype-fixture",
+    description: "Prototype skill fixture",
+    category: "development",
+    distributionVersion: "1.0.0-gravit.1",
+    source: { type: "local", path: "test/fixtures/prototype", root: "." },
+    targets: ["claude", "codex"],
+    policies: { default: "transform-or-fail", skills: "transform" },
+  };
+
+  const manifest = buildPluginBundle({ plugin, sourceRoot, bundleRoot });
+  const skillComponents = manifest.components.filter(({ type }) => type === "skill");
+  assert.equal(skillComponents.length, 1);
+  const [{ id }] = skillComponents;
+  assert.notEqual(id, "prototype");
+  assert.match(id, /^skill-prototype-[a-f0-9]{12}$/);
+  assert.throws(() => assertRegistryName("prototype"), /prototype registry name/);
+
+  for (const target of ["claude", "codex"]) {
+    const targetRoot = resolve(bundleRoot, "targets", target);
+    const skillRoot = resolve(targetRoot, "skills");
+    assert.equal(existsSync(resolve(skillRoot, "prototype/SKILL.md")), true);
+    assert.deepEqual(validateRecursiveSkills(skillRoot, {
+      target,
+      projectionRoot: targetRoot,
+      allowedComponentRoots: manifest.components
+        .map((component) => component.targets[target])
+        .filter((disposition) => ["preserved", "transformed"].includes(
+          disposition.status,
+        ))
+        .map((disposition) => resolve(bundleRoot, disposition.path)),
+    }), []);
+    assert.equal(Object.hasOwn(manifest.targets[target].components, id), true);
+    assert.equal(Object.hasOwn(manifest.targets[target].components, "prototype"), false);
+  }
+});
+
+test("duplicate component IDs fail before a neutral manifest is exposed", (context) => {
+  const { root, bundleRoot } = sandbox(context, "component-duplicate-");
+  const sourceRoot = resolve(root, "source");
+  const duplicateId = "asset-" + sha256("assets").slice(0, 12);
+  mkdirSync(resolve(sourceRoot, ".claude-plugin"), { recursive: true });
+  mkdirSync(resolve(sourceRoot, "skills/duplicate"), { recursive: true });
+  mkdirSync(resolve(sourceRoot, "assets"), { recursive: true });
+  writeFileSync(
+    resolve(sourceRoot, ".claude-plugin/plugin.json"),
+    JSON.stringify({ name: "duplicate", version: "1.0.0" }),
+  );
+  writeFileSync(
+    resolve(sourceRoot, "skills/duplicate/SKILL.md"),
+    "---\nname: " + duplicateId + "\ndescription: Duplicate ID fixture\n---\n",
+  );
+  writeFileSync(resolve(sourceRoot, "assets/icon.svg"), "<svg/>\n");
+  const plugin = completePlugin();
+  delete plugin.sourceContext;
+  plugin.name = "duplicate";
+  plugin.targets = ["claude"];
+  plugin.targetPolicies = {};
+
+  assert.throws(
+    () => buildPluginBundle({ plugin, sourceRoot, bundleRoot }),
+    new RegExp("duplicate component id: " + duplicateId),
+  );
+  assert.equal(existsSync(resolve(bundleRoot, ".agent-plugin/plugin.json")), false);
+});
+
+test("an accounting failure leaves no neutral manifest", (context) => {
+  const { bundleRoot } = sandbox(context, "component-unaccounted-");
+  const plugin = completePlugin();
+  plugin.targetPolicies.codex.unsupported = {};
+
+  assert.throws(
+    () => buildPluginBundle({ plugin, sourceRoot: completeFixture, bundleRoot }),
+    /missing unsupported policy for codex agent/,
+  );
+  assert.equal(existsSync(resolve(bundleRoot, ".agent-plugin/plugin.json")), false);
+});

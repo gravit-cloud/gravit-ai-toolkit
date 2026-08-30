@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gravit.cloud/schemas/agent-plugin-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "name", "distributionVersion", "components", "targets"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "name": { "$ref": "#/$defs/registryName" },
+    "distributionVersion": { "$ref": "#/$defs/semver" },
+    "components": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/component" }
+    },
+    "targets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "claude": { "$ref": "#/$defs/target" },
+        "codex": { "$ref": "#/$defs/target" }
+      }
+    }
+  },
+  "$defs": {
+    "registryName": {
+      "type": "string",
+      "allOf": [
+        { "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        { "not": { "enum": ["__proto__", "constructor", "prototype"] } }
+      ]
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*))(?:\\.(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*)))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "allOf": [
+        { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+        { "not": { "pattern": "\\\\" } },
+        { "not": { "pattern": "//|/$" } },
+        { "not": { "pattern": "(?:^|/)\\.\\.?(?:/|$)" } },
+        { "not": { "pattern": "[\\u0000-\\u001f]" } }
+      ]
+    },
+    "componentType": {
+      "enum": [
+        "skill",
+        "command",
+        "agent",
+        "hook",
+        "mcp",
+        "lsp",
+        "output-style",
+        "monitor",
+        "theme",
+        "channel",
+        "executable",
+        "settings",
+        "asset",
+        "app"
+      ]
+    },
+    "supportedDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reasonCode"],
+      "properties": {
+        "status": { "enum": ["preserved", "transformed"] },
+        "reasonCode": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "path": { "$ref": "#/$defs/safePath" }
+      }
+    },
+    "unavailableDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reasonCode"],
+      "properties": {
+        "status": { "enum": ["unsupported", "rejected"] },
+        "reasonCode": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+      }
+    },
+    "disposition": {
+      "oneOf": [
+        { "$ref": "#/$defs/supportedDisposition" },
+        { "$ref": "#/$defs/unavailableDisposition" }
+      ]
+    },
+    "hostDispositions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "claude": { "$ref": "#/$defs/disposition" },
+        "codex": { "$ref": "#/$defs/disposition" }
+      }
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "path", "digest", "targets"],
+      "properties": {
+        "id": { "$ref": "#/$defs/registryName" },
+        "type": { "$ref": "#/$defs/componentType" },
+        "path": { "$ref": "#/$defs/safePath" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "targets": { "$ref": "#/$defs/hostDispositions" }
+      }
+    },
+    "componentDispositions": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/registryName" },
+      "additionalProperties": { "$ref": "#/$defs/disposition" }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest", "components"],
+      "properties": {
+        "path": { "$ref": "#/$defs/safePath" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "components": { "$ref": "#/$defs/componentDispositions" }
+      }
+    }
+  }
+}

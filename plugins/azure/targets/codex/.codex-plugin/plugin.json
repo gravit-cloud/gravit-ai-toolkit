@@ -1,0 +1,22 @@
+{
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "capabilities": [],
+    "category": "Cloud",
+    "defaultPrompt": [
+      "Use azure to help with this task."
+    ],
+    "developerName": "Gravit Cloud",
+    "displayName": "azure",
+    "longDescription": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
+    "shortDescription": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse."
+  },
+  "mcpServers": "./.mcp.json",
+  "name": "azure",
+  "skills": "./skills/",
+  "version": "1.2.30-gravit.1"
+}

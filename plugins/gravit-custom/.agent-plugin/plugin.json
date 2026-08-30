@@ -1,0 +1,217 @@
+{
+  "components": [
+    {
+      "digest": "7c51b29eaca5f86121a67ecd9b357fd496a31f6f3a497b87f09ec25e325f07cc",
+      "id": "claude-md-improver",
+      "path": "components/skills/claude-md-improver",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/claude-md-improver",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/claude-md-improver",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "255ea51c85de0172acf3eb95aa162d4be9ebc5e1fcecb0fdef18796cfaee577d",
+      "id": "context7-doc-validation",
+      "path": "components/skills/context7-doc-validation",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/context7-doc-validation",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/context7-doc-validation",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "2409a1aa8988692cde98cae7384738ead546ab3ac1876ab8408be585b1353f89",
+      "id": "deep-change-review",
+      "path": "components/skills/deep-change-review",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/deep-change-review",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/deep-change-review",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "cb469302255542066cdf053e26d24b5c7af2e1514d57c716bdf73b655aafe3ca",
+      "id": "excalidraw-diagram-generator",
+      "path": "components/skills/excalidraw-diagram-generator",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/excalidraw-diagram-generator",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/excalidraw-diagram-generator",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "2a80bddf930f200d08d98596cda44cf913508ecc0476da5f44a480348cb97148",
+      "id": "git-commit",
+      "path": "components/skills/git-commit",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/git-commit",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/git-commit",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "f68dd1bc4ca563d54f0b466c8893d087c9b7e50204061d69d5002a77d11b8246",
+      "id": "github-actions-templates",
+      "path": "components/skills/github-actions-templates",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/github-actions-templates",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/github-actions-templates",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "7262b44821473ec2f2b982d88a6dd77261ae61d9d4d4064651dcb7d221034e3e",
+      "id": "github-issues",
+      "path": "components/skills/github-issues",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/github-issues",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/github-issues",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    }
+  ],
+  "distributionVersion": "1.0.0-gravit.4",
+  "name": "gravit-custom",
+  "schemaVersion": 1,
+  "targets": {
+    "claude": {
+      "components": {
+        "claude-md-improver": {
+          "path": "targets/claude/skills/claude-md-improver",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "context7-doc-validation": {
+          "path": "targets/claude/skills/context7-doc-validation",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "deep-change-review": {
+          "path": "targets/claude/skills/deep-change-review",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "excalidraw-diagram-generator": {
+          "path": "targets/claude/skills/excalidraw-diagram-generator",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "git-commit": {
+          "path": "targets/claude/skills/git-commit",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "github-actions-templates": {
+          "path": "targets/claude/skills/github-actions-templates",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "github-issues": {
+          "path": "targets/claude/skills/github-issues",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "digest": "77ef13a0be17afd146102b3a217587afee855a392e07ab25295c8e281ab31e77",
+      "path": "targets/claude"
+    },
+    "codex": {
+      "components": {
+        "claude-md-improver": {
+          "path": "targets/codex/skills/claude-md-improver",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "context7-doc-validation": {
+          "path": "targets/codex/skills/context7-doc-validation",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "deep-change-review": {
+          "path": "targets/codex/skills/deep-change-review",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "excalidraw-diagram-generator": {
+          "path": "targets/codex/skills/excalidraw-diagram-generator",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "git-commit": {
+          "path": "targets/codex/skills/git-commit",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "github-actions-templates": {
+          "path": "targets/codex/skills/github-actions-templates",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "github-issues": {
+          "path": "targets/codex/skills/github-issues",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "digest": "1a735219d640e9eb1854066ef4cab44a8e417575a31e841ca0d988062c85cf7b",
+      "path": "targets/codex"
+    }
+  }
+}

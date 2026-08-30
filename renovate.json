@@ -6,24 +6,55 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Update linked Claude plugin tags and immutable commit pins in marketplace.json",
+      "description": "Update type-first plugin tags and immutable commit pins in the neutral registry catalog",
       "managerFilePatterns": [
-        "/^\\.claude-plugin/marketplace\\.json$/"
+        "/^registry\\/catalog\\.json$/"
       ],
+      "matchStringsStrategy": "recursive",
       "matchStrings": [
-        "\"source\"\\s*:\\s*\\{\\s*\"source\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\"\\s*\\}"
+        "(?:^|\\r?\\n) {2}\"plugins\"\\s*:\\s*\\[(?:[^\\r\\n]|\\r\\n {2}|\\n {2})*?(?:\\r\\n|\\n) {2}\\]",
+        "(?:^|\\r?\\n) {6}\"source\"\\s*:\\s*\\{\\s*\"type\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\"(?:,\\s*\"root\"\\s*:\\s*\"[^\"\\r\\n]+\")?\\s*\\}"
       ],
       "datasourceTemplate": "github-tags",
       "versioningTemplate": "semver-coerced"
     },
     {
       "customType": "regex",
-      "description": "Update immutable commit pins for linked Claude plugins following a branch",
+      "description": "Update canonical plugin tags and immutable commit pins in the neutral registry catalog",
       "managerFilePatterns": [
-        "/^\\.claude-plugin/marketplace\\.json$/"
+        "/^registry\\/catalog\\.json$/"
       ],
+      "matchStringsStrategy": "recursive",
       "matchStrings": [
-        "\"source\"\\s*:\\s*\\{\\s*\"source\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>main|master)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\"\\s*\\}"
+        "(?:^|\\r?\\n) {2}\"plugins\"\\s*:\\s*\\[(?:[^\\r\\n]|\\r\\n {2}|\\n {2})*?(?:\\r\\n|\\n) {2}\\]",
+        "(?:^|\\r?\\n) {6}\"source\"\\s*:\\s*\\{\\s*\"ref\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*(?:\"root\"\\s*:\\s*\"[^\"\\r\\n]+\",\\s*)?\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\",\\s*\"type\"\\s*:\\s*\"github\"\\s*\\}"
+      ],
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver-coerced"
+    },
+    {
+      "customType": "regex",
+      "description": "Update type-first immutable commit pins for catalog plugins following a branch",
+      "managerFilePatterns": [
+        "/^registry\\/catalog\\.json$/"
+      ],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "(?:^|\\r?\\n) {2}\"plugins\"\\s*:\\s*\\[(?:[^\\r\\n]|\\r\\n {2}|\\n {2})*?(?:\\r\\n|\\n) {2}\\]",
+        "(?:^|\\r?\\n) {6}\"source\"\\s*:\\s*\\{\\s*\"type\"\\s*:\\s*\"github\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*\"ref\"\\s*:\\s*\"(?<currentValue>main|master)\",\\s*\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\"(?:,\\s*\"root\"\\s*:\\s*\"[^\"\\r\\n]+\")?\\s*\\}"
+      ],
+      "datasourceTemplate": "github-digest"
+    },
+    {
+      "customType": "regex",
+      "description": "Update canonical immutable commit pins for catalog plugins following a branch",
+      "managerFilePatterns": [
+        "/^registry\\/catalog\\.json$/"
+      ],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "(?:^|\\r?\\n) {2}\"plugins\"\\s*:\\s*\\[(?:[^\\r\\n]|\\r\\n {2}|\\n {2})*?(?:\\r\\n|\\n) {2}\\]",
+        "(?:^|\\r?\\n) {6}\"source\"\\s*:\\s*\\{\\s*\"ref\"\\s*:\\s*\"(?<currentValue>main|master)\",\\s*\"repo\"\\s*:\\s*\"(?<packageName>[^\"]+)\",\\s*(?:\"root\"\\s*:\\s*\"[^\"\\r\\n]+\",\\s*)?\"sha\"\\s*:\\s*\"(?<currentDigest>[a-f0-9]{40})\",\\s*\"type\"\\s*:\\s*\"github\"\\s*\\}"
       ],
       "datasourceTemplate": "github-digest"
     }
@@ -34,12 +65,12 @@
         "custom.regex"
       ],
       "matchFileNames": [
-        ".claude-plugin/marketplace.json"
+        "registry/catalog.json"
       ],
       "addLabels": [
         "marketplace"
       ],
-      "commitMessageTopic": "linked Claude plugin {{depName}}"
+      "commitMessageTopic": "registry plugin {{depName}}"
     },
     {
       "matchManagers": [
@@ -56,6 +87,8 @@
       "bash scripts/renovate-plugin-sync.sh"
     ],
     "fileFilters": [
+      "registry/catalog.json",
+      "registry/lock.json",
       ".claude-plugin/marketplace.json",
       ".agents/**",
       "plugins/**"

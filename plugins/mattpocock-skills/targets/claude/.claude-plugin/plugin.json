@@ -1,0 +1,9 @@
+{
+  "author": {
+    "name": "Gravit Cloud"
+  },
+  "description": "Produktivitäts-Skills von Matt Pocock (u.a. grill-me — intensives Interview zur Plan-Schärfung).",
+  "name": "mattpocock-skills",
+  "skills": "./skills/",
+  "version": "1.2.3-gravit.1"
+}

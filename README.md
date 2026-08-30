@@ -1,190 +1,165 @@
 # gravit-ai-toolkit
 
-Kuratierter **Plugin-Marketplace** der Gravit Cloud Organisation für Claude Code und Codex. Beide Tools erhalten denselben Plugin-Katalog über ihre native Struktur:
+Kuratierte, agentenneutrale Plugin-Registry der Gravit Cloud Organisation für Claude Code und Codex.
 
-- `.claude-plugin/marketplace.json` ist die manuell gepflegte Quelle der Wahrheit.
-- `.agents/plugins/marketplace.json` ist der daraus generierte Codex-Marketplace.
-- `plugins/<name>/` enthält die installierbaren Codex-Plugins; `plugins/gravit-custom` ist gleichzeitig das lokale Claude-Code-Plugin.
+## Registry-Modell
 
-## Claude Code vs. Codex
+`registry/catalog.json` ist die einzige manuell gepflegte Quelle für Plugin-Auswahl, Distribution-Versionen, unveränderliche Quell-Pins, Ressourcen und Ziel-Policies. Ein gemeinsamer Sync erzeugt zusammen:
 
-| | Claude Code | Codex |
-|---|---|---|
-| Marketplace | `.claude-plugin/marketplace.json` | `.agents/plugins/marketplace.json` |
-| Marketplace registrieren | `/plugin marketplace add …` | `codex plugin marketplace add …` |
-| Plugin installieren | `/plugin install …` | `codex plugin add …` oder `/plugins` |
-| Projektanweisungen | `CLAUDE.md` / `AGENTS.md` | `AGENTS.md` |
+- `registry/lock.json` mit Provenienz und Digests,
+- `.claude-plugin/marketplace.json` und `.agents/plugins/marketplace.json`,
+- `plugins/<name>/` als universelles Bundle mit neutralen Komponenten sowie den Projektionen `targets/claude` und `targets/codex`.
 
-Der frühere `codex/`-Dateibundle-Workaround ist nicht mehr nötig: Codex unterstützt native Plugins und Marketplaces.
+`registry/lock.json`, die Marketplaces und `plugins/` werden nicht einzeln gepflegt oder von Hand geändert.
 
 ## Enthaltene Plugins
 
-| Plugin | Typ | Inhalt | Quelle | Version |
-|---|---|---|---|---|
-| `claude-seo` | verlinkt | SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks | [`AgricIDaniel/claude-seo`](https://github.com/AgricIDaniel/claude-seo) | `v2.2.0` |
-| `obsidian` | verlinkt | `obsidian-cli`, `obsidian-markdown`, `obsidian-bases`, `json-canvas`, `defuddle` | [`kepano/obsidian-skills`](https://github.com/kepano/obsidian-skills) | SHA-Pin |
-| `mattpocock-skills` | verlinkt | Produktivitäts-Skills (u.a. `grill-me`) | [`mattpocock/skills`](https://github.com/mattpocock/skills) | `v1.1.0` |
-| `azure` | verlinkt | Azure-Skills + Azure-MCP-Server (Cloud-Ressourcen, Deployments, Monitoring, Kosten) | [`microsoft/azure-skills`](https://github.com/microsoft/azure-skills) | `v1.1.91` |
-| `superpowers` | verlinkt | Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging und Code-Reviews | [`obra/superpowers`](https://github.com/obra/superpowers) | `v6.1.1` |
-| `gravit-custom` | lokal | 7 Gravit-eigene Skills für Dokumentation, Reviews, GitHub und Diagramme | dieses Repo (`./plugins/gravit-custom`) | `v1.0.0` |
+| Plugin | Inhalt | Quelle |
+|---|---|---|
+| `claude-seo` | SEO-Audits, Content, Schema, GEO und weitere SEO-Workflows | `AgricIDaniel/claude-seo` |
+| `obsidian` | Obsidian CLI, Markdown, Bases, Canvas und Defuddle | `kepano/obsidian-skills` |
+| `mattpocock-skills` | Engineering- und Produktivitäts-Workflows | `mattpocock/skills` |
+| `azure` | Azure-Skills und Azure-MCP-Konfiguration | `microsoft/azure-skills` |
+| `superpowers` | Entwicklungs-Workflows für Planung, TDD, Debugging und Reviews | `obra/superpowers` |
+| `gravit-custom` | Lokal gepflegte Gravit-Skills | `sources/gravit-custom` |
 
-## Installation mit Claude Code
+Exakte Refs, Commit-SHAs, Distribution-Versionen und Digests stehen im Katalog und Lock.
+
+## Native Marketplace-Installation
+
+Claude Code:
 
 ```bash
-# Einmalig: diesen Marketplace registrieren
 /plugin marketplace add gravit-cloud/gravit-ai-toolkit
- 
-# Gewünschte Plugins installieren
-/plugin install claude-seo@gravit-cloud
-/plugin install obsidian@gravit-cloud
-/plugin install mattpocock-skills@gravit-cloud
 /plugin install azure@gravit-cloud
-/plugin install superpowers@gravit-cloud
-/plugin install gravit-custom@gravit-cloud
+/plugin marketplace update gravit-cloud
 ```
 
-Skills werden mit dem Plugin-Namen als Präfix aufgerufen, z.B. `/claude-seo:seo-audit`, `/azure:azure-cost` oder `/gravit-custom:<skill>`.
-
-Updates: `/plugin marketplace update gravit-cloud` lädt den Katalog neu; anschließend zeigt der Plugin-Manager verfügbare Plugin-Updates an.
-
-## Installation mit Codex
-
-Marketplace registrieren und Plugins einzeln installieren:
+Codex:
 
 ```bash
 codex plugin marketplace add gravit-cloud/gravit-ai-toolkit
-codex plugin add claude-seo@gravit-cloud
-codex plugin add gravit-custom@gravit-cloud
-```
-
-Alternativ öffnet `/plugins` in der Codex-App den Plugin-Browser. Marketplace-Updates werden so eingespielt:
-
-```bash
+codex plugin add azure@gravit-cloud
 codex plugin marketplace upgrade gravit-cloud
 ```
 
-## Gemeinsamer Plugin-Sync für Maintainer
+Skills werden mit dem Plugin-Namen als Namespace aufgerufen, zum Beispiel `/azure:azure-cost`.
 
-Linked Plugins und Pins werden nur in `.claude-plugin/marketplace.json` gepflegt. Danach erzeugt ein Befehl den nativen Codex-Katalog und alle Codex-Plugin-Verzeichnisse:
+## Verifizierte Registry-Nutzung
 
-```bash
-npm ci
-npm run plugins:sync
-```
-
-Der Sync lädt verlinkte Skills am unveränderlichen SHA, übernimmt Upstream-Version und -Autor, normalisiert die Codex-Verzeichnisstruktur, erzeugt `.codex-plugin/plugin.json` und schreibt `.agents/plugins/marketplace.json`. Explizit im Claude-Manifest deklarierte Skills werden respektiert; Entwürfe und deprecated Skills werden nicht versehentlich veröffentlicht. Anschließend `.agents/` und `plugins/` committen.
-
-MCP-gestützte Skills liefern in Codex nur dann alle Funktionen, wenn der passende MCP-Server auch für Codex konfiguriert ist.
-
-## Dependency-Updates mit Renovate
-
-Renovate pflegt die GitHub-Plugin-Pins in `.claude-plugin/marketplace.json`, die
-GitHub-Actions und die geprüften npm-Tools. Branch-Pins wie `main` werden als
-Commit-Digest aktualisiert; versionierte Tags aktualisieren Tag und SHA gemeinsam.
-
-Die Renovate-Konfiguration läuft selbst-hosted über
-`.github/workflows/renovate.yml`. Dafür muss im Repository ein Secret
-`RENOVATE_TOKEN` mit Berechtigung zum Lesen und Schreiben von Contents, Issues,
-Pull Requests und Workflows hinterlegt werden. Nach einem Marketplace-Update
-führt Renovate `npm run plugins:sync` aus, damit `.agents/` und die generierten
-Codex-Plugins in derselben PR bleiben.
-
-Die sieben Skills in `plugins/gravit-custom/skills/` werden lokal gepflegt.
-
-## Repository-Struktur
-
-```
-.claude-plugin/
-  marketplace.json          # Quelle der Wahrheit: 5 verlinkte Plugins + gravit-custom
-.agents/plugins/
-  marketplace.json          # nativer Codex-Katalog (generiert)
-plugins/
-  <linked-plugin>/          # native Codex-Plugins (generiert)
-    .codex-plugin/plugin.json
-    skills/<name>/SKILL.md
-  gravit-custom/            # lokales Dual-Plugin (Claude Code + Codex)
-    .claude-plugin/plugin.json
-    .codex-plugin/plugin.json
-    skills/<name>/SKILL.md  # sieben Gravit-eigene Skills
-scripts/sync-plugins.mjs    # synchronisiert Claude-Katalog → Codex-Plugins
-build.sh                    # baut dist/*.zip für gravit-custom (Claude Desktop + Releases)
-```
-
-## Ein verlinktes Plugin hinzufügen / Version ändern
-
-Neuer Eintrag im `plugins`-Array von `.claude-plugin/marketplace.json`:
-
-```json
-{
-  "name": "mein-plugin",
-  "description": "Kurzbeschreibung",
-  "source": { "source": "github", "repo": "owner/repo", "ref": "v1.0.0", "sha": "<40-stelliger-commit>" }
-}
-```
-
-- `ref` = lesbarer Branch oder Tag für Review und Renovate.
-- `sha` = verpflichtender, exakter 40-stelliger Commit-Pin für Installation und Sync.
-- Für Monorepos: `{ "source": "git-subdir", "url": "...", "path": "pfad/zum/plugin" }`.
-
-Voraussetzung: Das Ziel-Repo ist ein Claude-Code-Plugin (enthält `.claude-plugin/plugin.json` und/oder ein `skills/`-Verzeichnis im Repo-Root). Alle fünf oben erfüllen das.
-
-## Einen Skill zu `gravit-custom` hinzufügen
-
-1. `plugins/gravit-custom/skills/<name>/SKILL.md` anlegen (YAML-Frontmatter mit `name` + `description`, dann Markdown-Body).
-2. Mit `npm run version:set -- <version>` Paket- und Pluginversion gemeinsam erhöhen, falls ein Release folgt.
-3. `bash build.sh` erkennt alle Skills automatisch aus `plugins/gravit-custom/skills/*/SKILL.md` — keine manuelle Liste nötig.
-
-Nach Änderungen `npm run plugins:sync` ausführen, damit das Codex-Manifest und der generierte Katalog konsistent bleiben.
-
-## MCP Server
-
-Das `azure`-Plugin bringt seinen Azure-MCP-Server bereits mit. Weitere MCP-Server lassen sich projektweit in `.mcp.json` ergänzen.
-
-### WordPress / Elementor
-
-Der [WordPress Elementor Assistant](https://mcpmarket.com/tools/skills/wordpress-elementor-assistant) MCP-Server bietet direkten Zugriff auf WordPress-Instanzen inkl. Elementor-Seiteneditor.
-
-**Installation über Docker (empfohlen):**
+Produktionsverbraucher checken immer ein Release-Tag oder einen exakten Commit aus, niemals `main`. Die Registry kann vollständig offline inspiziert und verifiziert werden:
 
 ```bash
-docker run -i --rm \
-  -e WORDPRESS_URL=https://your-site.com \
-  -e WORDPRESS_USERNAME=admin \
-  -e WORDPRESS_PASSWORD=your-app-password \
-  mcp/wordpress-elementor-assistant
+npm run registry -- list
+npm run registry -- inspect --plugin azure
+npm run registry -- verify --plugin azure
 ```
 
-Dann in `.mcp.json` eintragen:
+Materialisierung unterstützt genau `claude` und `codex` und ist unveränderlich sowie write-once. Der unmittelbare Parent muss existieren; das Ziel selbst darf noch nicht existieren. Der Pfad enthält deshalb Plugin, Distribution-Version, Registry-Revision und Ziel:
 
-```json
-{
-  "wordpress": {
-    "type": "stdio",
-    "command": "docker",
-    "args": [
-      "run", "-i", "--rm",
-      "-e", "WORDPRESS_URL",
-      "-e", "WORDPRESS_USERNAME",
-      "-e", "WORDPRESS_PASSWORD",
-      "mcp/wordpress-elementor-assistant"
-    ],
-    "env": {
-      "WORDPRESS_URL": "https://your-site.com",
-      "WORDPRESS_USERNAME": "admin",
-      "WORDPRESS_PASSWORD": "your-app-password"
-    }
-  }
-}
+```bash
+PLUGIN=azure
+DISTRIBUTION_VERSION=1.2.5-gravit.5
+REGISTRY_REVISION="$(git rev-parse HEAD)"
+TARGET_PARENT="/opt/gravit/plugins/$PLUGIN/$DISTRIBUTION_VERSION/$REGISTRY_REVISION"
+
+install -d "$TARGET_PARENT"
+npm run registry -- materialize \
+  --plugin "$PLUGIN" \
+  --target claude \
+  --output "$TARGET_PARENT/claude"
+npm run registry -- materialize \
+  --plugin "$PLUGIN" \
+  --target codex \
+  --output "$TARGET_PARENT/codex"
 ```
 
-## Attribution & Lizenz
+Eine erfolgreiche Materialisierung endet mit `.gravit-plugin-receipt.json`. Sie bindet Registry-Revision, Plugin, Ziel, Distribution-Version sowie Quell- und Ergebnis-Digests. Ein Fehler nach der exklusiven Zielerstellung lässt die unvollständige Ausgabe absichtlich zur Diagnose stehen; das Fehlen eines gültigen Receipts ist das Fehlersignal. Ein Deployment-Controller darf seinen eigenen `current`-Pointer erst umschalten, nachdem er das finale Receipt und alle Digests geprüft hat. Der Registry-Materializer löscht, ersetzt oder aktiviert keinen Consumer-Zustand.
 
-Alle Plugins werden aus ihren Original-Repos bezogen und behalten ihre jeweilige Lizenz und Autorenschaft:
+Receipts werden nur aus einem unveränderten Git-Checkout veröffentlicht. Katalog,
+Lock und die ausgewählten `plugins/<name>`-Bundles müssen exakt im gebundenen
+`HEAD` liegen; uncommittierte Regeneration, untracked Bundle-Dateien oder ein
+HEAD-Wechsel während der Veröffentlichung brechen den Vorgang ab.
 
-- SEO — [AgricIDaniel](https://github.com/AgricIDaniel/claude-seo)
-- Obsidian — [kepano](https://github.com/kepano/obsidian-skills)
-- `grill-me` u.a. — [Matt Pocock](https://github.com/mattpocock/skills)
-- Azure — [Microsoft](https://github.com/microsoft/azure-skills)
-- Superpowers — [Jesse Vincent / obra](https://github.com/obra/superpowers)
+Ausführbare Ressourcen und Assets liegen ausschließlich unter den sicheren Wurzeln
+`bin/` oder `assets/`. Sobald ein Plugin mehrere Pfadressourcen enthält, bewahrt der
+Adapter ihr gemeinsames Layout in einem `plugin-layout`-Unterbaum. Enthält diese
+Gruppe mindestens eine ausführbare Ressource, liegt der gesamte Baum unter `bin/`;
+reine Asset-Gruppen liegen unter `assets/`.
+Markdown-Links auf katalogisierte Ressourcen werden auf das Ziel umgeschrieben;
+beliebiger Text oder Code-Spans werden nicht als Pfadsemantik interpretiert.
 
-Die `MIT`-Lizenz dieses Repos bezieht sich auf Kuratierung, Build-Tooling, Doku und die lokal gepflegten Skills. Generierte Plugin-Inhalte behalten ihre Upstream-Lizenz; eine Kopie liegt jeweils als `plugins/<name>/LICENSE` bei.
+## Einsatzmuster
+
+### Lokale Entwicklung
+
+```bash
+npm ci --ignore-scripts
+npm run registry -- verify --plugin azure
+```
+
+Materialisiere in einen neuen versions- und revisionsspezifischen Pfad unter einem lokalen Arbeitsverzeichnis. Ein zweiter Versuch auf dasselbe Ziel ist erwartungsgemäß ein Fehler.
+
+### Gepinnte CI-Images
+
+CI verwendet Node 24 und pinnt das Container-Image zusätzlich zum Tag auf einen unveränderlichen OCI-Digest, zum Beispiel das organisationsweit freigegebene `node:24.18.0-bookworm-slim@sha256:<64-hex-digest>`. Auch der Registry-Checkout ist auf Release-Tag oder Commit-SHA gepinnt. `npm ci --ignore-scripts` verhindert Lifecycle-Ausführung; Verifikation und Materialisierung führen niemals Bundle-Inhalte aus.
+
+### Cloud Shared Volumes
+
+Ein Init-Job oder Deployment-Controller materialisiert auf einem schreibbaren Shared Volume in den vollständigen unveränderlichen Pfad. Workloads mounten die validierte Revision read-only. Erst nach Receipt- und Digest-Prüfung darf der Controller einen eigenen atomaren `current`-Pointer auf die neue Revision setzen. Alte oder unvollständige Verzeichnisse bleiben bis zu einer separat autorisierten Retention-Entscheidung unangetastet.
+
+## Universelle Release-Archive
+
+`npm run build` verifiziert zuerst die committed Registry und erstellt genau ein Archiv je Katalog-Plugin:
+
+```text
+dist/<plugin>-v<distributionVersion>.zip
+```
+
+Jedes ZIP besitzt genau einen Top-Level-Ordner mit dem Plugin-Namen und enthält das unveränderte universelle Bundle, beide Zielprojektionen, `LICENSE` und `.gravit-plugin-receipt.json`. Das Receipt-Ziel `universal` ist ausschließlich für diese Archive reserviert; Materialisierung unterstützt ausschließlich `claude` und `codex`, und alle Digest-Felder entsprechen dem verifizierten `bundleDigest` aus dem Lock.
+
+Archive werden deterministisch mit festen Zeitstempeln, stabilen Modi und sortierten Pfaden gebaut. Veröffentlichung ist write-once: ein vorhandenes Archiv ist ein Fehler und wird weder gelöscht noch ersetzt. Das vollständig gebaute und geprüfte Archiv wird erst durch einen exklusiven atomaren Hard Link auf demselben Dateisystem unter seinem permanenten Namen sichtbar; der permanente Pfad wird niemals während des Schreibens exponiert. Private Build-Stages liegen außerhalb von Repository und `DIST_DIR` und bleiben auf Erfolg und Fehler zur Recovery erhalten. Für zwei Vergleichsbauten werden zwei neue Output-Roots verwendet:
+
+```bash
+FIRST_ROOT="$(mktemp -d)"
+SECOND_ROOT="$(mktemp -d)"
+DIST_DIR="$FIRST_ROOT/dist" npm run build
+DIST_DIR="$SECOND_ROOT/dist" npm run build
+```
+
+## Maintainer-Runbook
+
+1. Katalogänderungen ausschließlich in `registry/catalog.json` und lokale Inhalte ausschließlich in `sources/` vornehmen. Externe Quellen behalten lesbaren `ref` plus exakten 40-stelligen `sha`-Pin.
+2. Bei jeder verteilten Änderung die betroffene `distributionVersion` erhöhen. Andere Plugin-Revisionen bleiben unverändert.
+3. Die gepinnten Tools einschließlich der für Client-Smoke-Tests benötigten nativen Clients installieren und alle Outputs gemeinsam regenerieren:
+
+   ```bash
+   npm ci
+   npm run plugins:sync
+   ```
+
+4. Die vollständigen Offline- und Client-Gates ausführen:
+
+   ```bash
+   npm test
+   npm run validate
+   npm run registry:verify
+   npm run smoke:clients
+   ```
+
+5. Universelle Archive in einem frischen Output-Root bauen:
+
+   ```bash
+   RELEASE_ROOT="$(mktemp -d)"
+   DIST_DIR="$RELEASE_ROOT/dist" npm run build
+   ```
+
+6. `registry/lock.json`, beide Marketplaces und alle generierten Plugin-Outputs zusammen mit Katalog/Quelländerungen committen. Die Release-Workflow-Datei installiert Node 24 mit gepinnten Actions und `npm ci --ignore-scripts`, validiert Tag gegen `package.json`, wiederholt die rein statischen Tests und Registry-Gates und übergibt ausschließlich die vom Builder strukturell validierten Archivpfade an `gh release create`. Native Client-Smoke-Tests bleiben im Maintainer-Gate mit regulärem `npm ci`.
+
+## Einen lokalen Skill hinzufügen
+
+Lege `sources/gravit-custom/skills/<name>/SKILL.md` mit YAML-Frontmatter (`name`, `description`) und Markdown-Inhalt an. Die lokale Quelle darf keinen oder genau einen kanonischen Top-Level-Lizenznamen (`LICENSE`, optional `.md`, `.rst` oder `.txt`, Groß-/Kleinschreibung beliebig) besitzen; mehrere, symbolische oder spezielle Lizenz-Einträge werden abgelehnt. Danach Distribution-Revision erhöhen und das Maintainer-Runbook ausführen.
+
+## Lizenz und Attribution
+
+Die Repository-Kuratierung, Build-Tools und lokal gepflegten Quellen stehen unter der MIT-Lizenz. Externe Plugins behalten ihre jeweilige Upstream-Lizenz; die kanonische Kopie liegt im universellen Bundle unter `plugins/<name>/LICENSE`.

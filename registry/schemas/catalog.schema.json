@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gravit.cloud/schemas/plugin-catalog-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "name", "plugins"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "plugins": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/plugin" }
+    }
+  },
+  "$defs": {
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "category",
+        "distributionVersion",
+        "source",
+        "targets",
+        "policies"
+      ],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "description": { "type": "string", "minLength": 1 },
+        "category": { "enum": ["cloud", "development", "productivity", "seo"] },
+        "distributionVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+        },
+        "runtimeDependencies": {
+          "type": "object",
+          "propertyNames": {
+            "allOf": [
+              {
+                "pattern": "^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$"
+              },
+              {
+                "not": {
+                  "enum": ["__proto__", "constructor", "prototype"]
+                }
+              }
+            ]
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*))(?:\\.(?:(?:0|[1-9]\\d*)|(?:\\d*[A-Za-z-][0-9A-Za-z-]*)))*)?$"
+          }
+        },
+        "resources": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/resource" }
+        },
+        "sourceContext": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sourceContext" }
+        },
+        "targetPolicies": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "claude": { "$ref": "#/$defs/targetPolicy" },
+            "codex": { "$ref": "#/$defs/targetPolicy" }
+          }
+        },
+        "source": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "path"],
+              "properties": {
+                "type": { "const": "local" },
+                "path": { "type": "string", "pattern": "^(?:sources|test/fixtures)/" },
+                "root": { "type": "string", "default": "." }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "repo", "ref", "sha"],
+              "properties": {
+                "type": { "const": "github" },
+                "repo": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+                "ref": { "type": "string", "minLength": 1 },
+                "sha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+                "root": { "type": "string", "default": "." }
+              }
+            }
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["claude", "codex"] }
+        },
+        "policies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["default", "skills"],
+          "properties": {
+            "default": { "enum": ["transform-or-fail"] },
+            "skills": { "enum": ["preserve", "transform"] }
+          }
+        }
+      }
+    },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "allOf": [
+        { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+        { "not": { "pattern": "\\\\" } },
+        { "not": { "pattern": "//|/$" } },
+        { "not": { "pattern": "(?:^|/)\\.\\.?(?:/|$)" } },
+        { "not": { "pattern": "[\\u0000-\\u001f]" } }
+      ]
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "enum": ["asset", "executable"] },
+        "path": { "$ref": "#/$defs/safePath" }
+      }
+    },
+    "sourceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest"],
+      "properties": {
+        "path": { "$ref": "#/$defs/safePath" },
+        "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "targetPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unsupported"],
+      "properties": {
+        "unsupported": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "skill",
+              "command",
+              "agent",
+              "hook",
+              "mcp",
+              "lsp",
+              "output-style",
+              "monitor",
+              "theme",
+              "channel",
+              "executable",
+              "settings",
+              "asset",
+              "app"
+            ]
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
+        }
+      }
+    }
+  }
+}

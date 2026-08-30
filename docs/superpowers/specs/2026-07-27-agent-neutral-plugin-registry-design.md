@@ -1,5 +1,8 @@
 # Agent-neutraler Plugin-Registry- und Bundle-Generator
 
+> [!note] Target scope superseded
+> The neutral registry foundation remains valid, but its OpenClaw target scope is superseded by [Claude and Codex Registry Scope](./2026-08-18-claude-codex-registry-scope-design.md).
+
 Status: Architektur im Gespräch freigegeben; Dokument zur Review
 
 Datum: 2026-07-27
@@ -261,7 +264,7 @@ Die Skill-Verarbeitung wird in Discovery, Auswahl und Rendering getrennt.
 
 - Deklarierte Skill-Pfade im Upstream-Manifest haben Vorrang.
 - Fehlt eine Deklaration, werden Verzeichnisse mit einer frontmatter-führenden `SKILL.md` rekursiv entdeckt.
-- Dateien `SKILL.md` ohne eigenständiges Frontmatter innerhalb eines Skills gelten als interne Ressource des Parent-Skills.
+- Dateien `SKILL.md` ohne eigenständiges Frontmatter innerhalb eines Skills gelten als interne Ressource des Parent-Skills. Beim Rendern werden sie in `SKILL.resource.md` umbenannt und alle lokalen Referenzen angepasst, damit Agenten sie nicht als eigenständige Skills entdecken.
 - Jeder Pfad wird kanonisch aufgelöst; Pfadtraversal und Symlink-Ausbruch aus der Quelle werden abgelehnt.
 
 ### Auswahl ohne überlappende Copy-Roots

@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "name": "gravit-cloud",
+  "plugins": [
+    {
+      "name": "claude-seo",
+      "description": "25 SEO-Skills: Audits, technisches SEO, Schema, Content/E-E-A-T, GEO, Local, Maps, Backlinks.",
+      "category": "seo",
+      "distributionVersion": "2.2.4-gravit.6",
+      "source": {
+        "type": "github",
+        "repo": "AgricIDaniel/claude-seo",
+        "ref": "v2.2.4",
+        "sha": "6b63c8bb7b2e8e4480060604555e3af629b54c2c",
+        "root": "."
+      },
+      "sourceContext": [
+        { "path": ".claude-plugin/marketplace.json", "digest": "383f9c4560921f067d13cf26ee65bf7d88383b38fc397ac813d7b32ad97a7c6a" },
+        { "path": ".devcontainer", "digest": "9815b11009ff24937db533cd105774e512c7a0c9fa79540e3b5ccacda8302483" },
+        { "path": ".github", "digest": "add492a2c3319b3a3571da5882811bfdaa19d9660f9056489d12b4e074686c27" },
+        { "path": ".gitignore", "digest": "62b510ab7f3c9cd032fc234792417471bf48b308fc5e38f625a22eafe8426375" },
+        { "path": "AGENTS.md", "digest": "0850a9215d9807dac0844a31338871a8b9fb151c1e4b391f8d38c75237de1319" },
+        { "path": "CHANGELOG.md", "digest": "37cf4083030733ac1dde69d1db9496098e8ca840a030d70ec49a4c220c091c60" },
+        { "path": "CITATION.cff", "digest": "b1fb16d343369d61f9d741a601e3f3c5131a65bb76eb8c264e8e148de0541de5" },
+        { "path": "CLAUDE.md", "digest": "0630ba79755e67819261bea9b981f77018a32bfd16a372d3a7dd737f10898aca" },
+        { "path": "CODE_OF_CONDUCT.md", "digest": "dfc81547f23790d08fdaeeb7122f6e71bce2683a3d0d257d33b23ba199fd8d31" },
+        { "path": "CONTRIBUTING.md", "digest": "69aac1952c53619d41bd5840753df5db75ecf8b3ba4c5d774c65e725b168f0cd" },
+        { "path": "CONTRIBUTORS.md", "digest": "0614c9295cb39f7380585ede9e6ff51d343fc9cbb5e651f985d60dbab72631fc" },
+        { "path": "PRIVACY.md", "digest": "b8ba08c8e711f260a84cd9682197f276849ffa408fb84bffce0c56b0f25c4124" },
+        { "path": "README.md", "digest": "42c5a68780f58f7bfdb056b7cae7e7b3f820f633ff65b5669e3608f71799ca60" },
+        { "path": "SECURITY.md", "digest": "cdba7fc0987f61bd3d3bbe17f33115a7b110aa041c0923224376d0500552800d" },
+        { "path": "docs", "digest": "36fac72c22902c775498667d98f2fced5ef8989fa201b872d1ad874c8d211cdd" },
+        { "path": "install.ps1", "digest": "ae552495ad1f217580866a3ca652bcb8616d7a81a2948f45ac7d290ee6da1a55" },
+        { "path": "install.sh", "digest": "fe981b57299d6e8423775210824417572bb8194b24f8a78b288742a85f3fbb58" },
+        { "path": "pyproject.toml", "digest": "395a05e304cc0d272fcb318ccb76cd5ce5623d69a9be791fe9387e72634d7e3a" },
+        { "path": "tests", "digest": "62ff95881e12bf25a17bd4921ea499b87298715b63e4802d67647e89dee0ed85" },
+        { "path": "uninstall.ps1", "digest": "fd8bf27cb66aa213a77ca86f32b5a4c741c16b0a0d8e82251f2465bc921bc32e" },
+        { "path": "uninstall.sh", "digest": "ccd8591a1f769bd8b929cebe15bdcc2f216bd17faa188f53e1920ec0fa1a71d5" }
+      ],
+      "resources": [
+        {
+          "type": "executable",
+          "path": "scripts"
+        },
+        {
+          "type": "executable",
+          "path": "extensions"
+        },
+        {
+          "type": "executable",
+          "path": "hooks/run-python-hook.js"
+        },
+        {
+          "type": "executable",
+          "path": "hooks/validate-schema.py"
+        },
+        {
+          "type": "asset",
+          "path": "schema"
+        },
+        {
+          "type": "asset",
+          "path": "data"
+        },
+        {
+          "type": "asset",
+          "path": "pdf"
+        },
+        {
+          "type": "asset",
+          "path": "screenshots"
+        },
+        {
+          "type": "asset",
+          "path": "requirements.txt"
+        }
+      ],
+      "targetPolicies": {
+        "codex": {
+          "unsupported": {
+            "agent": "host-does-not-load-agents"
+          }
+        }
+      },
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    },
+    {
+      "name": "obsidian",
+      "description": "Obsidian-Skills: obsidian-cli, obsidian-markdown, obsidian-bases, json-canvas, defuddle.",
+      "category": "productivity",
+      "distributionVersion": "1.0.1-gravit.3",
+      "source": {
+        "type": "github",
+        "repo": "kepano/obsidian-skills",
+        "ref": "main",
+        "sha": "a1dc48e68138490d522c04cbf5822214c6eb1202",
+        "root": "."
+      },
+      "sourceContext": [
+        { "path": ".claude-plugin/marketplace.json", "digest": "7a9a8e1d87d73e578fe5180811d58379037f668b865f037bb60bc0715bb10b7d" },
+        { "path": "README.md", "digest": "5c0d37f7a9378ff928fced5db91f06ca02454f59a736b874c4d59fe59c60e6dd" }
+      ],
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    },
+    {
+      "name": "mattpocock-skills",
+      "description": "Produktivitäts-Skills von Matt Pocock (u.a. grill-me — intensives Interview zur Plan-Schärfung).",
+      "category": "productivity",
+      "distributionVersion": "1.2.3-gravit.1",
+      "source": {
+        "type": "github",
+        "repo": "mattpocock/skills",
+        "ref": "v1.2.3",
+        "sha": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "root": "."
+      },
+      "sourceContext": [
+        { "path": ".agents", "digest": "8a67267efe6dfde5ff8396990820f904808af9b65ab9e293e75339322990e297" },
+        { "path": ".changeset", "digest": "1334640fd6da2236e1eb8e22ea9eb801368983510e7b635d99a8177efe2ad315" },
+        { "path": ".claude-plugin/marketplace.json", "digest": "da0714cc6c1bb9dfe58ff9ad3bff4f0ddeb5bbf303438da848507f9219c7ec85" },
+        { "path": ".github", "digest": "38de152834c2a10f34507e1fc3c3d479ded9a4fad4084469bfab6fd454052ad9" },
+        { "path": ".gitignore", "digest": "f584312c96f290985815d895f58d4dfbbd4667f0c5260e0383797c44debcfed0" },
+        { "path": ".out-of-scope", "digest": "1544372f4014d2d2679e10af1b81385b9696e28e12b3202b86849437e022a2bc" },
+        { "path": "CHANGELOG.md", "digest": "3c29369a817073e04e7836038af099652398cb33b1d5bfc99689ca9f1fb3999a" },
+        { "path": "CLAUDE.md", "digest": "3de3e0d9fda8409338d0b6dcb54171232729cee11ce1da99fdab94f23fb4b590" },
+        { "path": "CONTEXT.md", "digest": "17689da228c076dc926aa4d23a35c33455a73cc1ee58afb8523777de4ab54f76" },
+        { "path": "README.md", "digest": "f5cbe5e6a25c654023100e97b3a99172a3a97315cfe5ab6cde088b97799eb610" },
+        { "path": "docs", "digest": "ddf517e144269aa74a99bcec0608dfda69ff44005ab1b992ea942256f5861d17" },
+        { "path": "package-lock.json", "digest": "862e63bbc4ac1977f932dbc65ee2ef8f16d752027cfd6eae3f73856bacec8011" },
+        { "path": "package.json", "digest": "5ac615fd38b5fe21de3ad2c421e4b588026bbf1041b20a9e3319cf2a9be6be18" },
+        { "path": "scripts", "digest": "8913aa9aa8cea04276645e43c05893a62834b86b69c90cc5732ed5e803c2dd93" },
+        { "path": "skills/deprecated", "digest": "0664382fc9e4c02c530919a8173f6ee3b04fe5b5b8d1c076cd474918fa13fdc2" },
+        { "path": "skills/engineering/README.md", "digest": "c0a67990eac6f283e4bba4f117ac8878cabab88e456b7991ae98591cf7507727" },
+        { "path": "skills/in-progress", "digest": "545cc787890c607f8476e05a057fe8fbff52d99e2df929b69d030d97fb403134" },
+        { "path": "skills/misc", "digest": "1283381a9fe2c010f24e9abf0da26209a8b94e7c4bb692f0bac3ee6b169a2441" },
+        { "path": "skills/productivity/README.md", "digest": "009ea8b3bbb1c3d6e7c5733ed4f77265937c23fc2e25f72e09bd313d36de6adc" }
+      ],
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    },
+    {
+      "name": "azure",
+      "description": "Microsoft Azure Skills für Cloud-Ressourcen, Deployments, Monitoring und Kostenanalyse.",
+      "category": "cloud",
+      "distributionVersion": "1.2.30-gravit.1",
+      "runtimeDependencies": {
+        "@azure/mcp": "2.0.5"
+      },
+      "resources": [
+        {
+          "type": "executable",
+          "path": "hooks/scripts"
+        }
+      ],
+      "targetPolicies": {
+        "codex": {
+          "unsupported": {
+            "agent": "host-does-not-load-agents",
+            "lsp": "host-does-not-load-lsp",
+            "monitor": "host-does-not-load-monitors",
+            "output-style": "host-does-not-load-output-styles",
+            "theme": "host-does-not-load-themes",
+            "channel": "host-does-not-load-channels",
+            "settings": "host-does-not-load-settings"
+          }
+        },
+        "claude": {
+          "unsupported": {
+            "app": "host-uses-mcp-without-app-binding"
+          }
+        }
+      },
+      "source": {
+        "type": "github",
+        "repo": "microsoft/azure-skills",
+        "ref": "v1.2.29",
+        "sha": "16dc8c51ba7fda44c18781b5e4c0ca40a7a06a55",
+        "root": "."
+      },
+      "sourceContext": [
+        { "path": ".claude-plugin/marketplace.json", "digest": "5be41b6c01c4cb87319a1f45cb9a2809bec57eeef6f8713d8269d363c1b8c5ed" },
+        { "path": ".cursor-plugin", "digest": "fa4237e4953a76b924e2b29862184a565871bbe2bd094969192dd8afbf4acb16" },
+        { "path": ".gitattributes", "digest": "42151e0bf6980298bd86308d57af4c4f2234f771c759e6aefd1b74f44194366e" },
+        { "path": ".github", "digest": "e1b12d4e340c84e0f1b0f59a1aa9b0932cb24c42f7a6cddb5d38a6b62e030601" },
+        { "path": ".gitignore", "digest": "94ef0d59836664afa37de2807b8776fdecb9ac9412167e00065878f0833bd64d" },
+        { "path": "README.md", "digest": "ad4d0870e759bf11c449141669def2c97a5b2b4486eb1743bf01f2b46a2daa40" },
+        { "path": "SECURITY.md", "digest": "092e75a3f5e3645f2e7b6b5af2ceae725c9cdc53e62e4f81dcabc45fd8461754" },
+        { "path": "apm.yml", "digest": "8c595d41b9c2d0dd58f698cd89fa7f46ffce29b84eae0912e52a118cd6755ce3" },
+        { "path": "gemini-extension.json", "digest": "51ea74527ef0ebd84d4bd62e3c10e64c46e48dd32b785324eff7df7cea31bddd" },
+        { "path": "hooks/copilot-hooks.json", "digest": "366a343542061eeaa21525b997291d301013d0d6bcbfcad8bde29252ca921062" },
+        { "path": "hooks/cursor-hooks.json", "digest": "27a5fe867c66b544c20a14c837d13fb68ae3f989786bda51686d03e6c8e1eda6" },
+        { "path": "landing-page", "digest": "5ade86fa1f5782498e7b56dcdd6f034453725c3c46cd84648a40d1c55f02cb1c" },
+        { "path": "plugin.json", "digest": "3b6bcc66db4606ef34053ca6077061221d6e462839992b11dde0cec7ba89a4ca" }
+      ],
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    },
+    {
+      "name": "superpowers",
+      "description": "Agentische Entwicklungs-Workflows für Brainstorming, Planung, TDD, Debugging, Code-Reviews und Branch-Abschluss.",
+      "category": "development",
+      "distributionVersion": "6.3.0-gravit.1",
+      "source": {
+        "type": "github",
+        "repo": "obra/superpowers",
+        "ref": "v6.3.0",
+        "sha": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+        "root": "."
+      },
+      "sourceContext": [
+        { "path": ".agents", "digest": "be9f047f2669b43d98f7fbb8dc322853af6704c015bcb1ae0394b76423cd1dd3" },
+        { "path": ".claude-plugin/marketplace.json", "digest": "2e163fb6b511682574cfa9f0127c76a1a996cfe3d845e4a018e949fa8eabe7d2" },
+        { "path": ".cursor-plugin", "digest": "556b67485033890d9858bb0fff0ccf670b3dd0bce7d7f7e08fd9faf93d478567" },
+        { "path": ".devin-plugin", "digest": "9b2cae4982bf4a2e0c10fe517f75e19751cba153b7ea031d3020970ef23d72d4" },
+        { "path": ".gitattributes", "digest": "14687016fe6e04f8abcc63e94f5e4e33388fce4c202ca0ce0a215e4253b88330" },
+        { "path": ".github", "digest": "9c29301d242970c21e3e4d86f586f90db643bf6f4ff25f98fb3d7b814856f4b6" },
+        { "path": ".gitignore", "digest": "b05d7f33abd721965e8d6405db1498b45bf442c595c829a1bef4f1cc5bc5f078" },
+        { "path": ".hermes-plugin", "digest": "d0fd9745d33bd94dd1d71f4e4fcb2d3a3cb30fb13885c02a7e6e39d73d0de228" },
+        { "path": ".kimi-plugin", "digest": "0ca4581f4e272d103de5653914570b9627319300d53359f0652084b0b2b5ed3f" },
+        { "path": ".opencode", "digest": "8f7fb74c77a152ed3eb1dce0d6766d9ff4828fa1e0ffd9e7e9a038cd6474965c" },
+        { "path": ".pi", "digest": "bb90a8fccad5880ef9cd82613b0f1cb85c175f7271cccb2e40bbbcc1d61dfc3d" },
+        { "path": ".pre-commit-config.yaml", "digest": "86821e31fd80b0a510fa10c86b56f9d20bacf473acba4ba49bd7433b7ed8c3b5" },
+        { "path": ".version-bump.json", "digest": "f95f4845354a9c0e4e9479374f24e2181d086e3c4c141fcc2e6ce94862e2fd1f" },
+        { "path": "CLAUDE.md", "digest": "69f2c0682f20a57a9ea8700db29705683a915f04250fe1fcacfa846a0bad2a4e" },
+        { "path": "CODE_OF_CONDUCT.md", "digest": "e86713c6dbda788644384174d85dadcb4260dfa41241a52102f04b9135eeaacc" },
+        { "path": "GEMINI.md", "digest": "e06ff2d6c0aa0c95ae178a7f9bada8078781fee4864bf6da2eff5471526e4101" },
+        { "path": "README.md", "digest": "1121e1ad1a2f6f8762f5bfab2be6b60903ef811acfc21b3c95f42aa21b3a9b80" },
+        { "path": "RELEASE-NOTES.md", "digest": "43f2bbb500f4c9d6626e559682c23b7eec20865e1a892a9ca190cf493f65c2ed" },
+        { "path": "docs", "digest": "b89b5c70af5af5f036f2a10f0c95863c4e5dbbabd27797f9b04ada2c45da05df" },
+        { "path": "gemini-extension.json", "digest": "e4f93af1dd6a95c7caad81c2ad7533152c69d5d194df61dbd5fca8d927bb42be" },
+        { "path": "hooks", "digest": "eb509f04a88bf3c38de4ded1316461f33e42928f2b177882048f494526d0a336" },
+        { "path": "package.json", "digest": "20fb12963fa2556ae2f02f510484d53b686804b3f965998dc34d131eb3b15013" },
+        { "path": "scripts", "digest": "6196d9a6664cff18b5322c49daccf9edd8dd1f488a3e3733736ecead4ff2a66a" },
+        { "path": "tests", "digest": "2b6d21f4d2f5a32d7f5b8dcc49ae4311dff59c4f33a858025bb8ffdb321da24a" }
+      ],
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    },
+    {
+      "name": "gravit-custom",
+      "description": "Sieben lokal gepflegte Skills der Gravit Cloud (sources/gravit-custom/skills/).",
+      "category": "development",
+      "distributionVersion": "1.0.0-gravit.4",
+      "source": {
+        "type": "local",
+        "path": "sources/gravit-custom",
+        "root": "."
+      },
+      "targets": ["claude", "codex"],
+      "policies": {
+        "default": "transform-or-fail",
+        "skills": "transform"
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "complete",
+  "version": "1.0.0",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "apps": "./.app.json",
+  "hooks": "./hooks/hooks.json"
+}

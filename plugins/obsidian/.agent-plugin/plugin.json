@@ -1,0 +1,161 @@
+{
+  "components": [
+    {
+      "digest": "a2d56bc53d96891df85a16e8f8fdb1ae6acae53e05e629ef252f9a82b310d982",
+      "id": "defuddle",
+      "path": "components/skills/defuddle",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/defuddle",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/defuddle",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "3e1e6f2af45228c65eee99ee2e88f1b0a19b2741bff814fb9e1e5bc25f7d1d5c",
+      "id": "json-canvas",
+      "path": "components/skills/json-canvas",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/json-canvas",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/json-canvas",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "c3e358b2b018482c9e3a686700fc9d98c8b91a17c6294f6e0d71ef3234c56344",
+      "id": "obsidian-bases",
+      "path": "components/skills/obsidian-bases",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/obsidian-bases",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/obsidian-bases",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "99d076538831d958636c8d5b6ad860695fe20d91ba906f426724f3fb4f491dea",
+      "id": "obsidian-cli",
+      "path": "components/skills/obsidian-cli",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/obsidian-cli",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/obsidian-cli",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    },
+    {
+      "digest": "7dfd9c7e3d2b47d8286b35941d18652223e32126373ebb93e70231b8bdcede65",
+      "id": "obsidian-markdown",
+      "path": "components/skills/obsidian-markdown",
+      "targets": {
+        "claude": {
+          "path": "targets/claude/skills/obsidian-markdown",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "codex": {
+          "path": "targets/codex/skills/obsidian-markdown",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "type": "skill"
+    }
+  ],
+  "distributionVersion": "1.0.1-gravit.3",
+  "name": "obsidian",
+  "schemaVersion": 1,
+  "targets": {
+    "claude": {
+      "components": {
+        "defuddle": {
+          "path": "targets/claude/skills/defuddle",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "json-canvas": {
+          "path": "targets/claude/skills/json-canvas",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "obsidian-bases": {
+          "path": "targets/claude/skills/obsidian-bases",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "obsidian-cli": {
+          "path": "targets/claude/skills/obsidian-cli",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        },
+        "obsidian-markdown": {
+          "path": "targets/claude/skills/obsidian-markdown",
+          "reasonCode": "native-component",
+          "status": "preserved"
+        }
+      },
+      "digest": "89c43f4f95bd2fc0c6adf85f5d2fee1722edd4abd35ce846342929e84d63ea74",
+      "path": "targets/claude"
+    },
+    "codex": {
+      "components": {
+        "defuddle": {
+          "path": "targets/codex/skills/defuddle",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "json-canvas": {
+          "path": "targets/codex/skills/json-canvas",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "obsidian-bases": {
+          "path": "targets/codex/skills/obsidian-bases",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "obsidian-cli": {
+          "path": "targets/codex/skills/obsidian-cli",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        },
+        "obsidian-markdown": {
+          "path": "targets/codex/skills/obsidian-markdown",
+          "reasonCode": "target-translation",
+          "status": "transformed"
+        }
+      },
+      "digest": "072ea750ce10a9136b8c1acd716afc5eced348c699d4636ec7402385c3444b45",
+      "path": "targets/codex"
+    }
+  }
+}

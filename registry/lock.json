@@ -1,0 +1,2327 @@
+{
+  "generatorDigest": "9cc4b764c2098de71ae2ee20d38c109d33bade9e041843ad665d6941eefcdfb8",
+  "plugins": {
+    "azure": {
+      "bundleDigest": "9a609b4e93e8cce9b2da35dd91c47d19475a21388590845d9577a195cc6a9214",
+      "components": [
+        {
+          "digest": "4b903e0fa22960ebb1bf4ecd3219987eae65f6f6fa2553bc96eb1d737ad0243b",
+          "id": "airunway-aks-setup",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/airunway-aks-setup",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/airunway-aks-setup",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "4f9d2cbc640a0f46223681e6b02a290629af012ffcfd09b789428a6809f3168e",
+          "id": "appinsights-instrumentation",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/appinsights-instrumentation",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/appinsights-instrumentation",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "12015cd7d3ce49bc597cba473cf1b533677593a5301735c14a4579e3e49b0e97",
+          "id": "asset-8bf729ffe074",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/assets",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/assets",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "asset"
+        },
+        {
+          "digest": "2214ad852380aab8e94c6281581ade280c410595b774949ebbd0120d8a288f31",
+          "id": "azure-ai",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-ai",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-ai",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "db8f936f4ee6948c28a0c7b59a71397e6e7c5bd7c1a6da9c0970885ebccb7515",
+          "id": "azure-aigateway",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-aigateway",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-aigateway",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "1ef6af67cd3841df90a73ea9d74a6ab4ab71c88c6fbd9b9d1351c18adea86b6f",
+          "id": "azure-app-onboard",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-app-onboard",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-app-onboard",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "55d651c31673eabb1a00ad9fa57429c8d159dd90276e05229dbd2ca0502b0d81",
+          "id": "azure-app-onboard-prereq",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-app-onboard-prereq",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-app-onboard-prereq",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "21c56e2fed153c606e2b6e96db463b7dfa38e54e0efade1c031eb738b959f585",
+          "id": "azure-cloud-migrate",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-cloud-migrate",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-cloud-migrate",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "2e364610dde50f8c43e6f1e6080c7d422f8e14d0525657d83031ccd0331394d8",
+          "id": "azure-compliance",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-compliance",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-compliance",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "94b67e662adf2bfc796f2ada79a5d03d5b31af62e84a5f1096bbd662cad5031b",
+          "id": "azure-compute",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-compute",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-compute",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "34f41ab9c4fafc8a45f38083234c8a6f856fddda3d549dda00713260ab254625",
+          "id": "azure-cost",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-cost",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-cost",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "50e5a10560f05b9d19445203fd0849a92b9f4c3dfde884836b44ece513019398",
+          "id": "azure-deploy",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-deploy",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-deploy",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "81c3492bc94a87362d7e3a7e5c4b1b5b316db9558e21e8160403706fbe675a33",
+          "id": "azure-diagnostics",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-diagnostics",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-diagnostics",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "4710b6cf179c0ff33325d1e358e13cdd95e67748fa085ee7d5ff0b2f3b412de5",
+          "id": "azure-enterprise-infra-planner",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-enterprise-infra-planner",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-enterprise-infra-planner",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "3f4e2895d2f8336145cdc4c1e263b20037d5cf81eef46de91151ba1996254a35",
+          "id": "azure-kubernetes",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-kubernetes",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-kubernetes",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "40126f63ebcf8c502535e3064d1ea8f89efa6ebecc39b0fffa6bf8ea0b7e5bb7",
+          "id": "azure-kubernetes-app-deploy",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-kubernetes-app-deploy",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-kubernetes-app-deploy",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "b7a411cf73875682965a1ef10a7278e0fa53dac0c37d65c65e4ff9a223f74667",
+          "id": "azure-kubernetes-automatic-readiness",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-kubernetes-automatic-readiness",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-kubernetes-automatic-readiness",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "1cc3b392edb9249637d61a60b5b869566c52369e4d150798ef9d389a3080fb36",
+          "id": "azure-kusto",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-kusto",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-kusto",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "5237c31864b0e84fa689be2981d567183690c22edc4e09f49d33af48892c55e6",
+          "id": "azure-messaging",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-messaging",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-messaging",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "f95584439f40fd08075389b8807fcacc34ffda899a67fc643f8038174c4f711d",
+          "id": "azure-prepare",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-prepare",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-prepare",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "3bb16d9736fba6844016c4803283ae8eddc433adaea0bfb3b2e8886a9dfc43e5",
+          "id": "azure-quotas",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-quotas",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-quotas",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "947cbea49cfc360b4ca5a2a5f9ed9ab4995562f327de1e1165016cad10de273a",
+          "id": "azure-reliability",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-reliability",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-reliability",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "0f8208eb9b885993a4497443cfe54ace79fdf3e226c98e215588d31be9f366f0",
+          "id": "azure-resource-lookup",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-resource-lookup",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-resource-lookup",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "7445828fdef593094cb6508c4c7b2d75bc9705862465f400fb7db8d4920e7e98",
+          "id": "azure-resource-visualizer",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-resource-visualizer",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-resource-visualizer",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "971f2ad40f1f6b957d9f850dda1a0eb207f6c2b81139ece25c51cf4643ba72cb",
+          "id": "azure-storage",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-storage",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-storage",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "acf45e9d904179e0ce670f9c6229cee3496d200eedbfc30917afc8577754f97d",
+          "id": "azure-upgrade",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-upgrade",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-upgrade",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "87189cbb982bdfd159cf0f8b1c909053a56fce365b5c9eb55f57cd6d24b44fc1",
+          "id": "azure-validate",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/azure-validate",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/azure-validate",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "7a665e4e8ca4d2a45e78b8076c3d42bb43199dabdd64ad98a2d45e8d145958ca",
+          "id": "capacity",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/capacity",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/capacity",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "739a57583d33d475db586073da6cffb210dd3deb27dbcf6576e7815ffc23b9f7",
+          "id": "customize",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/customize",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/customize",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "376800ec41f37a5675806a65beb929f5210d57316d86fd8897fb021599bfcfda",
+          "id": "deploy-model",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/deploy-model",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/deploy-model",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "661bfe7198bec33a00ceda613dbf98c0cc460d26b1dfd4634540f56a2f56b5db",
+          "id": "entra-agent-id",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/entra-agent-id",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/entra-agent-id",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "11fbf7b1ff30f73ee361cacd0418c2bbb022fbb50b4642ac9678f93cc1783da6",
+          "id": "entra-app-registration",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/entra-app-registration",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/entra-app-registration",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "48726746e6f00a0f21e99638f77f8fa2e7cf77d37d7c1747b83ee9e02936f464",
+          "id": "executable-3cfb0a3c9667",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/hooks/scripts",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/hooks/scripts",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "executable"
+        },
+        {
+          "digest": "ce0e1aaf37e4be809e96704e1155d8c095509cc188bb32055882354633247138",
+          "id": "finetuning",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/finetuning",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/finetuning",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "5f2b2acf6f447be9f31d7a5c0b9e30df970880a764de528e4bc3d5e1762b31bf",
+          "id": "hook-a28e4c3135b2",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/hooks/hooks.json",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            },
+            "codex": {
+              "path": "targets/codex/hooks/hooks.json",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "hook"
+        },
+        {
+          "digest": "3c7512981b3bc4d9f9595daa577b088c1a4e971eb29719caf450ee81b701e2c7",
+          "id": "mcp-d5d3368a61f8",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/.mcp.json",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            },
+            "codex": {
+              "path": "targets/codex/.mcp.json",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "mcp"
+        },
+        {
+          "digest": "ad8621bb9aeb69b23644794e9a6ab4f9a24a33367d59f4f9a8e5a48fd9739f45",
+          "id": "microsoft-foundry",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/microsoft-foundry",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/microsoft-foundry",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "f697b2fb2c037d0c0bc0d8960ed38e17a8f66d96fc3ffe07fdd4ce317287895e",
+          "id": "preset",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/preset",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/preset",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "3fb546459ac8e70c3c96d10f87b557a7c748df438ecf3a930c2ca48da005b79b",
+          "id": "python-appservice-deploy",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/python-appservice-deploy",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/python-appservice-deploy",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        }
+      ],
+      "distributionVersion": "1.2.30-gravit.1",
+      "generatorDigest": "9cc4b764c2098de71ae2ee20d38c109d33bade9e041843ad665d6941eefcdfb8",
+      "name": "azure",
+      "source": {
+        "ref": "v1.2.29",
+        "repo": "microsoft/azure-skills",
+        "root": ".",
+        "sha": "16dc8c51ba7fda44c18781b5e4c0ca40a7a06a55",
+        "type": "github"
+      },
+      "targets": {
+        "claude": "302c28de048501c77558c455e861c5df86134444647892e0a8351da314532df9",
+        "codex": "977066aa4b19eb4795faab1f4d8514ea9901dff996e299feaa33c7ce75aee920"
+      }
+    },
+    "claude-seo": {
+      "bundleDigest": "1d5052eaecbd329b481174b7340861a92df5a6d2a86cbcdeace2b05bfd660c4c",
+      "components": [
+        {
+          "digest": "50ea6aafeb20813e786e82a6403ede9d75709b3a9ff27de28f055de994528520",
+          "id": "agent-8c70b25cbbbe",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/agents",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "reasonCode": "host-does-not-load-agents",
+              "status": "unsupported"
+            }
+          },
+          "type": "agent"
+        },
+        {
+          "digest": "495475607398e243011c794ded65c24c44cd93b2102573f768a45e719679fc2b",
+          "id": "asset-3a6eb0790f39",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/data",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/data",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "asset"
+        },
+        {
+          "digest": "64210bb366bf64d1504091c8c825e6e810a027ba5104ab2387f02d37f997c464",
+          "id": "asset-4d7c51b1efe9",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/requirements.txt",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/requirements.txt",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "asset"
+        },
+        {
+          "digest": "36de4e9674633632e5d678a8edac5d6257639240660a825bf08a12f722936eab",
+          "id": "asset-8bf729ffe074",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/assets",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/assets",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "asset"
+        },
+        {
+          "digest": "678326bea5dc67ccc42f8c5893e79a308052afacc48a04e823759db5acceee11",
+          "id": "asset-98d875b61ff2",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/screenshots",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/screenshots",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "asset"
+        },
+        {
+          "digest": "7a56f8a4a8a63bc11b79a3e7f04b0b434e41cb9fc8e939c00ad3c5b004d96587",
+          "id": "asset-c35b21d6ca39",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/pdf",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/pdf",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "asset"
+        },
+        {
+          "digest": "c5825032b0e24fc72425471e366bafa6f5ca2ea94c3885e347b2a47a108f5553",
+          "id": "asset-df0ad6e43880",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/schema",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/schema",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "asset"
+        },
+        {
+          "digest": "8f2b5411556da6b6d6c5081c54338fdd9473a662b4126120f08e91c6344c5f17",
+          "id": "executable-048f0de608d4",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/hooks/validate-schema.py",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/hooks/validate-schema.py",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "executable"
+        },
+        {
+          "digest": "ff7eb548254a248f2975734f0d624f38ca4157b8689f0feaafea144f9e4a475e",
+          "id": "executable-20ef7739e842",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/extensions",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/extensions",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "executable"
+        },
+        {
+          "digest": "009d1ba8c979433c90fa3bf4b03390e1aa801d65d9331f886a2a0bd23b6dfe31",
+          "id": "executable-2fe8debbb325",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/hooks/run-python-hook.js",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/hooks/run-python-hook.js",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "executable"
+        },
+        {
+          "digest": "c6a10de76b85af5e1397fa332d071778a969331a56293b3f8abd26245309dd1e",
+          "id": "executable-51a1f05af85e",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/bin",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/bin",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "executable"
+        },
+        {
+          "digest": "10cbebcaee725b8a8a3e3535980f6c49dbb4c400cdaca2f42e39385847fe8a2a",
+          "id": "executable-8c5967fd8486",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/scripts",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/scripts",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "executable"
+        },
+        {
+          "digest": "2b1b47fce386420a34549f3d555b388de77d82f3ca23d3f24b7b6526b3ac8f20",
+          "id": "hook-a48aec12c9dd",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/hooks/hooks.json",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            },
+            "codex": {
+              "path": "targets/codex/hooks/hooks.json",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "hook"
+        },
+        {
+          "digest": "5c593834bb6a3da20b2a77116fccf75b9d275265ec9461d9b6e711a7dc938d4b",
+          "id": "seo",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "bbcec7724038a0c12e45374211b15604d633156f13a8846fa1f514138b589fb1",
+          "id": "seo-audit",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-audit",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-audit",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "e90f9e5271b536ac476a3a2b39c8886b776a9088c21d936f32af0354c1044d13",
+          "id": "seo-backlinks",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-backlinks",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-backlinks",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "0a42431833ac3751f71e2274683e489a3dbf491ba75e2ebefc0f0c4ba6018f1c",
+          "id": "seo-cluster",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-cluster",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-cluster",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "2941cbce8a898c2329655a7102e5cfd06f2d8c72723a2f77e4c1f975ff629612",
+          "id": "seo-competitor-pages",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-competitor-pages",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-competitor-pages",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "816f8adc05c9ce2206d896364fe2313726644e1a896ccc13378bd79ea5112fe1",
+          "id": "seo-content",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-content",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-content",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "ef75158170d270170ae934f62aefb1116fe9be25d2177296b1b70c2e09a1e855",
+          "id": "seo-content-brief",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-content-brief",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-content-brief",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "23f5051ecf9ad6285f6ce8f34dd9589cedbc4f71aa086f0c20c9eb5953701c7e",
+          "id": "seo-dataforseo",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-dataforseo",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-dataforseo",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "5767b9d469b2dc88dfe2511c9c454b7cecb7986f037dd2734d168961f66cdb47",
+          "id": "seo-drift",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-drift",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-drift",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "d72e8773225172688d98af23f9c6b161ddab454cd15f40c010e734a58121a2b8",
+          "id": "seo-ecommerce",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-ecommerce",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-ecommerce",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "6bfdeac64925b488a42e66d67b47a67494d3be03372f4cdbee2b66be0b3c2dbe",
+          "id": "seo-flow",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-flow",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-flow",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "c721f1eb12cf87ccc17ebdd0ecdde712a5efc862c7ce33c501ecb71ea48ffd0c",
+          "id": "seo-geo",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-geo",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-geo",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "07ee80b2e30f132f87fea9a1fe343e91c492c66837a104c8375c6bc092ab147c",
+          "id": "seo-google",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-google",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-google",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "b32d6b0e601b43d42e919b58c90e483a95eba1d51330358846bc95ee4332d0ea",
+          "id": "seo-hreflang",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-hreflang",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-hreflang",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "65f0eb199ff4540ee3e3a42161a5f26a3218b31aeab0c894e6a9bfb3a0fa7150",
+          "id": "seo-image-gen",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-image-gen",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-image-gen",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "92d10a6fea82f8deb1a4e7d715c20832f4f3f0a9ce27d409c5868ea580c9ac7e",
+          "id": "seo-images",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-images",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-images",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "e66e931f9d0a47d4ae3776cb04d847ab17ca1e1d43a88d773493ce20b93c8a9c",
+          "id": "seo-local",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-local",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-local",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "6c5bb1aa8b894ec76fbbc4887f3ba2709f33f2df0fdc739c906d208fdad94a8d",
+          "id": "seo-maps",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-maps",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-maps",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "4bad079d2c76555d44ab801cb7fcd3f26750af55daa9af38db6f5ca2a1a98c22",
+          "id": "seo-page",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-page",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-page",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "203401569753356d01f0b0b789e10136512a8a46ebf7813e8c473f474ec19213",
+          "id": "seo-plan",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-plan",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-plan",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "9bd4a2df36858a51033ad6c08ff8a812ffcde72c3a4a49ed6401884258dd9cce",
+          "id": "seo-programmatic",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-programmatic",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-programmatic",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "724dcaa7c988eec8476e6d1babc3e5616c8541a29d17df303ce8521fe5a2b051",
+          "id": "seo-schema",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-schema",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-schema",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "ced8c6cbdd4d0c9cbe52480f73d21ba51a59825b9b5175d89fcf325e925fa540",
+          "id": "seo-sitemap",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-sitemap",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-sitemap",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "5457859343b65001a7763cb82962815ed1c62be0412e074f905ab918c8e5b042",
+          "id": "seo-sxo",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-sxo",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-sxo",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "53e8f1e8be68702a06858192ae34e7d00fa65b5687560c54fe6e4aeb6487c246",
+          "id": "seo-technical",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/seo-technical",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/seo-technical",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        }
+      ],
+      "distributionVersion": "2.2.4-gravit.6",
+      "generatorDigest": "9cc4b764c2098de71ae2ee20d38c109d33bade9e041843ad665d6941eefcdfb8",
+      "name": "claude-seo",
+      "source": {
+        "ref": "v2.2.4",
+        "repo": "AgricIDaniel/claude-seo",
+        "root": ".",
+        "sha": "6b63c8bb7b2e8e4480060604555e3af629b54c2c",
+        "type": "github"
+      },
+      "targets": {
+        "claude": "f9e48d67dd97f11d391d1eeb9c67f313e2981b861aceed8b5f4d2ebe88989f85",
+        "codex": "20c5737947a46979f68dc3153f5d207cdb1e2dbc5709dd49c6ed4adf6570ae06"
+      }
+    },
+    "gravit-custom": {
+      "bundleDigest": "3606dc18a83bcb49d83f9404629b5c9e9a7e5e8c17d9a33e0af1e23e256b13e4",
+      "components": [
+        {
+          "digest": "7c51b29eaca5f86121a67ecd9b357fd496a31f6f3a497b87f09ec25e325f07cc",
+          "id": "claude-md-improver",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/claude-md-improver",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/claude-md-improver",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "255ea51c85de0172acf3eb95aa162d4be9ebc5e1fcecb0fdef18796cfaee577d",
+          "id": "context7-doc-validation",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/context7-doc-validation",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/context7-doc-validation",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "2409a1aa8988692cde98cae7384738ead546ab3ac1876ab8408be585b1353f89",
+          "id": "deep-change-review",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/deep-change-review",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/deep-change-review",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "cb469302255542066cdf053e26d24b5c7af2e1514d57c716bdf73b655aafe3ca",
+          "id": "excalidraw-diagram-generator",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/excalidraw-diagram-generator",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/excalidraw-diagram-generator",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "2a80bddf930f200d08d98596cda44cf913508ecc0476da5f44a480348cb97148",
+          "id": "git-commit",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/git-commit",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/git-commit",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "f68dd1bc4ca563d54f0b466c8893d087c9b7e50204061d69d5002a77d11b8246",
+          "id": "github-actions-templates",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/github-actions-templates",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/github-actions-templates",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "7262b44821473ec2f2b982d88a6dd77261ae61d9d4d4064651dcb7d221034e3e",
+          "id": "github-issues",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/github-issues",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/github-issues",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        }
+      ],
+      "distributionVersion": "1.0.0-gravit.4",
+      "generatorDigest": "9cc4b764c2098de71ae2ee20d38c109d33bade9e041843ad665d6941eefcdfb8",
+      "name": "gravit-custom",
+      "source": {
+        "path": "sources/gravit-custom",
+        "root": ".",
+        "type": "local"
+      },
+      "targets": {
+        "claude": "77ef13a0be17afd146102b3a217587afee855a392e07ab25295c8e281ab31e77",
+        "codex": "1a735219d640e9eb1854066ef4cab44a8e417575a31e841ca0d988062c85cf7b"
+      }
+    },
+    "mattpocock-skills": {
+      "bundleDigest": "e9074f0694e2d12a50f35c35e5663c08669b55a5c3c8e1df7b250707ec9d9b27",
+      "components": [
+        {
+          "digest": "aef5d01c0f24f371b7616351916a39ae8d55a585683b054163b89457dcf7077f",
+          "id": "ask-matt",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/ask-matt",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/ask-matt",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "e079c2cdb57e5342e3b4efecf13e3058fce56711fcf9a392d529de0da28c5cc3",
+          "id": "code-review",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/code-review",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/code-review",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "3734b9a4b324571c9f3a379c04cc2f950727c7a351abc22b921036f497363ed3",
+          "id": "codebase-design",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/codebase-design",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/codebase-design",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "b5601e4ac601f990feffac2594471c63f37c3f40080bc0e15744176bf4e39cdb",
+          "id": "diagnosing-bugs",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/diagnosing-bugs",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/diagnosing-bugs",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "0b535cb108febce88b7918b6b663a48240a3454036d4476c47d8135a0863e50a",
+          "id": "domain-modeling",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/domain-modeling",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/domain-modeling",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "348edf245c8bb5f21ff697049c4dd3a5f06dc8b2a4b4e7d5fa5cdcc219c684f4",
+          "id": "grill-me",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/grill-me",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/grill-me",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "9e8e5d62e5cdb9d35a4a7ed9871ac32b6508e075d58f24d847acb335d6865d5f",
+          "id": "grill-with-docs",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/grill-with-docs",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/grill-with-docs",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "641aecf056438a6c2ed5ce9594dc950779de111f137bf1cdc9a2cbf8e4ea1940",
+          "id": "grilling",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/grilling",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/grilling",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "1205d688a2dcb61b28ae7c4acd8071bdb764badd94883ff1dab7a986ed302b83",
+          "id": "handoff",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/handoff",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/handoff",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "3965a624cd9c6e0b418213d253beabed0a2e6a70d8737e9d506ba0591092b51b",
+          "id": "implement",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/implement",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/implement",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "c6e70900b66792d8a2efa01b32d80ffea53e882aa9a8294c3e4ccceb93bd4199",
+          "id": "improve-codebase-architecture",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/improve-codebase-architecture",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/improve-codebase-architecture",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "1d7d2cc1f6488117985abc0ca7349967a9a6066ee8ffade535f17d3c1b7591f3",
+          "id": "research",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/research",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/research",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "847e4ad1a85b76d2d33ae6a89b52d40786b6fdae8d46ca381632f15a90cb70be",
+          "id": "resolving-merge-conflicts",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/resolving-merge-conflicts",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/resolving-merge-conflicts",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "bdeb21fdd2d5c9f35e524de2d8499fe57bf677f1fe9375699edae25d39838bee",
+          "id": "setup-matt-pocock-skills",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/setup-matt-pocock-skills",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/setup-matt-pocock-skills",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "3ff75b7304dc9915357f4d5c7d76362b626aac04691e80d15af8db7d23bf356c",
+          "id": "skill-prototype-0f41e60c5628",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/prototype",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/prototype",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "cc85c4e0436639735897efa3a20381ff7ec48f54dcbb74d2e7eb75d271ef04fb",
+          "id": "tdd",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/tdd",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/tdd",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "2b0bca0da88dda6d6007cda2639c5f24864fa29fb5d511e0552d4dbf0c7dfd9d",
+          "id": "teach",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/teach",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/teach",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "c0de8bccad08d1c8d34751e61ad33f3f045e3824272d75a6b388235787f85433",
+          "id": "to-questionnaire",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/to-questionnaire",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/to-questionnaire",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "1b3071da7d4719c29976d77d6d2617a84fe1efd0d07c4933b1143396ac8271ef",
+          "id": "to-spec",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/to-spec",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/to-spec",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "4f7a4acbe576b26747f3161e93487934471e93fdc21f5561f50f412dc30653b5",
+          "id": "to-tickets",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/to-tickets",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/to-tickets",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "9140d69af390ab4f30dcbea2d5a16a16654793576dbf46078308f65b58f21275",
+          "id": "triage",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/triage",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/triage",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "d8dd73506efc8f162fcde1b4fe2c51db83fe5afda269375b4054c5b5951e1218",
+          "id": "wait-what",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/wait-what",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/wait-what",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "8395b3d09e2bb76fa4c2e3d75786cfa125903428850d89c85c6b5858f3554ee7",
+          "id": "wayfinder",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/wayfinder",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/wayfinder",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "2d629aeb4b135f8a4ec70f61a04512a577bc35ffb6c4316eb5758faf60c0ddd6",
+          "id": "wizard",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/wizard",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/wizard",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "d0158033e57150508c7aae5934f69d1a1a5c8011ca93298f32a741b60fa34fbc",
+          "id": "writing-for-agents",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/writing-for-agents",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/writing-for-agents",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        }
+      ],
+      "distributionVersion": "1.2.3-gravit.1",
+      "generatorDigest": "9cc4b764c2098de71ae2ee20d38c109d33bade9e041843ad665d6941eefcdfb8",
+      "name": "mattpocock-skills",
+      "source": {
+        "ref": "v1.2.3",
+        "repo": "mattpocock/skills",
+        "root": ".",
+        "sha": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "type": "github"
+      },
+      "targets": {
+        "claude": "196ce0f0cccde2c3226a20d4e4c7f6107c61eaeef1b49e5e603a3e59956a493f",
+        "codex": "9cd887231b76955e9ed367bfe3d3a112dfb5727632fd8b50550fa5eacb758c2a"
+      }
+    },
+    "obsidian": {
+      "bundleDigest": "317c30b7e54c7a6970f4b86150cd1b02f832fac36bf1b11d39e2b0675380b980",
+      "components": [
+        {
+          "digest": "a2d56bc53d96891df85a16e8f8fdb1ae6acae53e05e629ef252f9a82b310d982",
+          "id": "defuddle",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/defuddle",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/defuddle",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "3e1e6f2af45228c65eee99ee2e88f1b0a19b2741bff814fb9e1e5bc25f7d1d5c",
+          "id": "json-canvas",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/json-canvas",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/json-canvas",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "c3e358b2b018482c9e3a686700fc9d98c8b91a17c6294f6e0d71ef3234c56344",
+          "id": "obsidian-bases",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/obsidian-bases",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/obsidian-bases",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "99d076538831d958636c8d5b6ad860695fe20d91ba906f426724f3fb4f491dea",
+          "id": "obsidian-cli",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/obsidian-cli",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/obsidian-cli",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "7dfd9c7e3d2b47d8286b35941d18652223e32126373ebb93e70231b8bdcede65",
+          "id": "obsidian-markdown",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/obsidian-markdown",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/obsidian-markdown",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        }
+      ],
+      "distributionVersion": "1.0.1-gravit.3",
+      "generatorDigest": "9cc4b764c2098de71ae2ee20d38c109d33bade9e041843ad665d6941eefcdfb8",
+      "name": "obsidian",
+      "source": {
+        "ref": "main",
+        "repo": "kepano/obsidian-skills",
+        "root": ".",
+        "sha": "a1dc48e68138490d522c04cbf5822214c6eb1202",
+        "type": "github"
+      },
+      "targets": {
+        "claude": "89c43f4f95bd2fc0c6adf85f5d2fee1722edd4abd35ce846342929e84d63ea74",
+        "codex": "072ea750ce10a9136b8c1acd716afc5eced348c699d4636ec7402385c3444b45"
+      }
+    },
+    "superpowers": {
+      "bundleDigest": "ae68f9b18b172096bdaae0cf29e93f3f50f49f08325523b6ec2c8e4333ee46be",
+      "components": [
+        {
+          "digest": "2612738e8c0862f57896b9254bfe2269a6bd9f9fb74ddeeeb424b5e98115ae30",
+          "id": "asset-8bf729ffe074",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/assets",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/assets",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            }
+          },
+          "type": "asset"
+        },
+        {
+          "digest": "bf93daff18c9fdce1f7b1d4eea02d9c26d637b4a7b1fd8dc4d80540857aa9f2b",
+          "id": "brainstorming",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/brainstorming",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/brainstorming",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "24c720b5624ce789560ec9fe227eff9baaeebb7745646cf2f7df29565c23e141",
+          "id": "dispatching-parallel-agents",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/dispatching-parallel-agents",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/dispatching-parallel-agents",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "a811f92bde94cae9873721accdbfd59e9b0b98578b957b17591afc61fa99e943",
+          "id": "executing-plans",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/executing-plans",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/executing-plans",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "addffe21c64918eda1925f02022774c3e1df7db5377be75c291802227768c5cf",
+          "id": "finishing-a-development-branch",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/finishing-a-development-branch",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/finishing-a-development-branch",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "03eb052a138902c87064faba99d470577b70ff261e356c0b9a40fe9e0c755cdd",
+          "id": "hook-inline-ca3d163bab05",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/hooks/hooks.json",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            },
+            "codex": {
+              "path": "targets/codex/hooks/hooks.json",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "hook"
+        },
+        {
+          "digest": "9e67888034ed1c6d60fdaf72212785b985c577d29def0337ec729fae2739f9c2",
+          "id": "receiving-code-review",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/receiving-code-review",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/receiving-code-review",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "dfcaf5ce3111cb2f3aeee4c63fa0461909dc8e40f040c6730aab8fc809743185",
+          "id": "requesting-code-review",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/requesting-code-review",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/requesting-code-review",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "775335b7814783ffbfca03f4d2b04988382608a58d921224eddfbcb85a6adafd",
+          "id": "subagent-driven-development",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/subagent-driven-development",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/subagent-driven-development",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "8eeec51295c6ecdc13b6866b9f11daec532e6cca1371a2baf7ee7f2e889ece9a",
+          "id": "systematic-debugging",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/systematic-debugging",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/systematic-debugging",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "38c1c0fa669c2a98a5b7cb69f1a0b0e894140568f13c5cbb0c419d395331f424",
+          "id": "test-driven-development",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/test-driven-development",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/test-driven-development",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "90cf9bff0b647fbb8571a2933c61304218fd29e52e00784c6043ddac3d4ba43f",
+          "id": "using-git-worktrees",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/using-git-worktrees",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/using-git-worktrees",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "59c69bb541e463270c195b6893c83f46589bf93230479d1b690951a4a7a781d0",
+          "id": "using-superpowers",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/using-superpowers",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/using-superpowers",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "d814ecc4d6a11c2f0a28611421ba30f003732973845bb2eeef835f727b372539",
+          "id": "verification-before-completion",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/verification-before-completion",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/verification-before-completion",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "5278aeb1c2d64615025615e525000ba16cd2775f9e81f448b61fa4217ec8628c",
+          "id": "writing-plans",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/writing-plans",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/writing-plans",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        },
+        {
+          "digest": "ba725e9c1fc6cebc12990e37a89f17a2e85e72cf193650dd0f98271477feaba8",
+          "id": "writing-skills",
+          "targets": {
+            "claude": {
+              "path": "targets/claude/skills/writing-skills",
+              "reasonCode": "native-component",
+              "status": "preserved"
+            },
+            "codex": {
+              "path": "targets/codex/skills/writing-skills",
+              "reasonCode": "target-translation",
+              "status": "transformed"
+            }
+          },
+          "type": "skill"
+        }
+      ],
+      "distributionVersion": "6.3.0-gravit.1",
+      "generatorDigest": "9cc4b764c2098de71ae2ee20d38c109d33bade9e041843ad665d6941eefcdfb8",
+      "name": "superpowers",
+      "source": {
+        "ref": "v6.3.0",
+        "repo": "obra/superpowers",
+        "root": ".",
+        "sha": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+        "type": "github"
+      },
+      "targets": {
+        "claude": "f3c76cf00065a90867ddeb2618d6028dfb885a2d8c3dcbf054451386e0a966a4",
+        "codex": "976a1433a54d198e4f527766d3a6ae20e2bc2bc666d3332cb143479dbecdeb3f"
+      }
+    }
+  },
+  "schemaVersion": 1
+}

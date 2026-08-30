@@ -6,32 +6,72 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release'
+        description: "Tag to release"
         required: true
-        default: 'v1.0.0'
+        default: "v1.0.0"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          fetch-tags: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
-      - name: Install pinned tooling
-        run: npm ci
-      - name: Validate release metadata
+      - name: Install pinned tooling without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Validate release tag
         run: |
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const packageData = JSON.parse(readFileSync("package.json", "utf8"));
+            const releaseTag = process.env.RELEASE_TAG;
+            const safeTag = /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/;
+            if (!safeTag.test(releaseTag) || releaseTag !== `v${packageData.version}`) {
+              throw new Error(`unsafe or mismatched release tag: ${String(releaseTag)}`);
+            }
+          '
+          tag_commit=$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")
+          head_commit=$(git rev-parse HEAD)
+          test "$tag_commit" = "$head_commit"
+          test "$tag_commit" = "$GITHUB_SHA"
+      - name: Validate and build committed universal bundles
+        id: artifacts
+        run: |
+          npm test
           npm run validate
-          test "v$(node -p 'require("./package.json").version')" = "$RELEASE_TAG"
-      - name: Build versioned archives
-        run: npm run build
+          npm run registry:verify
+          artifact_file="$RUNNER_TEMP/gravit-release-archives.txt"
+          npm run --silent build > "$artifact_file"
+          expected_count=$(node -p 'require("./registry/catalog.json").plugins.length')
+          actual_count=$(wc -l < "$artifact_file" | tr -d ' ')
+          test "$actual_count" -eq "$expected_count"
+          {
+            echo "archives<<GRAVIT_ARCHIVES"
+            cat "$artifact_file"
+            echo "GRAVIT_ARCHIVES"
+          } >> "$GITHUB_OUTPUT"
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$RELEASE_TAG" dist/*-v*.zip --generate-notes
+          RELEASE_ARCHIVES: ${{ steps.artifacts.outputs.archives }}
+        run: |
+          mapfile -t archives <<< "$RELEASE_ARCHIVES"
+          expected_count=$(node -p 'require("./registry/catalog.json").plugins.length')
+          test "${#archives[@]}" -eq "$expected_count"
+          for archive in "${archives[@]}"; do
+            test -f "$archive"
+            test ! -L "$archive"
+          done
+          gh release create "$RELEASE_TAG" "${archives[@]}" --verify-tag --generate-notes
