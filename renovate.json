@@ -80,6 +80,15 @@
       "addLabels": [
         "ci"
       ]
+    },
+    {
+      "description": "plugins/, .agents/ und .claude-plugin/ sind generierte Trees (PRODUCTION_ROOT_NAMES in scripts/build-registry.mjs). Dependency-Updates dort werden vom nächsten plugins:sync überschrieben und brechen die Digest-Identität gegen registry/lock.json.",
+      "matchFileNames": [
+        "plugins/**",
+        ".agents/**",
+        ".claude-plugin/**"
+      ],
+      "enabled": false
     }
   ],
   "postUpgradeTasks": {
