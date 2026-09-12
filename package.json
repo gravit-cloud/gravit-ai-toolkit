@@ -39,7 +39,7 @@
     "test:integration": "node --test test/integration/*.test.mjs"
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "2.1.263",
+    "@anthropic-ai/claude-code": "2.1.266",
     "@openai/codex": "0.153.4",
     "ajv": "8.20.0",
     "decode-named-character-reference": "1.3.0",
